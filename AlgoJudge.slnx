@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="AlgoJudge.API/AlgoJudge.API.csproj" />
+  <Project Path="AlgoJudge.Application/AlgoJudge.Application.csproj" />
+  <Project Path="AlgoJudge.Domain/AlgoJudge.Domain.csproj" />
+  <Project Path="AlgoJudge.Infrastructure/AlgoJudge.Infrastructure.csproj" />
+</Solution>
