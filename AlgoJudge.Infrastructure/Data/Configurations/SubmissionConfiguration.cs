@@ -1,0 +1,37 @@
+﻿using AlgoJudge.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace AlgoJudge.Infrastructure.Data.Configurations
+{
+    public class SubmissionConfiguration : IEntityTypeConfiguration<Submission>
+    {
+        public void Configure(EntityTypeBuilder<Submission> builder)
+        {
+            builder.ToTable("Submissions");
+
+            builder.HasKey(s => s.Id);
+
+            builder.Property(s => s.SourceCode).IsRequired();
+
+            builder.Property(s => s.OriginalFileName).HasMaxLength(255);
+
+            builder.Property(s => s.Language)
+                   .IsRequired()
+                   .HasMaxLength(50);
+
+            builder.HasOne(s => s.User)
+                   .WithMany(u => u.Submissions)
+                   .HasForeignKey(s => s.UserId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(s => s.Problem)
+                   .WithMany(p => p.Submissions)
+                   .HasForeignKey(s => s.ProblemId)
+                   .OnDelete(DeleteBehavior.Cascade);
+        }
+    }
+}
