@@ -27,6 +27,9 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
                    .IsRequired()
                    .HasMaxLength(100);
 
+            builder.Property(u => u.CreatedAt)
+                   .HasDefaultValueSql("NOW()");
+
             builder.HasIndex(u => u.UserName).IsUnique();
             builder.HasIndex(u => u.Email).IsUnique();
         }

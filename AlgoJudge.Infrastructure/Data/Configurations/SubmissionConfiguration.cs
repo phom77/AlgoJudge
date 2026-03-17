@@ -32,6 +32,12 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
                    .WithMany(p => p.Submissions)
                    .HasForeignKey(s => s.ProblemId)
                    .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasIndex(s => s.UserId);
+
+            builder.HasIndex(s => s.ProblemId);
+
+            builder.HasIndex(s => s.CreatedAt).IsDescending();
         }
     }
 }

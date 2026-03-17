@@ -7,29 +7,34 @@ using System.Text;
 
 namespace AlgoJudge.Infrastructure.Data.Configurations
 {
-    public class ProblemConfiguration
+    public class ProblemConfiguration : IEntityTypeConfiguration<Problem>
     {
-        public class ProblmConfiguration : IEntityTypeConfiguration<Problem>
+        public void Configure(EntityTypeBuilder<Problem> builder)
         {
-            public void Configure(EntityTypeBuilder<Problem> builder)
+            builder.ToTable("Problems", table =>
             {
-                builder.ToTable("Problems");
+                table.HasCheckConstraint("CK_Problem_TimeLimit", "\"TimeLimit\" > 0");
+                table.HasCheckConstraint("CK_Problem_MemoryLimit", "\"MemoryLimit\" > 0");
+            });
 
-                builder.HasKey(p => p.Id);
+            builder.HasKey(p => p.Id);
 
-                builder.Property(p => p.Title)
-                       .IsRequired()
-                       .HasMaxLength(255);
+            builder.Property(p => p.Title)
+                   .IsRequired()
+                   .HasMaxLength(255);
 
-                builder.Property(p => p.Description)
-                       .IsRequired();
+            builder.Property(p => p.Description)
+                   .IsRequired();
 
-                builder.HasMany(p => p.TestCases)
-                       .WithOne(t => t.Problem)
-                       .HasForeignKey(t => t.ProblemId)
-                       .OnDelete(DeleteBehavior.Cascade);
-            }
+            builder.HasOne(p => p.Creator)
+                   .WithMany() 
+                   .HasForeignKey(p => p.CreatedBy)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasMany(p => p.TestCases)
+                   .WithOne(t => t.Problem)
+                   .HasForeignKey(t => t.ProblemId)
+                   .OnDelete(DeleteBehavior.Cascade);
         }
-
     }
 }
