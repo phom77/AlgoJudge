@@ -1,4 +1,5 @@
-﻿using AlgoJudge.Application.Interfaces;
+﻿using AlgoJudge.Application.DTOs.Common;
+using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -17,21 +18,32 @@ namespace AlgoJudge.Infrastructure.Repositories
         {
             _context = context;
         }
-        public async Task<Problem> CreateAsync(Problem problem)
+        public async Task CreateAsync(Problem problem)
         {
             await _context.Problems.AddAsync(problem);
-            await _context.SaveChangesAsync();
-            return problem;
         }
-
-        public async Task<IEnumerable<Problem>> GetAllAsync()
-        {
-            return await _context.Problems.ToListAsync();
-        }
-
         public async Task<Problem?> GetByIdAsync(int id)
         {
             return await _context.Problems.FindAsync(id);
+        }
+
+        public async Task<PagedResult<Problem>> GetPagedAsync(int pageNumber, int pageSize)
+        {
+            var totalCount = await _context.Problems.CountAsync();
+
+            var items = await _context.Problems
+                .OrderByDescending(p => p.CreatedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<Problem>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
         }
     }
 }
