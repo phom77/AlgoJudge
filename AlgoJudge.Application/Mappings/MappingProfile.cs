@@ -1,4 +1,5 @@
 ﻿using AlgoJudge.Application.DTOs.Problem;
+using AlgoJudge.Application.DTOs.Submission;
 using AlgoJudge.Domain.Entities;
 using AutoMapper;
 using System;
@@ -11,9 +12,13 @@ namespace AlgoJudge.Application.Mappings
     {
         public MappingProfile()
         {
+            //Problem Mappings
             CreateMap<Problem, ProblemDto>();
-
             CreateMap<CreateProblemDto, Problem>();
+
+            //Submission Mappings
+            CreateMap<Submission, SubmissionDto>();
+            CreateMap<CreateSubmissionDto, Submission>();
         }
     }
 }
