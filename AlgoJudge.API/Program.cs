@@ -1,8 +1,10 @@
 using AlgoJudge.Application.Interfaces;
+using AlgoJudge.Application.Mappings;
 using AlgoJudge.Application.Services;
 using AlgoJudge.Infrastructure.Data;
 using AlgoJudge.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +16,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+//AutoMapper
+builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 
 // Dependency Injection 
 builder.Services.AddScoped<IProblemRepository, ProblemRepository>();
