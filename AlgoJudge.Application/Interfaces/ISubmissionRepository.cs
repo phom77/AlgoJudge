@@ -9,5 +9,6 @@ namespace AlgoJudge.Application.Interfaces
     {
         Task AddAsync(Submission submission);
         Task<Submission?> GetByIdAsync(Guid id);
+        Task<IEnumerable<Submission>> GetPendingAsync();
     }
 }
