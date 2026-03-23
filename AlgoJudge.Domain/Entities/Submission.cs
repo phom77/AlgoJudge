@@ -16,7 +16,7 @@ namespace AlgoJudge.Domain.Entities
         public string SourceCode { get; set; } = string.Empty;
         public string? OriginalFileName { get; set; }
 
-        public string Language { get; set; } = "C++"; 
+        public string Language { get; set; } = "cpp"; 
 
         public SubmissionStatus Status { get; set; } = SubmissionStatus.Pending;
         
