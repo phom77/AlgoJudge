@@ -7,6 +7,7 @@ using AlgoJudge.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using AlgoJudge.Infrastructure.Grading;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
