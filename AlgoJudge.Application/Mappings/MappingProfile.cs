@@ -1,5 +1,6 @@
 ﻿using AlgoJudge.Application.DTOs.Problem;
 using AlgoJudge.Application.DTOs.Submission;
+using AlgoJudge.Application.DTOs.TestCase;
 using AlgoJudge.Domain.Entities;
 using AutoMapper;
 using System;
@@ -19,6 +20,10 @@ namespace AlgoJudge.Application.Mappings
             //Submission Mappings
             CreateMap<Submission, SubmissionDto>();
             CreateMap<CreateSubmissionDto, Submission>();
+
+            // TestCase Mappings
+            CreateMap<TestCase, TestCaseDto>();
+            CreateMap<CreateTestCaseDto, TestCase>();
         }
     }
 }

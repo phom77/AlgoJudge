@@ -18,7 +18,7 @@ namespace AlgoJudge.Infrastructure.Repositories
         {
             _context = context;
         }
-        public async Task CreateAsync(Problem problem)
+        public async Task AddAsync(Problem problem)
         {
             await _context.Problems.AddAsync(problem);
         }

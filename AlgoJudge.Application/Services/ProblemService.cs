@@ -26,7 +26,7 @@ namespace AlgoJudge.Application.Services
         {
             var problem = _mapper.Map<Problem>(dto);
 
-            await _repository.CreateAsync(problem);
+            await _repository.AddAsync(problem);
 
             await _unitOfWork.SaveChangesAsync();
 
