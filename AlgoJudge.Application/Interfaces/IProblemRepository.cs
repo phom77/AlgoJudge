@@ -8,7 +8,7 @@ namespace AlgoJudge.Application.Interfaces
 {
     public interface IProblemRepository
     {
-        Task CreateAsync(Problem problem);
+        Task AddAsync(Problem problem);
         Task<Problem?> GetByIdAsync(int id);
         Task<PagedResult<Problem>> GetPagedAsync(int pageNumber, int pageSize);
     }

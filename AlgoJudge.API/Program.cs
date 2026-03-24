@@ -4,8 +4,8 @@ using AlgoJudge.Application.Services;
 using AlgoJudge.Infrastructure.Data;
 using AlgoJudge.Infrastructure.Grading;
 using AlgoJudge.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
-using AlgoJudge.Infrastructure.Grading;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,14 +23,20 @@ builder.Services.AddOpenApi();
 builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 
 // Dependency Injection 
-builder.Services.AddScoped<IProblemRepository, ProblemRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IProblemRepository, ProblemRepository>();
 builder.Services.AddScoped<IProblemService, ProblemService>();
 builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 builder.Services.AddScoped<ISubmissionService, SubmissionService>();
 builder.Services.AddScoped<ITestCaseRepository, TestCaseRepository>();
+builder.Services.AddScoped<ITestCaseService, TestCaseService>();
 builder.Services.AddScoped<IGraderService, GraderService>();
 builder.Services.AddHostedService<GraderWorker>();
+
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 20 * 1024 * 1024; 
+});
 
 var app = builder.Build();
 

@@ -23,5 +23,25 @@ namespace AlgoJudge.Infrastructure.Repositories
                 .Where(tc => tc.ProblemId == problemId)
                 .ToListAsync();
         }
+
+        public async Task<TestCase?> GetByIdAsync(int id)
+        {
+            return await _context.TestCases.FindAsync(id);
+        }
+
+        public async Task AddAsync(TestCase testCase)
+        {
+            await _context.TestCases.AddAsync(testCase);
+        }
+
+        public async Task AddRangeAsync(IEnumerable<TestCase> testCases)
+        {
+            await _context.TestCases.AddRangeAsync(testCases);
+        }
+
+        public void Delete(TestCase testCase)
+        {
+            _context.TestCases.Remove(testCase);
+        }
     }
 }
