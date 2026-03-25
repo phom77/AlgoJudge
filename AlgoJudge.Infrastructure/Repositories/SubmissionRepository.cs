@@ -1,4 +1,5 @@
-﻿using AlgoJudge.Application.Interfaces;
+﻿using AlgoJudge.Application.DTOs.Common;
+using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
 using AlgoJudge.Infrastructure.Data;
@@ -27,6 +28,36 @@ namespace AlgoJudge.Infrastructure.Repositories
             return await _context.Submissions.FindAsync(id);
         }
 
+        public async Task<PagedResult<Submission>> GetPagedAsync(Guid? userId, int? problemId, SubmissionStatus? status, int pageNumber, int pageSize)
+        {
+            var query = _context.Submissions.AsQueryable();
+
+            if (userId.HasValue)
+                query = query.Where(s => s.UserId == userId.Value);
+
+            if (problemId.HasValue)
+                query = query.Where(s => s.ProblemId == problemId.Value);
+
+            if (status.HasValue)
+                query = query.Where(s => s.Status == status.Value);
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderByDescending(s => s.CreatedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<Submission>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
         public async Task<IEnumerable<Submission>> GetPendingAsync()
         {
             return await _context.Submissions
@@ -35,5 +66,7 @@ namespace AlgoJudge.Infrastructure.Repositories
                 .Take(10)                 
                 .ToListAsync();
         }
+
+
     }
 }

@@ -1,4 +1,5 @@
-﻿using AlgoJudge.Application.DTOs.Submission;
+﻿using AlgoJudge.Application.DTOs.Common;
+using AlgoJudge.Application.DTOs.Submission;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
@@ -26,6 +27,22 @@ namespace AlgoJudge.Application.Services
             _problemRepository = problemRepository;
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+        }
+
+        public async Task<PagedResult<SubmissionDto>> GetHistoryAsync(Guid? userId, int? problemId, SubmissionStatus? status, int pageNumber, int pageSize)
+        {
+            var pagedEntities = await _submissionRepository.GetPagedAsync(
+                userId, problemId, status, pageNumber, pageSize);
+
+            var dtoItems = _mapper.Map<IEnumerable<SubmissionDto>>(pagedEntities.Items).ToList();
+
+            return new PagedResult<SubmissionDto>
+            {
+                Items = dtoItems,
+                TotalCount = pagedEntities.TotalCount,
+                PageNumber = pagedEntities.PageNumber,
+                PageSize = pagedEntities.PageSize
+            };
         }
 
         public async Task<SubmissionDto?> GetSubmissionByIdAsync(Guid id)
