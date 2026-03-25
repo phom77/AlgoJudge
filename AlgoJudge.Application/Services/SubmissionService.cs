@@ -35,7 +35,7 @@ namespace AlgoJudge.Application.Services
             return _mapper.Map<SubmissionDto>(submission);
         }
 
-        public async Task<SubmissionDto> SubmitCodeAsync(CreateSubmissionDto dto)
+        public async Task<SubmissionDto> SubmitCodeAsync(CreateSubmissionDto dto, Guid userId)
         {
             var problemExists = await _problemRepository.GetByIdAsync(dto.ProblemId);
             if (problemExists == null)
@@ -44,6 +44,7 @@ namespace AlgoJudge.Application.Services
             }
             var submission = _mapper.Map<Submission>(dto);
 
+            submission.UserId = userId;
             submission.Status = SubmissionStatus.Pending;
             submission.CreatedAt = DateTime.UtcNow;
             submission.ExecutionTime = 0;

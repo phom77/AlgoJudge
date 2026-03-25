@@ -1,7 +1,9 @@
 ﻿using AlgoJudge.Application.DTOs.Problem;
 using AlgoJudge.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AlgoJudge.API.Controllers
 {
@@ -18,6 +20,7 @@ namespace AlgoJudge.API.Controllers
 
         // POST: api/problems
         [HttpPost]
+        [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> CreateProblem([FromBody] CreateProblemDto dto)
         {
             if (!ModelState.IsValid)
@@ -25,9 +28,15 @@ namespace AlgoJudge.API.Controllers
                 return BadRequest(ModelState);
             }
 
-            var result = await _problemService.CreateProblemAsync(dto);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)
+                   ?? User.FindFirst("sub");
 
-            return CreatedAtAction(nameof(GetProblems), new { id = result.Id }, result);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+                return Unauthorized(new { message = "Token không hợp lệ." });
+
+            var result = await _problemService.CreateProblemAsync(dto, userId);
+
+            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
 
         // GET: api/problems

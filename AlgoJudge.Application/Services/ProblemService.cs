@@ -22,9 +22,10 @@ namespace AlgoJudge.Application.Services
             _mapper = mapper;
         }
 
-        public async Task<ProblemDto> CreateProblemAsync(CreateProblemDto dto)
+        public async Task<ProblemDto> CreateProblemAsync(CreateProblemDto dto, Guid createdBy)
         {
             var problem = _mapper.Map<Problem>(dto);
+            problem.CreatedBy = createdBy;
 
             await _repository.AddAsync(problem);
 

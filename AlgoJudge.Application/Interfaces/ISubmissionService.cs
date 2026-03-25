@@ -7,7 +7,7 @@ namespace AlgoJudge.Application.Interfaces
 {
     public interface ISubmissionService
     {
-        Task<SubmissionDto> SubmitCodeAsync(CreateSubmissionDto dto);
+        Task<SubmissionDto> SubmitCodeAsync(CreateSubmissionDto dto, Guid userId);
         Task<SubmissionDto?> GetSubmissionByIdAsync(Guid id);
     }
 }

@@ -1,7 +1,9 @@
 ﻿using AlgoJudge.Application.DTOs.Submission;
 using AlgoJudge.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AlgoJudge.API.Controllers
 {
@@ -17,13 +19,18 @@ namespace AlgoJudge.API.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         public async Task<IActionResult> SubmitCode([FromBody] CreateSubmissionDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)
+                           ?? User.FindFirst("sub");
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+                return Unauthorized(new { message = "Token không hợp lệ." });
             try
             {
-                var result = await _submissionService.SubmitCodeAsync(dto);
+                var result = await _submissionService.SubmitCodeAsync(dto, userId);
 
                 return CreatedAtAction(nameof(GetSubmissionById), new { id = result.Id }, result);
             }
@@ -34,6 +41,7 @@ namespace AlgoJudge.API.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<IActionResult> GetSubmissionById(Guid id) 
         {
             var result = await _submissionService.GetSubmissionByIdAsync(id);

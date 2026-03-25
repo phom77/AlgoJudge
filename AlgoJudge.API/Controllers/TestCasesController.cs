@@ -1,5 +1,6 @@
 ﻿using AlgoJudge.Application.DTOs.TestCase;
 using AlgoJudge.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,6 +18,7 @@ namespace AlgoJudge.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> Create(int problemId, [FromBody] CreateTestCaseDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -35,6 +37,7 @@ namespace AlgoJudge.API.Controllers
         // POST /api/problems/{problemId}/testcases/bulk
         // Body: multipart/form-data, field "file" = file .zip
         [HttpPost("bulk")]
+        [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> CreateBulk(int problemId, IFormFile file)
         {
             if (file == null || file.Length == 0)
@@ -68,6 +71,7 @@ namespace AlgoJudge.API.Controllers
 
         // DELETE /api/problems/{problemId}/testcases/{id}
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> Delete(int problemId, int id)
         {
             try
