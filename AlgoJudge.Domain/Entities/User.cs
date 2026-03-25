@@ -1,4 +1,5 @@
-﻿using System;
+﻿using AlgoJudge.Domain.Enums;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -11,6 +12,7 @@ namespace AlgoJudge.Domain.Entities
         public string Email { get; set; } = string.Empty;
         public string? PasswordHash { get; set; }
         public string FullName { get; set; } = string.Empty;
+        public UserRole Role { get; set; } = UserRole.Student;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public ICollection<Submission> Submissions { get; set; } = new List<Submission>();
     }
