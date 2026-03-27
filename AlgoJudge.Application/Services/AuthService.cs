@@ -1,4 +1,5 @@
 ﻿using AlgoJudge.Application.DTOs.Auth;
+using AlgoJudge.Application.Helpers;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
@@ -6,7 +7,9 @@ using BCrypt.Net;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using System.Reflection;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace AlgoJudge.Application.Services
@@ -14,15 +17,18 @@ namespace AlgoJudge.Application.Services
     public class AuthService : IAuthService
     {
         private readonly IUserRepository _userRepository;
+        private readonly IRefreshTokenRepository _refreshTokenRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IConfiguration _configuration;
 
         public AuthService(
             IUserRepository userRepository,
+            IRefreshTokenRepository refreshTokenRepository,        
             IUnitOfWork unitOfWork,
             IConfiguration configuration)
         {
             _userRepository = userRepository;
+            _refreshTokenRepository = refreshTokenRepository;      
             _unitOfWork = unitOfWork;
             _configuration = configuration;
         }
@@ -34,7 +40,10 @@ namespace AlgoJudge.Application.Services
             if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
                 throw new UnauthorizedAccessException("UserName hoặc Password không đúng.");
 
-            return GenerateAuthResult(user);
+            var result = await GenerateAuthResultAsync(user);
+            await _unitOfWork.SaveChangesAsync();
+
+            return result;
         }
 
         public async Task<AuthResultDto> RegisterAsync(RegisterDto dto)
@@ -59,24 +68,83 @@ namespace AlgoJudge.Application.Services
             };
 
             await _userRepository.AddAsync(user);
+
+            var result = await GenerateAuthResultAsync(user);
             await _unitOfWork.SaveChangesAsync();
 
-            return GenerateAuthResult(user);
+            return result;
         }
 
-        private AuthResultDto GenerateAuthResult(User user)
+        public async Task<AuthResultDto> RefreshAsync(string refreshToken)
         {
-            var token = GenerateJwtToken(user);
-            var expiresAt = DateTime.UtcNow.AddHours(
-                int.Parse(_configuration["Jwt:ExpiresInHours"]!));
+            var hash = TokenHelper.Hash(refreshToken);
+            var stored = await _refreshTokenRepository.GetByTokenAsync(hash);
+
+            if (stored == null)
+                throw new UnauthorizedAccessException("Refresh token không hợp lệ.");
+
+            if (stored.IsRevoked)
+            {
+                await _refreshTokenRepository.RevokeAllByUserIdAsync(stored.UserId);
+                await _unitOfWork.SaveChangesAsync();
+                throw new UnauthorizedAccessException(
+                    "Refresh token đã bị thu hồi. Toàn bộ phiên đăng nhập đã bị đóng vì lý do bảo mật.");
+            }
+
+            if (stored.ExpiresAt <= DateTime.UtcNow)
+                throw new UnauthorizedAccessException("Refresh token đã hết hạn."); ;
+
+            stored.IsRevoked = true;
+
+            var result = await GenerateAuthResultAsync(stored.User);
+            await _unitOfWork.SaveChangesAsync();
+
+            return result;
+        }
+
+        public async Task RevokeAsync(string refreshToken, Guid callerId)
+        {
+            var hash = TokenHelper.Hash(refreshToken);
+            var stored = await _refreshTokenRepository.GetByTokenAsync(hash);
+
+            if (stored == null || stored.IsRevoked)
+                throw new ArgumentException("Refresh token không tồn tại hoặc đã bị thu hồi.");
+
+            if (stored.UserId != callerId)
+                throw new UnauthorizedAccessException("Bạn không có quyền thu hồi token này.");
+
+            stored.IsRevoked = true;
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        private async Task<AuthResultDto> GenerateAuthResultAsync(User user)
+        {
+            var accessToken = GenerateJwtToken(user);
+            var refreshToken = TokenHelper.GenerateRefreshToken();
+
+            var expiresInHours = int.Parse(_configuration["Jwt:ExpiresInHours"]!);
+            var refreshExpiryDays = int.Parse(
+                _configuration["Jwt:RefreshTokenExpiryDays"] ?? "7");
+
+            var refreshTokenEntity = new RefreshToken
+            {
+                UserId = user.Id,
+                Token = TokenHelper.Hash(refreshToken),
+                ExpiresAt = DateTime.UtcNow.AddDays(refreshExpiryDays),
+                CreatedAt = DateTime.UtcNow,
+                IsRevoked = false
+            };
+
+            await _refreshTokenRepository.AddAsync(refreshTokenEntity);
 
             return new AuthResultDto
             {
-                Token = token,
+                Token = accessToken,
+                RefreshToken = refreshToken,
                 UserName = user.UserName,
                 Email = user.Email,
                 Role = user.Role.ToString(),
-                ExpiresAt = expiresAt
+                ExpiresAt = DateTime.UtcNow.AddHours(expiresInHours)
             };
         }
 

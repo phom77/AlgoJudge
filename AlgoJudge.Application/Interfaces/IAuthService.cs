@@ -9,5 +9,7 @@ namespace AlgoJudge.Application.Interfaces
     {
         Task<AuthResultDto> RegisterAsync(RegisterDto registerDto);
         Task<AuthResultDto> LoginAsync(LoginDto loginDto);
+        Task<AuthResultDto> RefreshAsync(string refreshToken);
+        Task RevokeAsync(string refreshToken, Guid callerId);
     }
 }
