@@ -60,5 +60,52 @@ namespace AlgoJudge.API.Controllers
 
             return Ok(result); 
         }
+
+        // PUT: api/problems/{id}
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> UpdateProblem(int id, [FromBody] UpdateProblemDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)
+                           ?? User.FindFirst("sub");
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+                return Unauthorized(new { message = "Token is invalid." });
+
+            try
+            {
+                var result = await _problemService.UpdateProblemAsync(id, dto, userId);
+                if (result == null) return NotFound();
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid();
+            }
+        }
+
+        // DELETE: api/problems/{id}
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> DeleteProblem(int id)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)
+                           ?? User.FindFirst("sub");
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+                return Unauthorized(new { message = "Token is invalid." });
+
+            try
+            {
+                var result = await _problemService.DeleteProblemAsync(id, userId);
+                if (!result) return NotFound();
+                return NoContent();
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+        }
     }
 }

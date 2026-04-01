@@ -11,5 +11,6 @@ namespace AlgoJudge.Application.Interfaces
         Task AddAsync(Problem problem);
         Task<Problem?> GetByIdAsync(int id);
         Task<PagedResult<Problem>> GetPagedAsync(int pageNumber, int pageSize);
+        void Delete(Problem problem);
     }
 }

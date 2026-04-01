@@ -11,5 +11,7 @@ namespace AlgoJudge.Application.Interfaces
         Task<ProblemDto> CreateProblemAsync(CreateProblemDto dto, Guid createdBy);
         Task<ProblemDto?> GetProblemByIdAsync(int id);
         Task<PagedResult<ProblemDto>> GetProblemAsync(int pageNumber, int pageSize);
+        Task<ProblemDto?> UpdateProblemAsync(int id, UpdateProblemDto dto, Guid requesterId);
+        Task<bool> DeleteProblemAsync(int id, Guid requesterId);
     }
 }

@@ -57,5 +57,39 @@ namespace AlgoJudge.Application.Services
 
             return _mapper.Map<ProblemDto>(problem);
         }
+
+        public async Task<ProblemDto?> UpdateProblemAsync(int id, UpdateProblemDto dto, Guid requesterId)
+        {
+            var problem = await _repository.GetByIdAsync(id);
+            if (problem == null)
+                return null;
+
+            if(problem.CreatedBy != requesterId)
+                throw new UnauthorizedAccessException("You are not authorized to update this problem.");
+
+            problem.Title = dto.Title;
+            problem.Description = dto.Description;
+            problem.TimeLimit = dto.TimeLimit;
+            problem.MemoryLimit = dto.MemoryLimit;
+            problem.Difficulty = dto.Difficulty;
+
+            await _unitOfWork.SaveChangesAsync();
+            return _mapper.Map<ProblemDto>(problem);
+        }
+
+        public async Task<bool> DeleteProblemAsync(int id, Guid requesterId)
+        {
+            var problem = await _repository.GetByIdAsync(id);
+            if (problem == null) return false;
+
+            if (problem.CreatedBy != requesterId)
+                throw new UnauthorizedAccessException("You are not authorized to delete this problem.");
+
+            _repository.Delete(problem);
+            await _unitOfWork.SaveChangesAsync();
+
+            return true;
+
+        }
     }
 }

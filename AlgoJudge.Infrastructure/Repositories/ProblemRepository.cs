@@ -45,5 +45,10 @@ namespace AlgoJudge.Infrastructure.Repositories
                 PageSize = pageSize
             };
         }
+
+        public void Delete(Problem problem)
+        {
+            _context.Problems.Remove(problem);
+        }
     }
 }
