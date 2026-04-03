@@ -14,6 +14,7 @@ namespace AlgoJudge.Infrastructure.Grading
         private readonly IProblemRepository _problemRepository;
         private readonly ITestCaseRepository _testCaseRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IDockerSandbox _sandbox;
         private readonly ILogger<GraderService> _logger;
 
         public GraderService(
@@ -21,12 +22,14 @@ namespace AlgoJudge.Infrastructure.Grading
             IProblemRepository problemRepository,
             ITestCaseRepository testCaseRepository,
             IUnitOfWork unitOfWork,
+            IDockerSandbox sandbox,
             ILogger<GraderService> logger)
         {
             _submissionRepository = submissionRepository;
             _problemRepository = problemRepository;
             _testCaseRepository = testCaseRepository;
             _unitOfWork = unitOfWork;
+            _sandbox = sandbox;
             _logger = logger;
         }
 
@@ -56,18 +59,12 @@ namespace AlgoJudge.Infrastructure.Grading
             var workDir = Path.Combine(Path.GetTempPath(), "algojudge", submissionId.ToString());
             Directory.CreateDirectory(workDir);
 
-            var sourceFile = Path.Combine(workDir, "solution.cpp");
-            var executableFile = Path.Combine(workDir,
-                OperatingSystem.IsWindows() ? "solution.exe" : "solution");
-
             try
             {
                 submission.Status = SubmissionStatus.Compiling;
                 await _unitOfWork.SaveChangesAsync();
 
-                await File.WriteAllTextAsync(sourceFile, submission.SourceCode, cancellationToken);
-
-                var compileResult = await CompileAsync(sourceFile, executableFile, cancellationToken);
+                var compileResult = await _sandbox.CompileAsync(submission.SourceCode, workDir, cancellationToken);
                 if(!compileResult.Success)
                 {
                     submission.Status = SubmissionStatus.CompileError;
@@ -82,7 +79,7 @@ namespace AlgoJudge.Infrastructure.Grading
 
                 foreach(var testCase in testCases)
                 {
-                    var runResult = await RunAsync(executableFile, testCase.Input, problem.TimeLimit, cancellationToken);
+                    var runResult = await _sandbox.RunAsync(workDir, testCase.Input, problem.TimeLimit, problem.MemoryLimit, cancellationToken);
 
                     if (runResult.ExecutionTimeMs > maxExecutionTime)
                         maxExecutionTime = runResult.ExecutionTimeMs;
@@ -90,14 +87,31 @@ namespace AlgoJudge.Infrastructure.Grading
                     if (runResult.MemoryUsedBytes > maxMemoryUsed)
                         maxMemoryUsed = runResult.MemoryUsedBytes;
 
-                    if(runResult.Status != SubmissionStatus.Accepted)
+                    if (runResult.Status == SandboxRunStatus.TimeLimitExceeded)
                     {
-                        finalStatus = runResult.Status;
+                        finalStatus = SubmissionStatus.TimeLimitExceeded;
+                        break;
+                    }
+
+                    if (runResult.Status == SandboxRunStatus.RuntimeError)
+                    {
+                        finalStatus = SubmissionStatus.RuntimeError;
+                        break;
+                    }
+
+                    if (runResult.Status == SandboxRunStatus.SystemError)
+                    {
+                        _logger.LogError("SystemError on submission {Id}, testCase {TcId}.",
+                            submissionId, testCase.Id);
+                        finalStatus = SubmissionStatus.RuntimeError;
                         break;
                     }
 
                     var actualOutput = runResult.Output.Trim();
                     var expectedOutput = testCase.ExpectedOutput.Trim();
+
+                    _logger.LogInformation("Actual  : [{Actual}]", actualOutput);
+                    _logger.LogInformation("Expected: [{Expected}]", expectedOutput);
 
                     if (actualOutput != expectedOutput)
                     {
@@ -132,104 +146,5 @@ namespace AlgoJudge.Infrastructure.Grading
                     Directory.Delete(workDir, recursive: true);
             }
         }
-
-        private async Task<(bool Success, string ErrorOutput)> CompileAsync(
-            string sourceFile, string outputFile, CancellationToken ct)
-        {
-            var isWindows = OperatingSystem.IsWindows();
-            var compiler = isWindows ? "g++" : "g++";
-            var args = OperatingSystem.IsWindows()
-                ? $"\"{sourceFile}\" -o \"{outputFile}\" -O2 -std=c++17"
-                : $"\"{sourceFile}\" -o \"{outputFile}\" -O2 -std=c++17 -lm";
-
-            using var process = new Process();
-            process.StartInfo = new ProcessStartInfo
-            {
-                FileName = compiler,
-                Arguments = args,
-                RedirectStandardError = true,
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            process.Start();
-            var errorOutput = await process.StandardError.ReadToEndAsync(ct);
-            await process.WaitForExitAsync(ct);
-
-            return (process.ExitCode == 0, errorOutput);
-        }
-
-        private async Task<RunResult> RunAsync(
-            string executableFile, string input, int timeLimitMs, CancellationToken ct)
-        {
-            using var process = new Process();
-            process.StartInfo = new ProcessStartInfo
-            {
-                FileName = executableFile,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            process.Start();
-
-            await process.StandardInput.WriteAsync(input);
-            process.StandardInput.Close();
-
-            var stopwatch = Stopwatch.StartNew();
-
-            var finished = process.WaitForExit(timeLimitMs);
-            stopwatch.Stop();
-
-            if (!finished)
-            {
-                try { process.Kill(entireProcessTree: true); } catch { }
-                return new RunResult
-                {
-                    Status = SubmissionStatus.TimeLimitExceeded,
-                    ExecutionTimeMs = timeLimitMs,
-                    MemoryUsedBytes = 0,
-                    Output = string.Empty
-                };
-            }
-
-            var output = await process.StandardOutput.ReadToEndAsync(ct);
-            var stderr = await process.StandardError.ReadToEndAsync(ct);
-            var elapsedMs = (int)stopwatch.ElapsedMilliseconds;
-
-            long peakMemoryBytes = 0;
-            try { peakMemoryBytes = process.PeakWorkingSet64; } catch { }
-
-            if (process.ExitCode != 0)
-            {
-                _logger.LogWarning("RuntimeError — exit code: {Code}, stderr: {Err}",
-                    process.ExitCode, stderr);
-                return new RunResult
-                {
-                    Status = SubmissionStatus.RuntimeError,
-                    ExecutionTimeMs = elapsedMs,
-                    MemoryUsedBytes = peakMemoryBytes,
-                    Output = string.Empty
-                };
-            }
-
-            return new RunResult
-            {
-                Status = SubmissionStatus.Accepted,
-                ExecutionTimeMs = elapsedMs,
-                MemoryUsedBytes = peakMemoryBytes,
-                Output = output
-            };
-        }
-    }
-
-    internal class RunResult
-    {
-        public SubmissionStatus Status { get; set; }
-        public int ExecutionTimeMs { get; set; }
-        public long MemoryUsedBytes { get; set; }
-        public string Output { get; set; } = string.Empty;
     }
 }
