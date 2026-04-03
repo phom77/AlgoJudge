@@ -15,6 +15,7 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
             {
                 table.HasCheckConstraint("CK_Problem_TimeLimit", "\"TimeLimit\" > 0");
                 table.HasCheckConstraint("CK_Problem_MemoryLimit", "\"MemoryLimit\" > 0");
+                table.HasCheckConstraint("CK_Problem_Score", "\"Score\" > 0");
             });
 
             builder.HasKey(p => p.Id);
