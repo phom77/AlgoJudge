@@ -16,6 +16,9 @@ namespace AlgoJudge.Application.DTOs.Problem
         [Required(ErrorMessage = "Description là bắt buộc.")]
         public string Description { get; set; } = string.Empty;
 
+        [Range(1, 1000, ErrorMessage = "Score must be between 1 to 1000.")]
+        public int Score { get; set; } = 100;
+
         [Range(100, 10000,
             ErrorMessage = "TimeLimit phải từ 100ms đến 10000ms.")]
         public int TimeLimit { get; set; } = 1000;

@@ -13,6 +13,7 @@ namespace AlgoJudge.Domain.Entities
         public int TimeLimit { get; set; }
         public int MemoryLimit { get; set; }
         public DifficultyLevel Difficulty { get; set; } = DifficultyLevel.Easy;
+        public int Score { get; set; } = 100;
         public Guid CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public User Creator { get; set; } = null!;

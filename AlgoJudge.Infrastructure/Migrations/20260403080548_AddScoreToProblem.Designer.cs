@@ -3,6 +3,7 @@ using System;
 using AlgoJudge.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AlgoJudge.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260403080548_AddScoreToProblem")]
+    partial class AddScoreToProblem
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -64,8 +67,6 @@ namespace AlgoJudge.Infrastructure.Migrations
                     b.ToTable("Problems", null, t =>
                         {
                             t.HasCheckConstraint("CK_Problem_MemoryLimit", "\"MemoryLimit\" > 0");
-
-                            t.HasCheckConstraint("CK_Problem_Score", "\"Score\" > 0");
 
                             t.HasCheckConstraint("CK_Problem_TimeLimit", "\"TimeLimit\" > 0");
                         });
@@ -150,11 +151,7 @@ namespace AlgoJudge.Infrastructure.Migrations
 
                     b.HasIndex("ProblemId");
 
-                    b.HasIndex("Status");
-
                     b.HasIndex("UserId");
-
-                    b.HasIndex("UserId", "ProblemId");
 
                     b.ToTable("Submissions", (string)null);
                 });

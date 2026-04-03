@@ -72,6 +72,7 @@ namespace AlgoJudge.Application.Services
             problem.TimeLimit = dto.TimeLimit;
             problem.MemoryLimit = dto.MemoryLimit;
             problem.Difficulty = dto.Difficulty;
+            problem.Score = dto.Score;
 
             await _unitOfWork.SaveChangesAsync();
             return _mapper.Map<ProblemDto>(problem);
