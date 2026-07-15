@@ -15,5 +15,7 @@ namespace AlgoJudge.Application.DTOs.Submission
         public int ExecutionTime { get; set; }
         public int MemoryUsed { get; set; }
         public DateTime CreatedAt { get; set; }
+        public DateTime? StartedAt { get; set; }
+        public DateTime? FinishedAt { get; set; }
     }
 }

@@ -7,6 +7,12 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+var queueOptions = builder.Configuration
+    .GetSection("Queue")
+    .Get<SubmissionQueueOptions>() ?? new SubmissionQueueOptions();
+queueOptions.Validate();
+var workerIdentity = WorkerIdentity.Create(queueOptions.WorkerId);
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrWhiteSpace(connectionString))
 {
@@ -23,6 +29,8 @@ builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 builder.Services.AddScoped<IJudgeTestCaseRepository, JudgeTestCaseRepository>();
 builder.Services.AddScoped<IGraderService, GraderService>();
 builder.Services.AddScoped<IDockerSandbox, DockerSandboxService>();
+builder.Services.AddSingleton(queueOptions);
+builder.Services.AddSingleton(workerIdentity);
 builder.Services.AddHostedService<GraderWorker>();
 
 var host = builder.Build();

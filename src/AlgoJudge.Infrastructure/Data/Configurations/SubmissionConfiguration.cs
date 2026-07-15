@@ -11,7 +11,16 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<Submission> builder)
         {
-            builder.ToTable("Submissions");
+            builder.ToTable("Submissions", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_Submission_AttemptCount",
+                    "\"AttemptCount\" >= 0");
+                table.HasCheckConstraint(
+                    "CK_Submission_RunningClaim",
+                    "\"Status\" <> 2 OR (\"WorkerId\" IS NOT NULL AND " +
+                    "\"ClaimToken\" IS NOT NULL AND \"LeaseExpiresAt\" IS NOT NULL)");
+            });
 
             builder.HasKey(s => s.Id);
 
@@ -22,6 +31,12 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
             builder.Property(s => s.Language)
                    .IsRequired()
                    .HasMaxLength(50);
+
+            builder.Property(s => s.WorkerId)
+                   .HasMaxLength(128);
+
+            builder.Property(s => s.AttemptCount)
+                   .HasDefaultValue(0);
 
             builder.HasOne(s => s.User)
                    .WithMany(u => u.Submissions)
@@ -39,7 +54,9 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
 
             builder.HasIndex(s => s.CreatedAt).IsDescending();
 
-            builder.HasIndex(s => s.Status);        
+            builder.HasIndex(s => new { s.Status, s.CreatedAt, s.Id });
+
+            builder.HasIndex(s => new { s.Status, s.LeaseExpiresAt });
             
             builder.HasIndex(s => new { s.UserId, s.ProblemId });
 

@@ -2,6 +2,7 @@ using AlgoJudge.Application.Contracts.Problems;
 using AlgoJudge.Application.DTOs.Common;
 using AlgoJudge.Application.DTOs.Submission;
 using AlgoJudge.Application.Interfaces;
+using AlgoJudge.Application.Models.SubmissionQueue;
 using AlgoJudge.Application.Services;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
@@ -187,7 +188,28 @@ public class ProblemCatalogTests
 
         public Task AddAsync(Submission submission) => throw new NotSupportedException();
         public Task<Submission?> GetByIdAsync(Guid id) => throw new NotSupportedException();
-        public Task<IEnumerable<Submission>> GetPendingAsync() => throw new NotSupportedException();
+        public Task<Submission?> GetClaimedAsync(
+            SubmissionClaim claim,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<SubmissionClaim?> ClaimNextAsync(
+            string workerId,
+            TimeSpan leaseDuration,
+            int maxAttempts,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> RenewLeaseAsync(
+            SubmissionClaim claim,
+            TimeSpan leaseDuration,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> FinalizeClaimAsync(
+            SubmissionClaim claim,
+            SubmissionStatus finalStatus,
+            int executionTimeMs,
+            int memoryUsedKb,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> AbandonClaimAsync(
+            SubmissionClaim claim,
+            int maxAttempts,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<PagedResult<Submission>> GetPagedAsync(
             Guid userId,
             int? problemId,

@@ -1,4 +1,5 @@
 using AlgoJudge.Application.DTOs.Common;
+using AlgoJudge.Application.Models.SubmissionQueue;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
 
@@ -8,7 +9,28 @@ namespace AlgoJudge.Application.Interfaces
     {
         Task AddAsync(Submission submission);
         Task<Submission?> GetByIdAsync(Guid id);
-        Task<IEnumerable<Submission>> GetPendingAsync();
+        Task<Submission?> GetClaimedAsync(
+            SubmissionClaim claim,
+            CancellationToken cancellationToken = default);
+        Task<SubmissionClaim?> ClaimNextAsync(
+            string workerId,
+            TimeSpan leaseDuration,
+            int maxAttempts,
+            CancellationToken cancellationToken = default);
+        Task<bool> RenewLeaseAsync(
+            SubmissionClaim claim,
+            TimeSpan leaseDuration,
+            CancellationToken cancellationToken = default);
+        Task<bool> FinalizeClaimAsync(
+            SubmissionClaim claim,
+            SubmissionStatus finalStatus,
+            int executionTimeMs,
+            int memoryUsedKb,
+            CancellationToken cancellationToken = default);
+        Task<bool> AbandonClaimAsync(
+            SubmissionClaim claim,
+            int maxAttempts,
+            CancellationToken cancellationToken = default);
         Task<IReadOnlyCollection<int>> GetSolvedProblemIdsAsync(
             Guid userId,
             IEnumerable<int> problemIds);

@@ -95,6 +95,12 @@ Represents one immutable code attempt.
 | `compileMessage` | Sanitized and size-limited; visible only to owner. |
 | `createdAt`, `startedAt`, `finishedAt` | UTC lifecycle timestamps. |
 | `attemptCount` | Operational retry count, not user-visible scoring. |
+| `workerId` | Internal identity of the worker holding the current claim. |
+| `claimToken` | Internal fencing token that changes on every claim. |
+| `leaseExpiresAt` | UTC expiry of the current claim. |
+
+The claim fields are operational metadata. They are not part of public API
+responses and are cleared whenever a submission leaves `Running`.
 
 ### Tag
 
@@ -113,11 +119,14 @@ stateDiagram-v2
     Running --> MemoryLimitExceeded
     Running --> CompileError
     Running --> RuntimeError
+    Running --> Pending: retryable attempt released
+    Running --> Running: expired lease reclaimed with a new token
 ```
 
 Final states are immutable. A worker crash before a final state is handled by a
-lease/timeout recovery policy, which returns the job to Pending or marks it as
-an operational failure after a bounded retry count.
+lease/timeout recovery policy. An expired claim is transferred with a new
+fencing token, while an explicitly abandoned retryable attempt returns to
+`Pending`. Exhausted attempts end as an operational failure.
 
 ## 3. Domain invariants
 
