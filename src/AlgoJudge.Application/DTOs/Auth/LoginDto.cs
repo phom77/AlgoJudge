@@ -7,10 +7,10 @@ namespace AlgoJudge.Application.DTOs.Auth
 {
     public class LoginDto
     {
-        [Required(ErrorMessage = "UserName là bắt buộc.")]
+        [Required(ErrorMessage = "Username is required.")]
         public string UserName { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Password là bắt buộc.")]
+        [Required(ErrorMessage = "Password is required.")]
         public string Password { get; set; } = string.Empty;
     }
 }

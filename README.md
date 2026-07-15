@@ -31,5 +31,10 @@ rules and dependency direction.
 4. Run `./scripts/run-api.ps1`.
 5. Run `./scripts/run-worker.ps1` in another terminal.
 
-The frontend framework and production queue implementation are intentionally
-not selected yet. Those decisions will be recorded as ADRs.
+The frontend will use Angular and will be scaffolded only after the backend API
+and judge contract are stable. The production queue implementation is not
+selected yet and requires a separate ADR.
+
+The MVP scope reset replaced the original migration history. A local database
+created from the pre-reset migrations must be recreated before applying the new
+`InitialCreate` migration.

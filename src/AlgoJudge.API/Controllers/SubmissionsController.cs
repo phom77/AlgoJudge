@@ -1,8 +1,7 @@
-﻿using AlgoJudge.Application.DTOs.Submission;
+using AlgoJudge.Application.DTOs.Submission;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -10,6 +9,7 @@ namespace AlgoJudge.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class SubmissionsController : ControllerBase
     {
         private readonly ISubmissionService _submissionService;
@@ -20,19 +20,15 @@ namespace AlgoJudge.API.Controllers
         }
 
         [HttpPost]
-        [Authorize]
         public async Task<IActionResult> SubmitCode([FromBody] CreateSubmissionDto dto)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
+            var userId = GetUserIdFromToken();
+            if (userId == null)
+                return Unauthorized(new { message = "Token is invalid." });
 
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)
-                           ?? User.FindFirst("sub");
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-                return Unauthorized(new { message = "Token không hợp lệ." });
             try
             {
-                var result = await _submissionService.SubmitCodeAsync(dto, userId);
-
+                var result = await _submissionService.SubmitCodeAsync(dto, userId.Value);
                 return CreatedAtAction(nameof(GetSubmissionById), new { id = result.Id }, result);
             }
             catch (ArgumentException ex)
@@ -41,20 +37,26 @@ namespace AlgoJudge.API.Controllers
             }
         }
 
-        [HttpGet("{id}")]
-        [Authorize]
-        public async Task<IActionResult> GetSubmissionById(Guid id) 
+        [HttpGet("{id:guid}")]
+        public async Task<IActionResult> GetSubmissionById(Guid id)
         {
-            var result = await _submissionService.GetSubmissionByIdAsync(id);
-            if (result == null) return NotFound();
-            return Ok(result);
+            var userId = GetUserIdFromToken();
+            if (userId == null)
+                return Unauthorized(new { message = "Token is invalid." });
+
+            try
+            {
+                var result = await _submissionService.GetSubmissionByIdAsync(id, userId.Value);
+                return result == null ? NotFound() : Ok(result);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
         }
 
-        // GET /api/submissions?userId=...&problemId=...&status=...&pageNumber=1&pageSize=10
         [HttpGet]
-        [Authorize]
         public async Task<IActionResult> GetHistory(
-            [FromQuery] Guid? userId,
             [FromQuery] int? problemId,
             [FromQuery] SubmissionStatus? status,
             [FromQuery] int pageNumber = 1,
@@ -63,22 +65,12 @@ namespace AlgoJudge.API.Controllers
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 10;
 
-            var callerId = GetUserIdFromToken();
-            if (callerId == null)
-                return Unauthorized(new { message = "Token không hợp lệ." });
-
-            var isTeacher = User.IsInRole("Teacher");
-
-            if (!isTeacher)
-            {
-                if (userId.HasValue && userId.Value != callerId.Value)
-                    return Forbid();
-
-                userId = callerId.Value; 
-            }
+            var userId = GetUserIdFromToken();
+            if (userId == null)
+                return Unauthorized(new { message = "Token is invalid." });
 
             var result = await _submissionService.GetHistoryAsync(
-                userId, problemId, status, pageNumber, pageSize);
+                userId.Value, problemId, status, pageNumber, pageSize);
 
             return Ok(result);
         }
@@ -88,10 +80,9 @@ namespace AlgoJudge.API.Controllers
             var claim = User.FindFirst(ClaimTypes.NameIdentifier)
                      ?? User.FindFirst("sub");
 
-            if (claim == null || !Guid.TryParse(claim.Value, out var id))
-                return null;
-
-            return id;
+            return claim != null && Guid.TryParse(claim.Value, out var id)
+                ? id
+                : null;
         }
     }
 }

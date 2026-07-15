@@ -1,15 +1,11 @@
-﻿using AlgoJudge.Application.DTOs.Auth;
+using AlgoJudge.Application.DTOs.Auth;
 using AlgoJudge.Application.Helpers;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Domain.Entities;
-using AlgoJudge.Domain.Enums;
-using BCrypt.Net;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
-using System.Reflection;
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace AlgoJudge.Application.Services
@@ -23,12 +19,12 @@ namespace AlgoJudge.Application.Services
 
         public AuthService(
             IUserRepository userRepository,
-            IRefreshTokenRepository refreshTokenRepository,        
+            IRefreshTokenRepository refreshTokenRepository,
             IUnitOfWork unitOfWork,
             IConfiguration configuration)
         {
             _userRepository = userRepository;
-            _refreshTokenRepository = refreshTokenRepository;      
+            _refreshTokenRepository = refreshTokenRepository;
             _unitOfWork = unitOfWork;
             _configuration = configuration;
         }
@@ -38,23 +34,20 @@ namespace AlgoJudge.Application.Services
             var user = await _userRepository.GetByUserNameAsync(dto.UserName);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-                throw new UnauthorizedAccessException("UserName hoặc Password không đúng.");
+                throw new UnauthorizedAccessException("Username or password is incorrect.");
 
             var result = await GenerateAuthResultAsync(user);
             await _unitOfWork.SaveChangesAsync();
-
             return result;
         }
 
         public async Task<AuthResultDto> RegisterAsync(RegisterDto dto)
         {
-            var existingByUserName = await _userRepository.GetByUserNameAsync(dto.UserName);
-            if (existingByUserName != null)
-                throw new ArgumentException("UserName đã tồn tại.");
+            if (await _userRepository.GetByUserNameAsync(dto.UserName) != null)
+                throw new ArgumentException("Username is already taken.");
 
-            var existingByEmail = await _userRepository.GetByEmailAsync(dto.Email);
-            if (existingByEmail != null)
-                throw new ArgumentException("Email đã được sử dụng.");
+            if (await _userRepository.GetByEmailAsync(dto.Email) != null)
+                throw new ArgumentException("Email is already in use.");
 
             var user = new User
             {
@@ -62,7 +55,6 @@ namespace AlgoJudge.Application.Services
                 UserName = dto.UserName,
                 Email = dto.Email,
                 FullName = dto.FullName,
-                Role = dto.Role,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
                 CreatedAt = DateTime.UtcNow
             };
@@ -71,7 +63,6 @@ namespace AlgoJudge.Application.Services
 
             var result = await GenerateAuthResultAsync(user);
             await _unitOfWork.SaveChangesAsync();
-
             return result;
         }
 
@@ -81,24 +72,23 @@ namespace AlgoJudge.Application.Services
             var stored = await _refreshTokenRepository.GetByTokenAsync(hash);
 
             if (stored == null)
-                throw new UnauthorizedAccessException("Refresh token không hợp lệ.");
+                throw new UnauthorizedAccessException("Refresh token is invalid.");
 
             if (stored.IsRevoked)
             {
                 await _refreshTokenRepository.RevokeAllByUserIdAsync(stored.UserId);
                 await _unitOfWork.SaveChangesAsync();
                 throw new UnauthorizedAccessException(
-                    "Refresh token đã bị thu hồi. Toàn bộ phiên đăng nhập đã bị đóng vì lý do bảo mật.");
+                    "Refresh token has been revoked. All active sessions were closed for security.");
             }
 
             if (stored.ExpiresAt <= DateTime.UtcNow)
-                throw new UnauthorizedAccessException("Refresh token đã hết hạn."); ;
+                throw new UnauthorizedAccessException("Refresh token has expired.");
 
             stored.IsRevoked = true;
 
             var result = await GenerateAuthResultAsync(stored.User);
             await _unitOfWork.SaveChangesAsync();
-
             return result;
         }
 
@@ -108,10 +98,11 @@ namespace AlgoJudge.Application.Services
             var stored = await _refreshTokenRepository.GetByTokenAsync(hash);
 
             if (stored == null || stored.IsRevoked)
-                throw new ArgumentException("Refresh token không tồn tại hoặc đã bị thu hồi.");
+                throw new ArgumentException("Refresh token does not exist or has been revoked.");
 
             if (stored.UserId != callerId)
-                throw new UnauthorizedAccessException("Bạn không có quyền thu hồi token này.");
+                throw new UnauthorizedAccessException(
+                    "You are not allowed to revoke this refresh token.");
 
             stored.IsRevoked = true;
             await _unitOfWork.SaveChangesAsync();
@@ -121,21 +112,18 @@ namespace AlgoJudge.Application.Services
         {
             var accessToken = GenerateJwtToken(user);
             var refreshToken = TokenHelper.GenerateRefreshToken();
-
             var expiresInHours = int.Parse(_configuration["Jwt:ExpiresInHours"]!);
             var refreshExpiryDays = int.Parse(
                 _configuration["Jwt:RefreshTokenExpiryDays"] ?? "7");
 
-            var refreshTokenEntity = new RefreshToken
+            await _refreshTokenRepository.AddAsync(new RefreshToken
             {
                 UserId = user.Id,
                 Token = TokenHelper.Hash(refreshToken),
                 ExpiresAt = DateTime.UtcNow.AddDays(refreshExpiryDays),
                 CreatedAt = DateTime.UtcNow,
                 IsRevoked = false
-            };
-
-            await _refreshTokenRepository.AddAsync(refreshTokenEntity);
+            });
 
             return new AuthResultDto
             {
@@ -143,7 +131,6 @@ namespace AlgoJudge.Application.Services
                 RefreshToken = refreshToken,
                 UserName = user.UserName,
                 Email = user.Email,
-                Role = user.Role.ToString(),
                 ExpiresAt = DateTime.UtcNow.AddHours(expiresInHours)
             };
         }
@@ -159,7 +146,6 @@ namespace AlgoJudge.Application.Services
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role.ToString()),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
@@ -169,8 +155,7 @@ namespace AlgoJudge.Application.Services
                 audience: jwtSettings["Audience"],
                 claims: claims,
                 expires: DateTime.UtcNow.AddHours(expiresInHours),
-                signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
-            );
+                signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }

@@ -1,10 +1,10 @@
 # AlgoJudge Web
 
-This directory is reserved for the browser application.
+This directory is reserved for the Angular browser application. The framework
+has been selected, but the workspace will be scaffolded only after the backend
+API and judge contract are stable.
 
-The frontend framework has not been selected yet. Create an ADR before adding
-the package manager lockfile or framework scaffold. Regardless of framework,
-the application should keep these boundaries:
+The Angular application should keep these boundaries:
 
 - `src/app` — application bootstrap and routing
 - `src/features` — problem catalogue, editor, submissions, auth, and profile

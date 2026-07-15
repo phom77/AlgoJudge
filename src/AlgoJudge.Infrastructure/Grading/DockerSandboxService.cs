@@ -34,23 +34,20 @@ namespace AlgoJudge.Infrastructure.Grading
                 new UTF8Encoding(false), 
                 ct);
 
-            // Dựng lệnh docker run để compile
+            // Build the docker run command used for compilation.
             //
-            //  --rm                      tự xóa container sau khi chạy xong
-            //  --network none            không có internet
-            //  --memory 512m             compile không cần nhiều RAM
-            //  --cpus 1                  giới hạn CPU
-            //  --read-only               filesystem container read-only...
-            //  --tmpfs /tmp              ...ngoại trừ /tmp (g++ cần ghi temp file)
-            //  --tmpfs /sandbox          ...và /sandbox (nơi ta mount workDir vào)
-            //  -v workDir:/sandbox       mount thư mục host vào container
-            //  --security-opt no-new-privileges  không leo thang đặc quyền
+            //  --rm                      removes the container after it exits
+            //  --network none            disables network access
+            //  --memory 512m             bounds compiler memory
+            //  --cpus 1                  limits CPU allocation
+            //  --read-only               makes the container filesystem read-only
+            //  --tmpfs /tmp              allows g++ to write temporary files
+            //  -v workDir:/sandbox       mounts the isolated host work directory
+            //  --security-opt no-new-privileges  prevents privilege escalation
             //
-            // Lý do dùng --tmpfs /sandbox thay vì -v trực tiếp vào read-only:
-            // Ta cần g++ ghi file output (solution binary) vào /sandbox,
-            // nhưng --read-only chặn toàn bộ write. Giải pháp: mount workDir
-            // bình thường (không read-only), chỉ flag --read-only ảnh hưởng
-            // filesystem của image, không ảnh hưởng volume mount.
+            // The compiler must write the solution binary to /sandbox. The
+            // read-only flag applies to the image filesystem, while the mounted
+            // work directory remains writable for compilation artifacts.
 
             var compileCmd =
                 $"g++ /sandbox/{SourceFileName} " +
@@ -80,8 +77,8 @@ namespace AlgoJudge.Infrastructure.Grading
 
         public async Task<SandboxRunResult> RunAsync(string workDir, string input, int timeLimitMs, int memoryLimitKb, CancellationToken ct = default)
         {
-            // Chuyển KB → bytes để truyền cho Docker (Docker nhận đơn vị m/g/k)
-            // Cộng thêm 64MB overhead cho runtime (stack, libc, v.v.)
+            // Convert the configured KiB limit to Docker's MiB flag and allow
+            // 64 MiB of runtime overhead for the stack and system libraries.
             var memoryMb = (memoryLimitKb / 1024) + 64;
             var memoryFlag = $"{memoryMb}m";
 
@@ -102,7 +99,7 @@ namespace AlgoJudge.Infrastructure.Grading
 
             var stopwatch = Stopwatch.StartNew();
 
-            // Timeout từ bên ngoài = timeLimitMs + 10 giây buffer
+            // The outer watchdog includes a 10-second infrastructure buffer.
             var outerTimeoutMs = timeLimitMs + 10_000;
 
             var (exitCode, stdout, stderr) = await RunDockerProcessAsync(
@@ -188,8 +185,8 @@ namespace AlgoJudge.Infrastructure.Grading
         }
 
         /// <summary>
-        /// Chạy lệnh `docker` với arguments cho trước.
-        /// Trả về (exitCode, stdout, stderr).
+        /// Runs `docker` with the supplied arguments.
+        /// Returns (exitCode, stdout, stderr).
         /// </summary>
         private async Task<(int ExitCode, string Stdout, string Stderr)> RunDockerProcessAsync(
             string args,
@@ -211,12 +208,13 @@ namespace AlgoJudge.Infrastructure.Grading
 
             process.Start();
 
-            // Ghi stdin rồi đóng ngay — tránh deadlock khi process chờ input mà ta không ghi thêm
+            // Write stdin and close it immediately so the process cannot wait
+            // indefinitely for additional input.
             if (!string.IsNullOrEmpty(stdin))
                 await process.StandardInput.WriteAsync(stdin);
             process.StandardInput.Close();
 
-            // Đọc stdout và stderr song song — tránh deadlock khi buffer đầy
+            // Read stdout and stderr concurrently to avoid full-buffer deadlocks.
             var stdoutTask = process.StandardOutput.ReadToEndAsync(ct);
             var stderrTask = process.StandardError.ReadToEndAsync(ct);
 
@@ -224,7 +222,7 @@ namespace AlgoJudge.Infrastructure.Grading
 
             if (!finished)
             {
-                // Docker process bên ngoài bị timeout (không nên xảy ra nếu timeout bên trong hoạt động đúng)
+                // The outer Docker process timed out despite the inner timeout.
                 _logger.LogWarning("Docker outer timeout reached ({Ms}ms). Killing docker process.", timeoutMs);
                 try { process.Kill(entireProcessTree: true); } catch { }
             }
@@ -236,8 +234,8 @@ namespace AlgoJudge.Infrastructure.Grading
         }
 
         /// <summary>
-        /// Đọc peak memory từ cgroup của container vừa chạy xong.
-        /// Chỉ hoạt động trên Linux. Windows/WSL2 trả về 0.
+        /// Reads peak memory from the completed container's cgroup.
+        /// This works only on Linux; Windows and WSL2 return 0.
         /// </summary>
         private async Task<long> ReadCgroupPeakMemoryAsync(string cidFile)
         {
@@ -249,8 +247,8 @@ namespace AlgoJudge.Infrastructure.Grading
 
             try
             {
-                // Đợi Docker ghi xong cidFile (container đã start)
-                // Thử tối đa 10 lần, mỗi lần cách nhau 100ms
+                // Wait for Docker to populate the cid file after container start.
+                // Retry up to ten times at 100 ms intervals.
                 string? containerId = null;
                 for (var i = 0; i < 10; i++)
                 {
@@ -268,7 +266,7 @@ namespace AlgoJudge.Infrastructure.Grading
                     return 0;
                 }
 
-                // Thử cgroup v2 trước (Ubuntu 22.04+)
+                // Try cgroup v2 first (Ubuntu 22.04+).
                 // cgroup v2: /sys/fs/cgroup/system.slice/docker-{id}.scope/memory.peak
                 var cgroupV2Path = $"/sys/fs/cgroup/system.slice/docker-{containerId}.scope/memory.peak";
                 if (File.Exists(cgroupV2Path))
@@ -281,7 +279,7 @@ namespace AlgoJudge.Infrastructure.Grading
                     }
                 }
 
-                // Fallback cgroup v1 (Ubuntu 20.04 trở xuống)
+                // Fall back to cgroup v1 (Ubuntu 20.04 and earlier).
                 // cgroup v1: /sys/fs/cgroup/memory/docker/{id}/memory.max_usage_in_bytes
                 var cgroupV1Path = $"/sys/fs/cgroup/memory/docker/{containerId}/memory.max_usage_in_bytes";
                 if (File.Exists(cgroupV1Path))

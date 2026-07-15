@@ -1,6 +1,6 @@
 # ADR-0001: Adopt a focused online-judge MVP
 
-Status: Proposed
+Status: Accepted
 Date: 2026-07-15
 
 ## Context

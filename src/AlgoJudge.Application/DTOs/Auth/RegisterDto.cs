@@ -1,34 +1,29 @@
-﻿using AlgoJudge.Domain.Enums;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Text;
 
 namespace AlgoJudge.Application.DTOs.Auth
 {
     public class RegisterDto
     {
-        [Required(ErrorMessage = "UserName là bắt buộc.")]
+        [Required(ErrorMessage = "Username is required.")]
         [StringLength(50, MinimumLength = 3,
-            ErrorMessage = "UserName phải từ 3 đến 50 ký tự.")]
+            ErrorMessage = "Username must be between 3 and 50 characters.")]
         [RegularExpression(@"^[a-zA-Z0-9_]+$",
-            ErrorMessage = "UserName chỉ được chứa chữ, số và dấu gạch dưới.")]
+            ErrorMessage = "Username may contain only letters, numbers, and underscores.")]
         public string UserName { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Email là bắt buộc.")]
-        [EmailAddress(ErrorMessage = "Email không hợp lệ.")]
-        [StringLength(100, ErrorMessage = "Email tối đa 100 ký tự.")]
+        [Required(ErrorMessage = "Email is required.")]
+        [EmailAddress(ErrorMessage = "Email is invalid.")]
+        [StringLength(100, ErrorMessage = "Email must not exceed 100 characters.")]
         public string Email { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Password là bắt buộc.")]
+        [Required(ErrorMessage = "Password is required.")]
         [StringLength(100, MinimumLength = 6,
-            ErrorMessage = "Password phải từ 6 đến 100 ký tự.")]
+            ErrorMessage = "Password must be between 6 and 100 characters.")]
         public string Password { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "FullName là bắt buộc.")]
+        [Required(ErrorMessage = "Full name is required.")]
         [StringLength(100, MinimumLength = 2,
-            ErrorMessage = "FullName phải từ 2 đến 100 ký tự.")]
+            ErrorMessage = "Full name must be between 2 and 100 characters.")]
         public string FullName { get; set; } = string.Empty;
-        public UserRole Role { get; set; } = UserRole.Student;
     }
 }

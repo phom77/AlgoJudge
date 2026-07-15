@@ -1,7 +1,4 @@
-﻿using AlgoJudge.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using AlgoJudge.Domain.Enums;
 
 namespace AlgoJudge.Application.DTOs.Problem
 {
@@ -13,7 +10,6 @@ namespace AlgoJudge.Application.DTOs.Problem
         public int TimeLimit { get; set; }
         public int MemoryLimit { get; set; }
         public DifficultyLevel Difficulty { get; set; }
-        public int Score { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 }
