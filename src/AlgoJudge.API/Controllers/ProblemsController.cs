@@ -80,7 +80,7 @@ namespace AlgoJudge.API.Controllers
                 if (result == null) return NotFound();
                 return Ok(result);
             }
-            catch (UnauthorizedAccessException ex)
+            catch (UnauthorizedAccessException)
             {
                 return Forbid();
             }

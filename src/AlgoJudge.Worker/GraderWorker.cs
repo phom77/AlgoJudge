@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace AlgoJudge.Infrastructure.Grading
+namespace AlgoJudge.Worker
 {
     public class GraderWorker : BackgroundService
     {

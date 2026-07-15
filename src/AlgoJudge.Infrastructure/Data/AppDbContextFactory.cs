@@ -12,7 +12,16 @@ namespace AlgoJudge.Infrastructure.Data
     {
         public AppDbContext CreateDbContext(string[] args)
         {
-            var basePath = Path.Combine(Directory.GetCurrentDirectory(), "../AlgoJudge.API");
+            var currentDirectory = Directory.GetCurrentDirectory();
+            var apiDirectoryCandidates = new[]
+            {
+                Path.Combine(currentDirectory, "src", "AlgoJudge.API"),
+                Path.Combine(currentDirectory, "..", "AlgoJudge.API")
+            };
+
+            var basePath = apiDirectoryCandidates.FirstOrDefault(Directory.Exists)
+                ?? throw new DirectoryNotFoundException(
+                    "Could not locate src/AlgoJudge.API for design-time configuration.");
 
             IConfigurationRoot configuration = new ConfigurationBuilder()
                 .SetBasePath(basePath)

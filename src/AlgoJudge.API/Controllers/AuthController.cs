@@ -86,7 +86,7 @@ namespace AlgoJudge.API.Controllers
                 await _authService.RevokeAsync(dto.RefreshToken, callerId);
                 return NoContent();
             }
-            catch (UnauthorizedAccessException ex)
+            catch (UnauthorizedAccessException)
             {
                 return Forbid(); 
             }

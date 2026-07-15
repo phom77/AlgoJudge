@@ -2,7 +2,6 @@ using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Application.Mappings;
 using AlgoJudge.Application.Services;
 using AlgoJudge.Infrastructure.Data;
-using AlgoJudge.Infrastructure.Grading;
 using AlgoJudge.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
@@ -57,12 +56,9 @@ builder.Services.AddScoped<ITestCaseRepository, TestCaseRepository>();
 builder.Services.AddScoped<ITestCaseService, TestCaseService>();
 builder.Services.AddScoped<ILeaderboardRepository, LeaderboardRepository>();
 builder.Services.AddScoped<ILeaderboardService, LeaderboardService>();
-builder.Services.AddScoped<IGraderService, GraderService>();
-builder.Services.AddScoped<IDockerSandbox, DockerSandboxService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddHostedService<GraderWorker>();
 
 builder.Services.Configure<FormOptions>(options =>
 {
