@@ -22,6 +22,7 @@ rules and dependency direction.
 - [Product requirements](docs/requirements.md)
 - [Domain model](docs/domain-model.md)
 - [Problem Catalogue API](docs/problem-catalog-api.md)
+- [Problem package format](docs/problem-package-format.md)
 - [Judge specification](docs/judge-spec.md)
 - [Delivery roadmap](docs/roadmap.md)
 

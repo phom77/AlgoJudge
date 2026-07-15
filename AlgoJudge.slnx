@@ -10,6 +10,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/AlgoJudge.Api.IntegrationTests/AlgoJudge.Api.IntegrationTests.csproj" />
     <Project Path="tests/AlgoJudge.Application.Tests/AlgoJudge.Application.Tests.csproj" />
+    <Project Path="tests/AlgoJudge.ContentTool.Tests/AlgoJudge.ContentTool.Tests.csproj" />
     <Project Path="tests/AlgoJudge.Infrastructure.IntegrationTests/AlgoJudge.Infrastructure.IntegrationTests.csproj" />
     <Project Path="tests/AlgoJudge.Judge.IntegrationTests/AlgoJudge.Judge.IntegrationTests.csproj" />
   </Folder>
