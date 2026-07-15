@@ -1,2 +1,3 @@
-Console.WriteLine("AlgoJudge ContentTool scaffold");
-Console.WriteLine("Problem package validation and import will be implemented in the content phase.");
+using AlgoJudge.ContentTool;
+
+return await ContentToolApplication.RunAsync(args);
