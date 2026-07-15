@@ -30,5 +30,6 @@ idempotent.
   couples request serving and untrusted execution, and makes safe scaling
   difficult.
 - Introduce an external message broker immediately: deferred. PostgreSQL-based
-  atomic claiming may be sufficient for MVP; the concrete choice requires a
-  later ADR after load testing.
+  atomic claiming is the MVP choice recorded in
+  [ADR-0007](0007-use-postgresql-submission-queue.md). A broker should only be
+  reconsidered after load testing identifies a concrete need.

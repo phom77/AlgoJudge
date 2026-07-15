@@ -6,8 +6,8 @@ namespace AlgoJudge.Domain.Enums
 {
     public enum SubmissionStatus
     {
-        Pending = 1,          
-        Compiling = 2,       
+        Pending = 1,
+        Running = 2,
         Accepted = 3,        
         WrongAnswer = 4,     
         TimeLimitExceeded = 5,

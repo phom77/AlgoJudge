@@ -1,11 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using AlgoJudge.Application.Models.SubmissionQueue;
 
 namespace AlgoJudge.Application.Interfaces
 {
     public interface IGraderService
     {
-        Task GradeAsync(Guid submissionId, CancellationToken cancellationToken = default);
+        Task GradeAsync(
+            SubmissionClaim claim,
+            CancellationToken cancellationToken = default);
     }
 }

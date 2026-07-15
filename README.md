@@ -41,8 +41,10 @@ rules and dependency direction.
 5. Run `./scripts/run-worker.ps1` in another terminal.
 
 The frontend will use Angular and will be scaffolded only after the backend API
-and judge contract are stable. The production queue implementation is not
-selected yet and requires a separate ADR.
+and judge contract are stable. The MVP worker uses PostgreSQL as its durable
+submission queue, with atomic claims, renewable leases, and bounded retries;
+Redis and RabbitMQ are not required at this stage. See
+[ADR-0007](docs/adr/0007-use-postgresql-submission-queue.md).
 
 The MVP scope reset replaced the original migration history. A local database
 created from the pre-reset migrations must be recreated before applying the new

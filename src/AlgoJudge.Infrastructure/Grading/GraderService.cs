@@ -1,10 +1,7 @@
-﻿using AlgoJudge.Application.Interfaces;
+using AlgoJudge.Application.Interfaces;
+using AlgoJudge.Application.Models.SubmissionQueue;
 using AlgoJudge.Domain.Enums;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Text;
 
 namespace AlgoJudge.Infrastructure.Grading
 {
@@ -13,7 +10,6 @@ namespace AlgoJudge.Infrastructure.Grading
         private readonly ISubmissionRepository _submissionRepository;
         private readonly IProblemRepository _problemRepository;
         private readonly IJudgeTestCaseRepository _judgeTestCaseRepository;
-        private readonly IUnitOfWork _unitOfWork;
         private readonly IDockerSandbox _sandbox;
         private readonly ILogger<GraderService> _logger;
 
@@ -21,78 +17,99 @@ namespace AlgoJudge.Infrastructure.Grading
             ISubmissionRepository submissionRepository,
             IProblemRepository problemRepository,
             IJudgeTestCaseRepository judgeTestCaseRepository,
-            IUnitOfWork unitOfWork,
             IDockerSandbox sandbox,
             ILogger<GraderService> logger)
         {
             _submissionRepository = submissionRepository;
             _problemRepository = problemRepository;
             _judgeTestCaseRepository = judgeTestCaseRepository;
-            _unitOfWork = unitOfWork;
             _sandbox = sandbox;
             _logger = logger;
         }
 
-        public async Task GradeAsync(Guid submissionId, CancellationToken cancellationToken = default)
+        public async Task GradeAsync(
+            SubmissionClaim claim,
+            CancellationToken cancellationToken = default)
         {
-            var submission = await _submissionRepository.GetByIdAsync(submissionId);
-            if(submission == null)
-            {
-                _logger.LogWarning("Submission {id} not found.", submissionId);
-                return;
-            }
+            var submission = await _submissionRepository.GetClaimedAsync(
+                claim,
+                cancellationToken);
+            if (submission is null)
+                throw new SubmissionClaimLostException(claim.SubmissionId);
 
             var problem = await _problemRepository.GetByIdAsync(submission.ProblemId);
-            if(problem == null)
+            if (problem is null)
             {
-                _logger.LogWarning("Problem {Id} not found for submission {SubId}.", submission.ProblemId, submissionId);
+                _logger.LogError(
+                    "Problem {ProblemId} is missing for claimed submission {SubmissionId}.",
+                    submission.ProblemId,
+                    submission.Id);
+                await FinalizeOrThrowAsync(
+                    claim,
+                    SubmissionStatus.RuntimeError,
+                    executionTimeMs: 0,
+                    memoryUsedKb: 0,
+                    cancellationToken);
                 return;
             }
 
             var testCases = (await _judgeTestCaseRepository
                 .GetByProblemIdAsync(submission.ProblemId))
                 .ToList();
-            if(!testCases.Any())
+            if (testCases.Count == 0)
             {
-                _logger.LogWarning("No test cases found for problem {Id}.", submission.ProblemId);
+                _logger.LogError(
+                    "Problem {ProblemId} has no judge test cases for submission {SubmissionId}.",
+                    submission.ProblemId,
+                    submission.Id);
+                await FinalizeOrThrowAsync(
+                    claim,
+                    SubmissionStatus.RuntimeError,
+                    executionTimeMs: 0,
+                    memoryUsedKb: 0,
+                    cancellationToken);
                 return;
             }
 
-            var workDir = Path.Combine(Path.GetTempPath(), "algojudge", submissionId.ToString());
-            Directory.CreateDirectory(workDir);
+            var workDirectory = Path.Combine(
+                Path.GetTempPath(),
+                "algojudge",
+                submission.Id.ToString());
 
             try
             {
-                submission.Status = SubmissionStatus.Compiling;
-                await _unitOfWork.SaveChangesAsync();
+                Directory.CreateDirectory(workDirectory);
 
-                var compileResult = await _sandbox.CompileAsync(submission.SourceCode, workDir, cancellationToken);
-                if(!compileResult.Success)
+                var compileResult = await _sandbox.CompileAsync(
+                    submission.SourceCode,
+                    workDirectory,
+                    cancellationToken);
+                if (!compileResult.Success)
                 {
-                    submission.Status = SubmissionStatus.CompileError;
-                    await _unitOfWork.SaveChangesAsync();
-                    _logger.LogInformation("Submission {Id} → CompileError.", submissionId);
+                    await FinalizeOrThrowAsync(
+                        claim,
+                        SubmissionStatus.CompileError,
+                        executionTimeMs: 0,
+                        memoryUsedKb: 0,
+                        cancellationToken);
                     return;
                 }
 
                 var finalStatus = SubmissionStatus.Accepted;
-                int maxExecutionTime = 0;
-                long maxMemoryUsed = 0;
+                var maxExecutionTime = 0;
+                long maxMemoryUsedBytes = 0;
 
-                foreach(var testCase in testCases)
+                foreach (var testCase in testCases)
                 {
                     var runResult = await _sandbox.RunAsync(
-                        workDir,
+                        workDirectory,
                         testCase.Input,
                         problem.TimeLimitMs,
                         problem.MemoryLimitKb,
                         cancellationToken);
 
-                    if (runResult.ExecutionTimeMs > maxExecutionTime)
-                        maxExecutionTime = runResult.ExecutionTimeMs;
-
-                    if (runResult.MemoryUsedBytes > maxMemoryUsed)
-                        maxMemoryUsed = runResult.MemoryUsedBytes;
+                    maxExecutionTime = Math.Max(maxExecutionTime, runResult.ExecutionTimeMs);
+                    maxMemoryUsedBytes = Math.Max(maxMemoryUsedBytes, runResult.MemoryUsedBytes);
 
                     if (runResult.Status == SandboxRunStatus.TimeLimitExceeded)
                     {
@@ -108,47 +125,72 @@ namespace AlgoJudge.Infrastructure.Grading
 
                     if (runResult.Status == SandboxRunStatus.SystemError)
                     {
-                        _logger.LogError("SystemError on submission {Id}, testCase {TcId}.",
-                            submissionId, testCase.Id);
-                        finalStatus = SubmissionStatus.RuntimeError;
-                        break;
+                        throw new InvalidOperationException(
+                            $"Sandbox system error while grading submission {submission.Id}.");
                     }
 
                     var actualOutput = runResult.Output.Trim();
                     var expectedOutput = testCase.ExpectedOutput.Trim();
-
                     if (actualOutput != expectedOutput)
                     {
                         finalStatus = SubmissionStatus.WrongAnswer;
                         break;
                     }
 
-                    long memoryLimitBytes = (long)problem.MemoryLimitKb * 1024;
+                    var memoryLimitBytes = (long)problem.MemoryLimitKb * 1024;
                     if (runResult.MemoryUsedBytes > memoryLimitBytes)
                     {
                         finalStatus = SubmissionStatus.MemoryLimitExceeded;
                         break;
                     }
                 }
-                submission.Status = finalStatus;
-                submission.ExecutionTime = maxExecutionTime;
-                submission.MemoryUsed = (int)(maxMemoryUsed / 1024);
-                await _unitOfWork.SaveChangesAsync();
 
-                _logger.LogInformation("Submission {Id} → {Status} | {Time}ms | {Mem}KB",
-                    submissionId, finalStatus, maxExecutionTime, submission.MemoryUsed);
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error grading submission {Id}.", submissionId);
-                submission.Status = SubmissionStatus.RuntimeError;
-                await _unitOfWork.SaveChangesAsync();
+                var memoryUsedKb = (int)Math.Min(int.MaxValue, maxMemoryUsedBytes / 1024);
+                await FinalizeOrThrowAsync(
+                    claim,
+                    finalStatus,
+                    maxExecutionTime,
+                    memoryUsedKb,
+                    cancellationToken);
+
+                _logger.LogInformation(
+                    "Submission {SubmissionId} finalized as {Status} on attempt {AttemptCount}.",
+                    submission.Id,
+                    finalStatus,
+                    claim.AttemptCount);
             }
             finally
             {
-                if (Directory.Exists(workDir))
-                    Directory.Delete(workDir, recursive: true);
+                try
+                {
+                    if (Directory.Exists(workDirectory))
+                        Directory.Delete(workDirectory, recursive: true);
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogWarning(
+                        exception,
+                        "Could not delete work directory for submission {SubmissionId}.",
+                        submission.Id);
+                }
             }
+        }
+
+        private async Task FinalizeOrThrowAsync(
+            SubmissionClaim claim,
+            SubmissionStatus finalStatus,
+            int executionTimeMs,
+            int memoryUsedKb,
+            CancellationToken cancellationToken)
+        {
+            var finalized = await _submissionRepository.FinalizeClaimAsync(
+                claim,
+                finalStatus,
+                executionTimeMs,
+                memoryUsedKb,
+                cancellationToken);
+            if (!finalized)
+                throw new SubmissionClaimLostException(claim.SubmissionId);
         }
     }
 }

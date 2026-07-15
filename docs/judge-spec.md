@@ -93,10 +93,18 @@ including hidden input/output, are not returned to the user.
 
 ## 8. Queue and recovery requirements
 
-- Claiming work is atomic and conditional on `Pending` status.
-- A claimed submission has a lease or heartbeat.
+- PostgreSQL is the durable MVP queue; Redis and RabbitMQ are not required.
+- Claiming work uses `FOR UPDATE SKIP LOCKED` and atomically changes either a
+  `Pending` submission or an expired retryable `Running` submission to
+  `Running`.
+- Every claim has a worker ID, unique claim token, renewable lease, and attempt
+  number. The claim token acts as a fencing token.
 - A worker restart can recover expired leases without creating two active
-executions for one submission.
-- Final state updates are conditional on the claiming worker identity.
+  owners for one submission.
+- Lease renewal, retry release, and final state updates are conditional on the
+  submission ID, worker ID, claim token, and current state.
+- A stale worker cannot finalize a submission after another worker reclaims it.
+- Failed attempts return to `Pending` until the configured attempt limit is
+  reached; an exhausted submission ends as `RuntimeError`.
 - The system records enough internal metadata to investigate a judge failure
-without retaining sensitive temporary files.
+  without retaining sensitive temporary files.

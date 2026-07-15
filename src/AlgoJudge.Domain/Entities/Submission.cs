@@ -25,6 +25,12 @@ namespace AlgoJudge.Domain.Entities
         public int MemoryUsed { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? StartedAt { get; set; }
+        public DateTime? FinishedAt { get; set; }
+        public DateTime? LeaseExpiresAt { get; set; }
+        public string? WorkerId { get; set; }
+        public Guid? ClaimToken { get; set; }
+        public int AttemptCount { get; set; }
 
         public User User { get; set; } = null!;
         public Problem Problem { get; set; } = null!;
