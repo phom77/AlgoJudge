@@ -59,9 +59,13 @@ namespace AlgoJudge.Application.Services
 
         public async Task<SubmissionDto> SubmitCodeAsync(CreateSubmissionDto dto, Guid userId)
         {
-            if (await _problemRepository.GetByIdAsync(dto.ProblemId) == null)
+            var problem = await _problemRepository.GetByIdAsync(dto.ProblemId);
+            if (problem == null)
                 throw new ArgumentException(
                     $"Problem with ID {dto.ProblemId} does not exist.");
+
+            if (problem.Status != ProblemStatus.Published)
+                throw new ArgumentException("Submissions are accepted only for published problems.");
 
             var submission = _mapper.Map<Submission>(dto);
             submission.UserId = userId;

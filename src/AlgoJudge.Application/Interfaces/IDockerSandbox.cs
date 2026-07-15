@@ -52,7 +52,7 @@ namespace AlgoJudge.Application.Interfaces
         /// <param name="workDir">Same directory used in the compile step</param>
         /// <param name="input">Standard input passed to the program</param>
         /// <param name="timeLimitMs">Time limit in milliseconds</param>
-        /// <param name="memoryLimitKb">Memory limit in KB — taken from Problem.MemoryLimit</param>
+        /// <param name="memoryLimitKb">Memory limit in KB, taken from Problem.MemoryLimitKb.</param>
         /// <param name="ct">Cancellation token</param>
         Task<SandboxRunResult> RunAsync(string workDir, string input, int timeLimitMs, int memoryLimitKb, CancellationToken ct = default);
     }

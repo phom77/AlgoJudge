@@ -42,6 +42,8 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
             builder.HasIndex(s => s.Status);        
             
             builder.HasIndex(s => new { s.UserId, s.ProblemId });
+
+            builder.HasIndex(s => new { s.UserId, s.Status, s.ProblemId });
         }
     }
 }
