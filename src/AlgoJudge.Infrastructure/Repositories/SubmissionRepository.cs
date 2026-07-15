@@ -66,5 +66,34 @@ namespace AlgoJudge.Infrastructure.Repositories
                 .Take(10)
                 .ToListAsync();
         }
+
+        public async Task<IReadOnlyCollection<int>> GetSolvedProblemIdsAsync(
+            Guid userId,
+            IEnumerable<int> problemIds)
+        {
+            var ids = problemIds.Distinct().ToArray();
+            if (ids.Length == 0)
+                return Array.Empty<int>();
+
+            return await _context.Submissions
+                .AsNoTracking()
+                .Where(submission =>
+                    submission.UserId == userId &&
+                    submission.Status == SubmissionStatus.Accepted &&
+                    ids.Contains(submission.ProblemId))
+                .Select(submission => submission.ProblemId)
+                .Distinct()
+                .ToListAsync();
+        }
+
+        public Task<bool> HasAcceptedSubmissionAsync(Guid userId, int problemId)
+        {
+            return _context.Submissions
+                .AsNoTracking()
+                .AnyAsync(submission =>
+                    submission.UserId == userId &&
+                    submission.ProblemId == problemId &&
+                    submission.Status == SubmissionStatus.Accepted);
+        }
     }
 }

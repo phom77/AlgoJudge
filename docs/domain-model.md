@@ -6,8 +6,10 @@
 erDiagram
     USER ||--o{ SUBMISSION : creates
     PROBLEM ||--o{ SUBMISSION : receives
-    PROBLEM ||--o{ TEST_CASE : contains
-    PROBLEM }o--o{ TAG : has
+    PROBLEM ||--o{ PROBLEM_SAMPLE : publishes
+    PROBLEM ||--o{ JUDGE_TEST_CASE : judges_with
+    PROBLEM ||--o{ PROBLEM_TAG : classified_by
+    TAG ||--o{ PROBLEM_TAG : classifies
 ```
 
 ### User
@@ -40,13 +42,27 @@ Represents a curated programming exercise.
 | `timeLimitMs` | Runtime limit used by the judge. |
 | `memoryLimitKb` | Memory limit used by the judge. |
 | `status` | `Draft`, `Published`, or `Archived`. |
+| `judgeVersion` | Positive version of the current private judge data. |
 | `publishedAt` | UTC timestamp when applicable. |
 | `createdAt`, `updatedAt` | UTC audit timestamps. |
 
 `Score` and `CreatedBy` are intentionally excluded from the public product
 model. Content provenance, if needed, belongs to internal operations metadata.
 
-### TestCase
+### ProblemSample
+
+Represents an input/output example that is intentionally public.
+
+| Field | Notes |
+|---|---|
+| `id` | Internal identifier. |
+| `problemId` | Parent problem. |
+| `input` | Example standard input returned by the public API. |
+| `expectedOutput` | Example standard output returned by the public API. |
+| `explanation` | Optional explanation displayed with the sample. |
+| `ordinal` | Positive, stable display order within a problem. |
+
+### JudgeTestCase
 
 Represents judge-only input and expected output.
 
@@ -57,10 +73,10 @@ Represents judge-only input and expected output.
 | `input` | Exact stdin content. |
 | `expectedOutput` | Canonical expected stdout. |
 | `ordinal` | Stable execution order. |
-| `isSample` | True only when mirrored in the public statement. |
 
-The public API returns sample data embedded in the Problem representation, not
-generic TestCase records. All judge test data must be treated as confidential.
+Public samples and judge test cases use separate entities and tables. This is a
+deliberate confidentiality boundary: a public catalogue query never needs to
+load `JudgeTestCase`. All judge test data must be treated as confidential.
 
 ### Submission
 

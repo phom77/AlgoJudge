@@ -1,11 +1,14 @@
-using AlgoJudge.Application.DTOs.Common;
-using AlgoJudge.Application.DTOs.Problem;
+using AlgoJudge.Application.Contracts.Common;
+using AlgoJudge.Application.Contracts.Problems;
 
 namespace AlgoJudge.Application.Interfaces
 {
     public interface IProblemService
     {
-        Task<ProblemDto?> GetProblemByIdAsync(int id);
-        Task<PagedResult<ProblemDto>> GetProblemAsync(int pageNumber, int pageSize);
+        Task<PagedResponse<ProblemListItemResponse>> GetProblemsAsync(
+            ProblemListQuery query,
+            Guid? userId);
+
+        Task<ProblemDetailResponse?> GetProblemBySlugAsync(string slug, Guid? userId);
     }
 }

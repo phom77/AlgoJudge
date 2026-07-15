@@ -59,6 +59,13 @@ public class LegacyScopeTests
         public Task<IEnumerable<Submission>> GetPendingAsync() =>
             throw new NotSupportedException();
 
+        public Task<IReadOnlyCollection<int>> GetSolvedProblemIdsAsync(
+            Guid userId,
+            IEnumerable<int> problemIds) => throw new NotSupportedException();
+
+        public Task<bool> HasAcceptedSubmissionAsync(Guid userId, int problemId) =>
+            throw new NotSupportedException();
+
         public Task<PagedResult<Submission>> GetPagedAsync(
             Guid userId,
             int? problemId,

@@ -9,6 +9,10 @@ namespace AlgoJudge.Application.Interfaces
         Task AddAsync(Submission submission);
         Task<Submission?> GetByIdAsync(Guid id);
         Task<IEnumerable<Submission>> GetPendingAsync();
+        Task<IReadOnlyCollection<int>> GetSolvedProblemIdsAsync(
+            Guid userId,
+            IEnumerable<int> problemIds);
+        Task<bool> HasAcceptedSubmissionAsync(Guid userId, int problemId);
         Task<PagedResult<Submission>> GetPagedAsync(
             Guid userId,
             int? problemId,

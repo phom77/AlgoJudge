@@ -12,7 +12,7 @@ namespace AlgoJudge.Infrastructure.Grading
     {
         private readonly ISubmissionRepository _submissionRepository;
         private readonly IProblemRepository _problemRepository;
-        private readonly ITestCaseRepository _testCaseRepository;
+        private readonly IJudgeTestCaseRepository _judgeTestCaseRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IDockerSandbox _sandbox;
         private readonly ILogger<GraderService> _logger;
@@ -20,14 +20,14 @@ namespace AlgoJudge.Infrastructure.Grading
         public GraderService(
             ISubmissionRepository submissionRepository,
             IProblemRepository problemRepository,
-            ITestCaseRepository testCaseRepository,
+            IJudgeTestCaseRepository judgeTestCaseRepository,
             IUnitOfWork unitOfWork,
             IDockerSandbox sandbox,
             ILogger<GraderService> logger)
         {
             _submissionRepository = submissionRepository;
             _problemRepository = problemRepository;
-            _testCaseRepository = testCaseRepository;
+            _judgeTestCaseRepository = judgeTestCaseRepository;
             _unitOfWork = unitOfWork;
             _sandbox = sandbox;
             _logger = logger;
@@ -49,7 +49,9 @@ namespace AlgoJudge.Infrastructure.Grading
                 return;
             }
 
-            var testCases = (await _testCaseRepository.GetByProblemIdAsync(submission.ProblemId)).ToList();
+            var testCases = (await _judgeTestCaseRepository
+                .GetByProblemIdAsync(submission.ProblemId))
+                .ToList();
             if(!testCases.Any())
             {
                 _logger.LogWarning("No test cases found for problem {Id}.", submission.ProblemId);
@@ -79,7 +81,12 @@ namespace AlgoJudge.Infrastructure.Grading
 
                 foreach(var testCase in testCases)
                 {
-                    var runResult = await _sandbox.RunAsync(workDir, testCase.Input, problem.TimeLimit, problem.MemoryLimit, cancellationToken);
+                    var runResult = await _sandbox.RunAsync(
+                        workDir,
+                        testCase.Input,
+                        problem.TimeLimitMs,
+                        problem.MemoryLimitKb,
+                        cancellationToken);
 
                     if (runResult.ExecutionTimeMs > maxExecutionTime)
                         maxExecutionTime = runResult.ExecutionTimeMs;
@@ -110,16 +117,13 @@ namespace AlgoJudge.Infrastructure.Grading
                     var actualOutput = runResult.Output.Trim();
                     var expectedOutput = testCase.ExpectedOutput.Trim();
 
-                    _logger.LogInformation("Actual  : [{Actual}]", actualOutput);
-                    _logger.LogInformation("Expected: [{Expected}]", expectedOutput);
-
                     if (actualOutput != expectedOutput)
                     {
                         finalStatus = SubmissionStatus.WrongAnswer;
                         break;
                     }
 
-                    long memoryLimitBytes = (long)problem.MemoryLimit * 1024;
+                    long memoryLimitBytes = (long)problem.MemoryLimitKb * 1024;
                     if (runResult.MemoryUsedBytes > memoryLimitBytes)
                     {
                         finalStatus = SubmissionStatus.MemoryLimitExceeded;

@@ -17,6 +17,14 @@ scoring or Teacher role.
 See [docs/repository-structure.md](docs/repository-structure.md) for ownership
 rules and dependency direction.
 
+## Documentation
+
+- [Product requirements](docs/requirements.md)
+- [Domain model](docs/domain-model.md)
+- [Problem Catalogue API](docs/problem-catalog-api.md)
+- [Judge specification](docs/judge-spec.md)
+- [Delivery roadmap](docs/roadmap.md)
+
 ## Current prerequisites
 
 - .NET SDK 10

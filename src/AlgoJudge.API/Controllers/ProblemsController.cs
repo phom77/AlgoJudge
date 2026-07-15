@@ -1,5 +1,7 @@
+using AlgoJudge.Application.Contracts.Problems;
 using AlgoJudge.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AlgoJudge.API.Controllers
 {
@@ -15,22 +17,41 @@ namespace AlgoJudge.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetProblems(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetProblems([FromQuery] ProblemListQuery query)
         {
-            if (pageNumber < 1) pageNumber = 1;
-            if (pageSize < 1 || pageSize > 100) pageSize = 10;
+            var userId = GetAuthenticatedUserId();
+            if (query.Solved.HasValue && !userId.HasValue)
+            {
+                return BadRequest(new
+                {
+                    message = "The solved filter is available only to authenticated users."
+                });
+            }
 
-            var result = await _problemService.GetProblemAsync(pageNumber, pageSize);
+            var result = await _problemService.GetProblemsAsync(query, userId);
             return Ok(result);
         }
 
-        [HttpGet("{id:int}")]
-        public async Task<IActionResult> GetById(int id)
+        [HttpGet("{slug}")]
+        public async Task<IActionResult> GetBySlug(string slug)
         {
-            var result = await _problemService.GetProblemByIdAsync(id);
+            var result = await _problemService.GetProblemBySlugAsync(
+                slug,
+                GetAuthenticatedUserId());
             return result == null ? NotFound() : Ok(result);
+        }
+
+        private Guid? GetAuthenticatedUserId()
+        {
+            if (User.Identity?.IsAuthenticated != true)
+                return null;
+
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier)
+                     ?? User.FindFirst("sub");
+
+            return claim != null && Guid.TryParse(claim.Value, out var id)
+                ? id
+                : null;
         }
     }
 }
