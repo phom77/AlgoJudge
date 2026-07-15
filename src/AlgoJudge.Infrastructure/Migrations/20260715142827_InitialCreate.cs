@@ -22,11 +22,14 @@ namespace AlgoJudge.Infrastructure.Migrations
                     Description = table.Column<string>(type: "text", nullable: false),
                     TimeLimit = table.Column<int>(type: "integer", nullable: false),
                     MemoryLimit = table.Column<int>(type: "integer", nullable: false),
+                    Difficulty = table.Column<int>(type: "integer", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Problems", x => x.Id);
+                    table.CheckConstraint("CK_Problem_MemoryLimit", "\"MemoryLimit\" > 0");
+                    table.CheckConstraint("CK_Problem_TimeLimit", "\"TimeLimit\" > 0");
                 });
 
             migrationBuilder.CreateTable(
@@ -36,9 +39,9 @@ namespace AlgoJudge.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     UserName = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     Email = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    PasswordHash = table.Column<string>(type: "text", nullable: true),
+                    PasswordHash = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     FullName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()")
                 },
                 constraints: table =>
                 {
@@ -63,6 +66,29 @@ namespace AlgoJudge.Infrastructure.Migrations
                         name: "FK_TestCases_Problems_ProblemId",
                         column: x => x.ProblemId,
                         principalTable: "Problems",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "RefreshTokens",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Token = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsRevoked = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RefreshTokens", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_RefreshTokens_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -100,14 +126,41 @@ namespace AlgoJudge.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_RefreshTokens_Token",
+                table: "RefreshTokens",
+                column: "Token",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RefreshTokens_UserId",
+                table: "RefreshTokens",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Submissions_CreatedAt",
+                table: "Submissions",
+                column: "CreatedAt",
+                descending: new bool[0]);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Submissions_ProblemId",
                 table: "Submissions",
                 column: "ProblemId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Submissions_Status",
+                table: "Submissions",
+                column: "Status");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Submissions_UserId",
                 table: "Submissions",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Submissions_UserId_ProblemId",
+                table: "Submissions",
+                columns: new[] { "UserId", "ProblemId" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_TestCases_ProblemId",
@@ -130,6 +183,9 @@ namespace AlgoJudge.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "RefreshTokens");
+
             migrationBuilder.DropTable(
                 name: "Submissions");
 

@@ -1,18 +1,16 @@
-﻿using AlgoJudge.Application.DTOs.Common;
+using AlgoJudge.Application.DTOs.Common;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
 using AlgoJudge.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace AlgoJudge.Infrastructure.Repositories
 {
     public class SubmissionRepository : ISubmissionRepository
     {
         private readonly AppDbContext _context;
+
         public SubmissionRepository(AppDbContext context)
         {
             _context = context;
@@ -28,12 +26,15 @@ namespace AlgoJudge.Infrastructure.Repositories
             return await _context.Submissions.FindAsync(id);
         }
 
-        public async Task<PagedResult<Submission>> GetPagedAsync(Guid? userId, int? problemId, SubmissionStatus? status, int pageNumber, int pageSize)
+        public async Task<PagedResult<Submission>> GetPagedAsync(
+            Guid userId,
+            int? problemId,
+            SubmissionStatus? status,
+            int pageNumber,
+            int pageSize)
         {
-            var query = _context.Submissions.AsQueryable();
-
-            if (userId.HasValue)
-                query = query.Where(s => s.UserId == userId.Value);
+            var query = _context.Submissions
+                .Where(s => s.UserId == userId);
 
             if (problemId.HasValue)
                 query = query.Where(s => s.ProblemId == problemId.Value);
@@ -42,7 +43,6 @@ namespace AlgoJudge.Infrastructure.Repositories
                 query = query.Where(s => s.Status == status.Value);
 
             var totalCount = await query.CountAsync();
-
             var items = await query
                 .OrderByDescending(s => s.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
@@ -62,11 +62,9 @@ namespace AlgoJudge.Infrastructure.Repositories
         {
             return await _context.Submissions
                 .Where(s => s.Status == SubmissionStatus.Pending)
-                .OrderBy(s => s.CreatedAt) 
-                .Take(10)                 
+                .OrderBy(s => s.CreatedAt)
+                .Take(10)
                 .ToListAsync();
         }
-
-
     }
 }

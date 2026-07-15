@@ -1,9 +1,6 @@
-﻿using AlgoJudge.Domain.Entities;
+using AlgoJudge.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace AlgoJudge.Infrastructure.Data.Configurations
 {
@@ -15,7 +12,6 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
             {
                 table.HasCheckConstraint("CK_Problem_TimeLimit", "\"TimeLimit\" > 0");
                 table.HasCheckConstraint("CK_Problem_MemoryLimit", "\"MemoryLimit\" > 0");
-                table.HasCheckConstraint("CK_Problem_Score", "\"Score\" > 0");
             });
 
             builder.HasKey(p => p.Id);
@@ -26,11 +22,6 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
 
             builder.Property(p => p.Description)
                    .IsRequired();
-
-            builder.HasOne(p => p.Creator)
-                   .WithMany() 
-                   .HasForeignKey(p => p.CreatedBy)
-                   .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasMany(p => p.TestCases)
                    .WithOne(t => t.Problem)

@@ -33,9 +33,6 @@ namespace AlgoJudge.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
@@ -44,9 +41,6 @@ namespace AlgoJudge.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("MemoryLimit")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Score")
                         .HasColumnType("integer");
 
                     b.Property<int>("TimeLimit")
@@ -59,13 +53,9 @@ namespace AlgoJudge.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedBy");
-
                     b.ToTable("Problems", null, t =>
                         {
                             t.HasCheckConstraint("CK_Problem_MemoryLimit", "\"MemoryLimit\" > 0");
-
-                            t.HasCheckConstraint("CK_Problem_Score", "\"Score\" > 0");
 
                             t.HasCheckConstraint("CK_Problem_TimeLimit", "\"TimeLimit\" > 0");
                         });
@@ -210,10 +200,9 @@ namespace AlgoJudge.Infrastructure.Migrations
                         .HasColumnType("character varying(100)");
 
                     b.Property<string>("PasswordHash")
-                        .HasColumnType("text");
-
-                    b.Property<int>("Role")
-                        .HasColumnType("integer");
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.Property<string>("UserName")
                         .IsRequired()
@@ -229,17 +218,6 @@ namespace AlgoJudge.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Users", (string)null);
-                });
-
-            modelBuilder.Entity("AlgoJudge.Domain.Entities.Problem", b =>
-                {
-                    b.HasOne("AlgoJudge.Domain.Entities.User", "Creator")
-                        .WithMany()
-                        .HasForeignKey("CreatedBy")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Creator");
                 });
 
             modelBuilder.Entity("AlgoJudge.Domain.Entities.RefreshToken", b =>

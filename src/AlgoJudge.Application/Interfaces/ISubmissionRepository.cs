@@ -1,9 +1,6 @@
-﻿using AlgoJudge.Application.DTOs.Common;
+using AlgoJudge.Application.DTOs.Common;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace AlgoJudge.Application.Interfaces
 {
@@ -13,7 +10,7 @@ namespace AlgoJudge.Application.Interfaces
         Task<Submission?> GetByIdAsync(Guid id);
         Task<IEnumerable<Submission>> GetPendingAsync();
         Task<PagedResult<Submission>> GetPagedAsync(
-            Guid? userId,
+            Guid userId,
             int? problemId,
             SubmissionStatus? status,
             int pageNumber,

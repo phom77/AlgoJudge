@@ -79,7 +79,7 @@ namespace AlgoJudge.API.Controllers
                      ?? User.FindFirst("sub");
 
             if (callerIdClaim == null || !Guid.TryParse(callerIdClaim.Value, out var callerId))
-                return Unauthorized(new { message = "Token không hợp lệ." });
+                return Unauthorized(new { message = "Token is invalid." });
 
             try
             {

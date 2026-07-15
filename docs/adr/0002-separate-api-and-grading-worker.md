@@ -1,6 +1,6 @@
 # ADR-0002: Run grading as a separately deployable worker
 
-Status: Proposed
+Status: Accepted
 Date: 2026-07-15
 
 ## Context

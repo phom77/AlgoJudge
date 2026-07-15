@@ -25,6 +25,8 @@ approved; implementation work can be checked against them.
 - Close hidden testcase exposure and all related authorization gaps.
 - Add consistent error handling, configuration validation, health checks, and
   a documented local environment.
+- Adopt the public contract naming rules in `api-conventions.md` as endpoint
+  contracts are redesigned.
 
 **Exit criteria:** the API exposes only the intended public product surface and
 has tests for authorization and sensitive-data boundaries.
