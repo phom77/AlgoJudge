@@ -1,0 +1,18 @@
+name: algojudge-test
+
+services:
+  postgres-test:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: AlgoJudgeTestDb
+      POSTGRES_USER: algojudge_test
+      POSTGRES_PASSWORD: algojudge_test
+    ports:
+      - "55432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U algojudge_test -d AlgoJudgeTestDb"]
+      interval: 2s
+      timeout: 3s
+      retries: 20

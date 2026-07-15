@@ -1,6 +1,16 @@
 <Solution>
-  <Project Path="AlgoJudge.API/AlgoJudge.API.csproj" />
-  <Project Path="AlgoJudge.Application/AlgoJudge.Application.csproj" />
-  <Project Path="AlgoJudge.Domain/AlgoJudge.Domain.csproj" />
-  <Project Path="AlgoJudge.Infrastructure/AlgoJudge.Infrastructure.csproj" />
+  <Folder Name="/src/">
+    <Project Path="src/AlgoJudge.API/AlgoJudge.API.csproj" />
+    <Project Path="src/AlgoJudge.Application/AlgoJudge.Application.csproj" />
+    <Project Path="src/AlgoJudge.ContentTool/AlgoJudge.ContentTool.csproj" />
+    <Project Path="src/AlgoJudge.Domain/AlgoJudge.Domain.csproj" />
+    <Project Path="src/AlgoJudge.Infrastructure/AlgoJudge.Infrastructure.csproj" />
+    <Project Path="src/AlgoJudge.Worker/AlgoJudge.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AlgoJudge.Api.IntegrationTests/AlgoJudge.Api.IntegrationTests.csproj" />
+    <Project Path="tests/AlgoJudge.Application.Tests/AlgoJudge.Application.Tests.csproj" />
+    <Project Path="tests/AlgoJudge.Infrastructure.IntegrationTests/AlgoJudge.Infrastructure.IntegrationTests.csproj" />
+    <Project Path="tests/AlgoJudge.Judge.IntegrationTests/AlgoJudge.Judge.IntegrationTests.csproj" />
+  </Folder>
 </Solution>
