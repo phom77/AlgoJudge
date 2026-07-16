@@ -34,6 +34,12 @@ API and worker console logs are JSON. Request logs and worker events use named
 properties so a log platform can index fields such as request path, status,
 elapsed time, worker ID, submission ID, and trace ID.
 
+Judge logs record container status, exit codes, output byte counts, and
+truncation flags when external commands fail. Raw compiler, runner, stdout,
+stderr, source code, and hidden testcase payloads are not written to normal
+logs. Expected API failures are logged by status, error type, and exception
+type without copying their detail text into the log event.
+
 ## Rate limiting
 
 The API uses a fixed-window global limiter partitioned by authenticated user ID

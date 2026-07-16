@@ -23,9 +23,25 @@ namespace AlgoJudge.Infrastructure.Repositories
             await _context.Submissions.AddAsync(submission);
         }
 
-        public async Task<Submission?> GetByIdAsync(Guid id)
+        public Task<Submission?> GetByIdForUserAsync(
+            Guid id,
+            Guid userId,
+            CancellationToken cancellationToken = default)
         {
-            return await _context.Submissions.FindAsync(id);
+            return _context.Submissions
+                .AsNoTracking()
+                .SingleOrDefaultAsync(
+                    submission => submission.Id == id && submission.UserId == userId,
+                    cancellationToken);
+        }
+
+        public Task<bool> ExistsAsync(
+            Guid id,
+            CancellationToken cancellationToken = default)
+        {
+            return _context.Submissions
+                .AsNoTracking()
+                .AnyAsync(submission => submission.Id == id, cancellationToken);
         }
 
         public async Task<PagedResult<Submission>> GetPagedAsync(
@@ -36,6 +52,7 @@ namespace AlgoJudge.Infrastructure.Repositories
             int pageSize)
         {
             var query = _context.Submissions
+                .AsNoTracking()
                 .Where(s => s.UserId == userId);
 
             if (problemId.HasValue)

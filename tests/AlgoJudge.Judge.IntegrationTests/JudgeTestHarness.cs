@@ -5,6 +5,7 @@ using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
 using AlgoJudge.Infrastructure.Grading;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AlgoJudge.Judge.IntegrationTests;
@@ -39,6 +40,25 @@ internal static class JudgeTestHarness
         string sourceCode,
         string input,
         string expectedOutput,
+        int timeLimitMs = 1_000,
+        int memoryLimitKb = 64 * 1024)
+    {
+        return await GradeWithSandboxAsync(
+            sourceCode,
+            input,
+            expectedOutput,
+            CreateSandbox(),
+            NullLogger<GraderService>.Instance,
+            timeLimitMs,
+            memoryLimitKb);
+    }
+
+    public static async Task<JudgeOutcome> GradeWithSandboxAsync(
+        string sourceCode,
+        string input,
+        string expectedOutput,
+        IDockerSandbox sandbox,
+        ILogger<GraderService> logger,
         int timeLimitMs = 1_000,
         int memoryLimitKb = 64 * 1024)
     {
@@ -88,8 +108,8 @@ internal static class JudgeTestHarness
             submissionRepository,
             new StubProblemRepository(problem),
             new StubJudgeTestCaseRepository(testCase),
-            CreateSandbox(),
-            NullLogger<GraderService>.Instance);
+            sandbox,
+            logger);
 
         await grader.GradeAsync(claim);
 
@@ -142,7 +162,13 @@ internal static class JudgeTestHarness
         }
 
         public Task AddAsync(Submission submission) => throw new NotSupportedException();
-        public Task<Submission?> GetByIdAsync(Guid id) => throw new NotSupportedException();
+        public Task<Submission?> GetByIdForUserAsync(
+            Guid id,
+            Guid userId,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> ExistsAsync(
+            Guid id,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<SubmissionClaim?> ClaimNextAsync(
             string workerId,
             TimeSpan leaseDuration,

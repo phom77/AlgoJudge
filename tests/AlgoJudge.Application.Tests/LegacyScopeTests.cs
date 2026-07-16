@@ -34,14 +34,37 @@ public class LegacyScopeTests
             ProblemId = 1
         };
 
+        var repository = new SubmissionRepositoryStub(submission);
         var service = new SubmissionService(
-            new SubmissionRepositoryStub(submission),
+            repository,
             null!,
             null!,
             null!);
 
         await Assert.ThrowsAsync<ForbiddenException>(() =>
             service.GetSubmissionByIdAsync(submission.Id, requesterId));
+
+        Assert.Equal(requesterId, repository.LastOwnedLookupUserId);
+        Assert.True(repository.ExistenceChecked);
+    }
+
+    [Fact]
+    public async Task GetSubmissionByIdReturnsNullWhenSubmissionDoesNotExist()
+    {
+        var repository = new SubmissionRepositoryStub(new Submission
+        {
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            ProblemId = 1
+        });
+        var service = new SubmissionService(repository, null!, null!, null!);
+
+        var result = await service.GetSubmissionByIdAsync(
+            Guid.NewGuid(),
+            Guid.NewGuid());
+
+        Assert.Null(result);
+        Assert.True(repository.ExistenceChecked);
     }
 
     private sealed class SubmissionRepositoryStub : ISubmissionRepository
@@ -53,10 +76,30 @@ public class LegacyScopeTests
             _submission = submission;
         }
 
+        public Guid? LastOwnedLookupUserId { get; private set; }
+        public bool ExistenceChecked { get; private set; }
+
         public Task AddAsync(Submission submission) => throw new NotSupportedException();
 
-        public Task<Submission?> GetByIdAsync(Guid id) =>
-            Task.FromResult<Submission?>(id == _submission.Id ? _submission : null);
+        public Task<Submission?> GetByIdForUserAsync(
+            Guid id,
+            Guid userId,
+            CancellationToken cancellationToken = default)
+        {
+            LastOwnedLookupUserId = userId;
+            return Task.FromResult<Submission?>(
+                id == _submission.Id && userId == _submission.UserId
+                    ? _submission
+                    : null);
+        }
+
+        public Task<bool> ExistsAsync(
+            Guid id,
+            CancellationToken cancellationToken = default)
+        {
+            ExistenceChecked = true;
+            return Task.FromResult(id == _submission.Id);
+        }
 
         public Task<Submission?> GetClaimedAsync(
             SubmissionClaim claim,

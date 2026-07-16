@@ -34,7 +34,9 @@ internal sealed class DockerCli
         if (result.ExitCode != 0)
         {
             throw new InvalidOperationException(
-                $"Docker could not create the judge container: {DecodeUtf8(result.Stderr.Bytes)}");
+                "Docker could not create the judge container " +
+                $"(exit code {result.ExitCode}, stderr bytes {result.Stderr.Bytes.Length}, " +
+                $"truncated {result.Stderr.Truncated}).");
         }
     }
 
@@ -80,7 +82,9 @@ internal sealed class DockerCli
         if (result.ExitCode != 0)
         {
             throw new InvalidOperationException(
-                $"Docker could not inspect the judge container: {DecodeUtf8(result.Stderr.Bytes)}");
+                "Docker could not inspect the judge container " +
+                $"(exit code {result.ExitCode}, stderr bytes {result.Stderr.Bytes.Length}, " +
+                $"truncated {result.Stderr.Truncated}).");
         }
 
         var fields = DecodeUtf8(result.Stdout.Bytes).Trim().Split('|');

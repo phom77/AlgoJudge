@@ -43,7 +43,8 @@ public sealed class SubmissionsController : ControllerBase
     {
         var result = await _submissionService.GetSubmissionByIdAsync(
             id,
-            GetUserIdFromToken());
+            GetUserIdFromToken(),
+            HttpContext.RequestAborted);
         if (result == null)
             throw new ResourceNotFoundException($"Submission '{id}' was not found.");
 

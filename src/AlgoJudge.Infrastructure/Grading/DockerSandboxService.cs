@@ -193,19 +193,23 @@ public sealed class DockerSandboxService : IDockerSandbox
             {
                 _logger.LogError(
                     "Judge runner failed. Container status {Status}, exit {ExitCode}, " +
-                    "stdout truncated {StdoutTruncated}. Docker stderr: {DockerError}",
+                    "stdout truncated {StdoutTruncated}. Docker stderr captured " +
+                    "{DockerStderrBytes} bytes, truncated {DockerStderrTruncated}.",
                     state.Status,
                     state.ExitCode,
                     startResult.Stdout.Truncated,
-                    DecodeUtf8(startResult.Stderr.Bytes));
+                    startResult.Stderr.Bytes.Length,
+                    startResult.Stderr.Truncated);
                 return new SandboxRunResult { Status = SandboxRunStatus.SystemError };
             }
 
             if (!JudgeRunnerProtocol.TryParse(startResult.Stdout.Bytes, out var result))
             {
                 _logger.LogError(
-                    "Judge runner returned an invalid protocol response. Docker stderr: {DockerError}",
-                    DecodeUtf8(startResult.Stderr.Bytes));
+                    "Judge runner returned an invalid protocol response. Docker stderr " +
+                    "captured {DockerStderrBytes} bytes, truncated {DockerStderrTruncated}.",
+                    startResult.Stderr.Bytes.Length,
+                    startResult.Stderr.Truncated);
                 return new SandboxRunResult { Status = SandboxRunStatus.SystemError };
             }
 
