@@ -11,9 +11,23 @@
       >
     </nav>
 
-    <button class="sign-in" type="button" disabled title="Authentication is coming next">
-      Sign in
-    </button>
+    <div class="auth-actions" aria-live="polite">
+      @if (authStore.isChecking()) {
+        <span class="session-status">Restoring session…</span>
+      } @else if (authStore.user(); as user) {
+        <span class="session-user" [title]="user.email">{{ user.userName }}</span>
+        <button
+          class="logout-button"
+          type="button"
+          [disabled]="authStore.isSubmitting()"
+          (click)="logout()"
+        >
+          {{ authStore.isSubmitting() ? 'Signing out…' : 'Sign out' }}
+        </button>
+      } @else {
+        <a class="sign-in" routerLink="/login">Sign in</a>
+      }
+    </div>
   </div>
 </header>
 

@@ -70,12 +70,16 @@ function compareDirectories(checkedInRoot, generatedRoot) {
       differences.push(`stale generated file: ${file}`);
       continue;
     }
-    if (!readFileSync(checkedInPath).equals(readFileSync(generatedPath))) {
+    if (readNormalizedText(checkedInPath) !== readNormalizedText(generatedPath)) {
       differences.push(`content differs: ${file}`);
     }
   }
 
   return differences;
+}
+
+function readNormalizedText(path) {
+  return readFileSync(path, 'utf8').replace(/\r\n?/g, '\n');
 }
 
 function listFiles(root) {

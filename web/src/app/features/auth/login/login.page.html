@@ -1,0 +1,57 @@
+<section class="auth-card" aria-labelledby="login-title">
+  <p class="auth-card__eyebrow">Welcome back</p>
+  <h1 id="login-title">Sign in to AlgoJudge</h1>
+  <p class="auth-card__description">Continue solving problems and reviewing your submissions.</p>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <div class="field">
+      <label for="login-user-name">Username</label>
+      <input
+        id="login-user-name"
+        type="text"
+        formControlName="userName"
+        autocomplete="username"
+        maxlength="50"
+        [attr.aria-invalid]="errorFor('userName', 'Username') !== null"
+        aria-describedby="login-user-name-error"
+      />
+      @if (errorFor('userName', 'Username'); as error) {
+        <p id="login-user-name-error" class="field__error">{{ error }}</p>
+      }
+    </div>
+
+    <div class="field">
+      <label for="login-password">Password</label>
+      <input
+        id="login-password"
+        type="password"
+        formControlName="password"
+        autocomplete="current-password"
+        maxlength="100"
+        [attr.aria-invalid]="errorFor('password', 'Password') !== null"
+        aria-describedby="login-password-error"
+      />
+      @if (errorFor('password', 'Password'); as error) {
+        <p id="login-password-error" class="field__error">{{ error }}</p>
+      }
+    </div>
+
+    @if (authStore.problem(); as problem) {
+      <div class="api-error" role="alert">
+        <strong>{{ problem.title }}</strong>
+        @if (problem.detail) {
+          <p>{{ problem.detail }}</p>
+        }
+      </div>
+    }
+
+    <button class="submit-button" type="submit" [disabled]="authStore.isSubmitting()">
+      {{ authStore.isSubmitting() ? 'Signing in…' : 'Sign in' }}
+    </button>
+  </form>
+
+  <p class="auth-card__alternative">
+    New to AlgoJudge?
+    <a routerLink="/register" [queryParams]="{ returnUrl: returnUrl }">Create an account</a>
+  </p>
+</section>

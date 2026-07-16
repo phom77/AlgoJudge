@@ -91,6 +91,19 @@ operations and models; components must not. Convert `HttpErrorResponse` values
 with `mapProblemDetails` so validation, CSRF, authorization, rate-limit, network,
 and unknown failures share one safe `ApiProblem` shape.
 
+## Browser authentication
+
+Authentication credentials are backend-managed HttpOnly cookies and never
+enter Angular state or browser storage. The app initializer restores public user
+metadata with `GET /api/auth/session`; an expired access session may perform one
+single-flight refresh using the restricted refresh cookie.
+
+`AuthApiGateway` bootstraps antiforgery state before register, login, refresh,
+and revoke. Angular mirrors `XSRF-TOKEN` into `X-XSRF-TOKEN` through its built-in
+same-origin XSRF support. The refresh interceptor retries only safe API reads and
+never automatically replays `POST /api/submissions`. Logout clears the in-memory
+auth store even when revoke cannot reach the server.
+
 ## Toolchain policy
 
 Framework and tool versions are exact in `package.json` and reproducible through
