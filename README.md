@@ -44,6 +44,9 @@ rules and dependency direction.
 5. Run `./scripts/run-api.ps1`.
 6. Run `./scripts/run-worker.ps1` in another terminal.
 
+Run `./scripts/test-backend-e2e.ps1` to exercise the complete backend acceptance
+flow against an ephemeral PostgreSQL database and the pinned Docker judge image.
+
 The frontend will use Angular and will be scaffolded only after the backend API
 and judge contract are stable. The MVP worker uses PostgreSQL as its durable
 submission queue, with atomic claims, renewable leases, and bounded retries;

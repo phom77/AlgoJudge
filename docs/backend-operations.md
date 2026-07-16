@@ -75,3 +75,15 @@ a dedicated release task before starting or rolling out multiple API replicas.
 The worker remains a separate host process because it needs the local Docker
 Engine to launch the hardened judge sandbox. The API and PostgreSQL can run in
 Compose without granting Docker socket access to the API container.
+
+## Backend acceptance
+
+Run `./scripts/test-backend-e2e.ps1` before treating the backend workflow as
+release-ready. The suite connects the HTTP API, a migrated PostgreSQL queue,
+one or two real grading workers, and the pinned C++17 Docker image. It verifies
+all final verdicts, solved state, ownership and private-data boundaries,
+expired-lease recovery, stale-worker fencing, and duplicate-claim prevention.
+
+The ordinary solution test command may skip this suite when PostgreSQL or the
+judge image is unavailable. The dedicated `backend-e2e-acceptance` CI job must
+provide both prerequisites and run the suite without skips.

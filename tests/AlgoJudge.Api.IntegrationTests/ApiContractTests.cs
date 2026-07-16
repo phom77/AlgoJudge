@@ -35,7 +35,8 @@ public class ApiContractTests
             File.Exists(snapshotPath),
             $"OpenAPI snapshot is missing at '{snapshotPath}'. " +
             "Run ./scripts/update-openapi-snapshot.ps1 to create it.");
-        var expected = await File.ReadAllTextAsync(snapshotPath);
+        var expected = (await File.ReadAllTextAsync(snapshotPath))
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
         Assert.True(
             string.Equals(expected, actual, StringComparison.Ordinal),
             "OpenAPI v1 differs from the approved semantic snapshot. " +
