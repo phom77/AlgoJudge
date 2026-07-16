@@ -1,0 +1,25 @@
+body {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-block-start: 0;
+}
+
+h1,
+h2,
+h3 {
+  line-height: var(--line-height-tight);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}

@@ -1,0 +1,22 @@
+@use 'styles/tokens';
+@use 'styles/reset';
+@use 'styles/typography';
+
+body {
+  min-width: 20rem;
+  min-height: 100vh;
+  background: var(--color-canvas);
+  color: var(--color-text);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 0.125rem solid var(--color-focus);
+  outline-offset: 0.125rem;
+}
