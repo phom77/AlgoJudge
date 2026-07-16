@@ -1,318 +1,297 @@
-﻿using AlgoJudge.Application.Interfaces;
+using AlgoJudge.Application.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 
-namespace AlgoJudge.Infrastructure.Grading
+namespace AlgoJudge.Infrastructure.Grading;
+
+public sealed class DockerSandboxService : IDockerSandbox
 {
-    public class DockerSandboxService : IDockerSandbox
+    private const string ContainerUser = "10001:10001";
+    private const string CompileWorkDirectory = "/workspace";
+    private const string RuntimeWorkDirectory = "/artifact";
+    private const string SourceFileName = "solution.cpp";
+    private const string BinaryFileName = "solution";
+    private const int CompileMemoryMb = 512;
+
+    private readonly ILogger<DockerSandboxService> _logger;
+    private readonly DockerSandboxOptions _options;
+    private readonly DockerCli _docker;
+
+    public DockerSandboxService(
+        IConfiguration configuration,
+        ILogger<DockerSandboxService> logger)
     {
-        private readonly ILogger<DockerSandboxService> _logger;
-        private readonly string _dockerImage;
+        _logger = logger;
+        _options = DockerSandboxOptions.FromConfiguration(configuration);
+        _docker = new DockerCli(_options.DockerStartupAllowance, logger);
+    }
 
-        private const string ContainerWorkDir = "/sandbox";
-        private const string SourceFileName = "solution.cpp";
-        private const string BinaryFileName = "solution";
+    public async Task<SandboxCompileResult> CompileAsync(
+        string sourceCode,
+        string workDir,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(sourceCode);
+        ArgumentException.ThrowIfNullOrWhiteSpace(workDir);
 
-        public DockerSandboxService(
-            IConfiguration configuration,
-            ILogger<DockerSandboxService> logger)
+        var fullWorkDirectory = Path.GetFullPath(workDir);
+        Directory.CreateDirectory(fullWorkDirectory);
+        PrepareCompileDirectory(fullWorkDirectory);
+
+        var sourceFile = Path.Combine(fullWorkDirectory, SourceFileName);
+        var binaryFile = Path.Combine(fullWorkDirectory, BinaryFileName);
+        TryDeleteFile(sourceFile);
+        TryDeleteFile(binaryFile);
+
+        await File.WriteAllTextAsync(
+            sourceFile,
+            sourceCode,
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+            ct);
+        MakeSourceReadable(sourceFile);
+
+        var containerName = CreateContainerName("compile");
+        try
         {
-            _logger = logger;
-            _dockerImage = configuration["Sandbox:DockerImage"] ?? "gcc:14";
-        }
+            var memory = $"{CompileMemoryMb}m";
+            var createArguments = BuildBaseCreateArguments(containerName, memory);
+            createArguments.AddRange([
+                "--tmpfs", "/tmp:rw,nosuid,nodev,noexec,size=64m",
+                "--volume", $"{ToDockerPath(fullWorkDirectory)}:{CompileWorkDirectory}:rw",
+                "--workdir", CompileWorkDirectory,
+                _options.Image,
+                "g++",
+                $"{CompileWorkDirectory}/{SourceFileName}",
+                "-o", $"{CompileWorkDirectory}/{BinaryFileName}",
+                "-O2",
+                "-std=c++17",
+                "-pipe",
+                "-lm"
+            ]);
 
-        public async Task<SandboxCompileResult> CompileAsync(string sourceCode, string workDir, CancellationToken ct = default)
-        {
-            var sourceFile = Path.Combine(workDir, SourceFileName);
-            await File.WriteAllTextAsync(
-                Path.Combine(workDir, SourceFileName),
-                sourceCode,
-                new UTF8Encoding(false), 
+            await _docker.CreateAsync(createArguments, ct);
+            var startResult = await _docker.StartAsync(
+                containerName,
+                stdin: null,
+                _options.CompileTimeout,
+                _options.StdoutLimitBytes,
+                _options.StderrLimitBytes,
                 ct);
+            var state = await _docker.InspectAsync(containerName, ct);
 
-            // Build the docker run command used for compilation.
-            //
-            //  --rm                      removes the container after it exits
-            //  --network none            disables network access
-            //  --memory 512m             bounds compiler memory
-            //  --cpus 1                  limits CPU allocation
-            //  --read-only               makes the container filesystem read-only
-            //  --tmpfs /tmp              allows g++ to write temporary files
-            //  -v workDir:/sandbox       mounts the isolated host work directory
-            //  --security-opt no-new-privileges  prevents privilege escalation
-            //
-            // The compiler must write the solution binary to /sandbox. The
-            // read-only flag applies to the image filesystem, while the mounted
-            // work directory remains writable for compilation artifacts.
+            if (!state.Status.Equals("exited", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Compiler container did not reach an exited state.");
 
-            var compileCmd =
-                $"g++ /sandbox/{SourceFileName} " +
-                $"-o /sandbox/{BinaryFileName} " +
-                $"-O2 -std=c++17 -lm";
-
-            var args = BuildDockerArgs(
-                memoryFlag: "512m",
-                needStdin: false,
-                cidFile: null,
-                command: compileCmd,
-                workDir: workDir);
-
-            _logger.LogDebug("Compile docker args: {Args}", args);
-
-            var (exitCode, _, stderr) = await RunDockerProcessAsync(
-                args, stdin: null, timeoutMs: 30_000, ct);
-
-            if (exitCode != 0)
+            if (state.ExitCode != 0)
             {
-                _logger.LogInformation("Compile failed. stderr: {Err}", stderr);
-                return new SandboxCompileResult { Success = false, ErrorOutput = stderr };
+                var diagnostics = DecodeUtf8(startResult.Stderr.Bytes);
+                if (startResult.Stderr.Truncated)
+                    diagnostics += "\n[compiler diagnostics truncated]";
+
+                return new SandboxCompileResult
+                {
+                    Success = false,
+                    ErrorOutput = diagnostics
+                };
+            }
+
+            if (!File.Exists(binaryFile))
+            {
+                throw new InvalidOperationException(
+                    "Compiler container exited successfully without producing an artifact.");
             }
 
             return new SandboxCompileResult { Success = true };
         }
-
-        public async Task<SandboxRunResult> RunAsync(string workDir, string input, int timeLimitMs, int memoryLimitKb, CancellationToken ct = default)
+        finally
         {
-            // Convert the configured KiB limit to Docker's MiB flag and allow
-            // 64 MiB of runtime overhead for the stack and system libraries.
-            var memoryMb = (memoryLimitKb / 1024) + 64;
-            var memoryFlag = $"{memoryMb}m";
+            await _docker.RemoveAsync(containerName);
+        }
+    }
 
-            var timeLimitSeconds = Math.Ceiling(timeLimitMs / 1000.0);
-
-            var runCmd = $"timeout --kill-after=2s {timeLimitSeconds}s /sandbox/{BinaryFileName}";
-
-            var cidFile = Path.Combine(workDir, "container.cid");
-
-            var args = BuildDockerArgs(
-                memoryFlag: memoryFlag,
-                needStdin: true,
-                cidFile: cidFile,
-                command: runCmd,
-                workDir: workDir);
-
-            _logger.LogDebug("Run docker args: {Args}", args);
-
-            var stopwatch = Stopwatch.StartNew();
-
-            // The outer watchdog includes a 10-second infrastructure buffer.
-            var outerTimeoutMs = timeLimitMs + 10_000;
-
-            var (exitCode, stdout, stderr) = await RunDockerProcessAsync(
-                args, stdin: input, timeoutMs: outerTimeoutMs, ct);
-
-            stopwatch.Stop();
-            var elapsedMs = (int)stopwatch.ElapsedMilliseconds;
-            var peakMemoryBytes = await ReadCgroupPeakMemoryAsync(cidFile);
-
-            TryDeleteFile(cidFile);
-
-            if (exitCode == 124)
-            {
-                _logger.LogInformation("TimeLimitExceeded — exit 124");
-                return new SandboxRunResult
-                {
-                    Status = SandboxRunStatus.TimeLimitExceeded,
-                    ExecutionTimeMs = timeLimitMs,
-                    MemoryUsedBytes = 0,
-                    Output = string.Empty
-                };
-            }
-
-            if (exitCode != 0)
-            {
-                _logger.LogInformation("RuntimeError — exit code: {Code}, stderr: {Err}", exitCode, stderr);
-                return new SandboxRunResult
-                {
-                    Status = SandboxRunStatus.RuntimeError,
-                    ExecutionTimeMs = elapsedMs,
-                    MemoryUsedBytes = 0,
-                    Output = string.Empty
-                };
-            }
-
-            return new SandboxRunResult
-            {
-                Status = SandboxRunStatus.Success,
-                ExecutionTimeMs = elapsedMs,
-                MemoryUsedBytes = 0, 
-                Output = stdout
-            };
+    public async Task<SandboxRunResult> RunAsync(
+        string workDir,
+        string input,
+        int timeLimitMs,
+        int memoryLimitKb,
+        CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workDir);
+        ArgumentNullException.ThrowIfNull(input);
+        if (timeLimitMs <= 0)
+            throw new ArgumentOutOfRangeException(nameof(timeLimitMs));
+        if (memoryLimitKb < 16 * 1024)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(memoryLimitKb),
+                "The Docker judge requires a memory limit of at least 16384 KiB.");
         }
 
-        /// <summary>
-        /// Build arguments for the command `docker run`.
-        /// </summary>
-        private string BuildDockerArgs(
-            string memoryFlag,
-            bool needStdin,
-            string? cidFile,
-            string command,
-            string workDir)
+        var fullWorkDirectory = Path.GetFullPath(workDir);
+        var binaryFile = Path.Combine(fullWorkDirectory, BinaryFileName);
+        if (!File.Exists(binaryFile))
+            throw new FileNotFoundException("Compiled solution artifact was not found.", binaryFile);
+
+        var containerName = CreateContainerName("run");
+        try
         {
-            var parts = new List<string>
-            {
-                "run",
-                "--rm",
-            };
+            var memory = $"{memoryLimitKb}k";
+            var createArguments = BuildBaseCreateArguments(containerName, memory);
+            createArguments.AddRange([
+                "--interactive",
+                "--volume", $"{ToDockerPath(binaryFile)}:{RuntimeWorkDirectory}/{BinaryFileName}:ro",
+                "--workdir", RuntimeWorkDirectory,
+                _options.Image,
+                "/usr/local/bin/algojudge-runner",
+                "--time-limit-ms", timeLimitMs.ToString(CultureInfo.InvariantCulture),
+                "--stdout-limit-bytes", _options.StdoutLimitBytes.ToString(CultureInfo.InvariantCulture),
+                "--stderr-limit-bytes", _options.StderrLimitBytes.ToString(CultureInfo.InvariantCulture),
+                "--",
+                $"{RuntimeWorkDirectory}/{BinaryFileName}"
+            ]);
 
-            if (cidFile != null)
-                parts.Add($"--cidfile \"{cidFile}\"");
+            await _docker.CreateAsync(createArguments, ct);
 
-            if (needStdin)
-                parts.Add("-i");
-
-            parts.AddRange(new[]
-            {
-                "--network none",
-                $"--memory {memoryFlag}",
-                "--memory-swap -1",
-                "--cpus 1",
-                "--read-only",
-                "--tmpfs /tmp:size=64m",
-                $"-v \"{ToDockerPath(workDir)}\":{ContainerWorkDir}",
-                "--security-opt no-new-privileges",
-                _dockerImage,
-                "sh", "-c",
-                $"\"{command}\""
-            });
-
-            return string.Join(" ", parts);
-        }
-
-        /// <summary>
-        /// Runs `docker` with the supplied arguments.
-        /// Returns (exitCode, stdout, stderr).
-        /// </summary>
-        private async Task<(int ExitCode, string Stdout, string Stderr)> RunDockerProcessAsync(
-            string args,
-            string? stdin,
-            int timeoutMs,
-            CancellationToken ct)
-        {
-            using var process = new Process();
-            process.StartInfo = new ProcessStartInfo
-            {
-                FileName = "docker",
-                Arguments = args,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            process.Start();
-
-            // Write stdin and close it immediately so the process cannot wait
-            // indefinitely for additional input.
-            if (!string.IsNullOrEmpty(stdin))
-                await process.StandardInput.WriteAsync(stdin);
-            process.StandardInput.Close();
-
-            // Read stdout and stderr concurrently to avoid full-buffer deadlocks.
-            var stdoutTask = process.StandardOutput.ReadToEndAsync(ct);
-            var stderrTask = process.StandardError.ReadToEndAsync(ct);
-
-            var finished = process.WaitForExit(timeoutMs);
-
-            if (!finished)
-            {
-                // The outer Docker process timed out despite the inner timeout.
-                _logger.LogWarning("Docker outer timeout reached ({Ms}ms). Killing docker process.", timeoutMs);
-                try { process.Kill(entireProcessTree: true); } catch { }
-            }
-
-            var stdout = await stdoutTask;
-            var stderr = await stderrTask;
-
-            return (finished ? process.ExitCode : 124, stdout, stderr);
-        }
-
-        /// <summary>
-        /// Reads peak memory from the completed container's cgroup.
-        /// This works only on Linux; Windows and WSL2 return 0.
-        /// </summary>
-        private async Task<long> ReadCgroupPeakMemoryAsync(string cidFile)
-        {
-            if (!OperatingSystem.IsLinux())
-            {
-                _logger.LogDebug("Non-Linux OS — memory measurement not available.");
-                return 0;
-            }
-
+            DockerCommandResult startResult;
             try
             {
-                // Wait for Docker to populate the cid file after container start.
-                // Retry up to ten times at 100 ms intervals.
-                string? containerId = null;
-                for (var i = 0; i < 10; i++)
-                {
-                    if (File.Exists(cidFile))
-                    {
-                        containerId = (await File.ReadAllTextAsync(cidFile)).Trim();
-                        if (!string.IsNullOrEmpty(containerId)) break;
-                    }
-                    await Task.Delay(100);
-                }
-
-                if (string.IsNullOrEmpty(containerId))
-                {
-                    _logger.LogWarning("cidFile not found or empty: {Path}", cidFile);
-                    return 0;
-                }
-
-                // Try cgroup v2 first (Ubuntu 22.04+).
-                // cgroup v2: /sys/fs/cgroup/system.slice/docker-{id}.scope/memory.peak
-                var cgroupV2Path = $"/sys/fs/cgroup/system.slice/docker-{containerId}.scope/memory.peak";
-                if (File.Exists(cgroupV2Path))
-                {
-                    var raw = await File.ReadAllTextAsync(cgroupV2Path);
-                    if (long.TryParse(raw.Trim(), out var bytesV2))
-                    {
-                        _logger.LogDebug("cgroup v2 peak memory: {Bytes} bytes.", bytesV2);
-                        return bytesV2;
-                    }
-                }
-
-                // Fall back to cgroup v1 (Ubuntu 20.04 and earlier).
-                // cgroup v1: /sys/fs/cgroup/memory/docker/{id}/memory.max_usage_in_bytes
-                var cgroupV1Path = $"/sys/fs/cgroup/memory/docker/{containerId}/memory.max_usage_in_bytes";
-                if (File.Exists(cgroupV1Path))
-                {
-                    var raw = await File.ReadAllTextAsync(cgroupV1Path);
-                    if (long.TryParse(raw.Trim(), out var bytesV1))
-                    {
-                        _logger.LogDebug("cgroup v1 peak memory: {Bytes} bytes.", bytesV1);
-                        return bytesV1;
-                    }
-                }
-
-                _logger.LogWarning("cgroup path not found for container {Id}.", containerId);
-                return 0;
+                startResult = await _docker.StartAsync(
+                    containerName,
+                    input,
+                    TimeSpan.FromMilliseconds(timeLimitMs) + _options.DockerStartupAllowance,
+                    checked(
+                        _options.StdoutLimitBytes +
+                        _options.StderrLimitBytes +
+                        JudgeRunnerProtocol.OverheadBytes),
+                    JudgeRunnerProtocol.OverheadBytes,
+                    ct);
             }
-            catch (Exception ex)
+            catch (TimeoutException exception)
             {
-                _logger.LogWarning(ex, "Failed to read cgroup memory.");
-                return 0;
+                _logger.LogError(
+                    exception,
+                    "The outer Docker watchdog expired for judge container {ContainerName}.",
+                    containerName);
+                return new SandboxRunResult { Status = SandboxRunStatus.SystemError };
             }
-        }
 
-        private static void TryDeleteFile(string path)
+            var state = await _docker.InspectAsync(containerName, ct);
+            if (state.OomKilled)
+            {
+                return new SandboxRunResult
+                {
+                    Status = SandboxRunStatus.MemoryLimitExceeded,
+                    MemoryUsedBytes = (long)memoryLimitKb * 1024
+                };
+            }
+
+            if (!state.Status.Equals("exited", StringComparison.OrdinalIgnoreCase) ||
+                state.ExitCode != 0 ||
+                startResult.Stdout.Truncated)
+            {
+                _logger.LogError(
+                    "Judge runner failed. Container status {Status}, exit {ExitCode}, " +
+                    "stdout truncated {StdoutTruncated}. Docker stderr: {DockerError}",
+                    state.Status,
+                    state.ExitCode,
+                    startResult.Stdout.Truncated,
+                    DecodeUtf8(startResult.Stderr.Bytes));
+                return new SandboxRunResult { Status = SandboxRunStatus.SystemError };
+            }
+
+            if (!JudgeRunnerProtocol.TryParse(startResult.Stdout.Bytes, out var result))
+            {
+                _logger.LogError(
+                    "Judge runner returned an invalid protocol response. Docker stderr: {DockerError}",
+                    DecodeUtf8(startResult.Stderr.Bytes));
+                return new SandboxRunResult { Status = SandboxRunStatus.SystemError };
+            }
+
+            return result;
+        }
+        finally
         {
-            try { if (File.Exists(path)) File.Delete(path); } catch { }
+            await _docker.RemoveAsync(containerName);
         }
+    }
 
-        private static string ToDockerPath(string path)
+    private List<string> BuildBaseCreateArguments(string containerName, string memory)
+    {
+        return [
+            "create",
+            "--name", containerName,
+            "--network", "none",
+            "--memory", memory,
+            "--memory-swap", memory,
+            "--cpus", "1",
+            "--pids-limit", _options.PidsLimit.ToString(CultureInfo.InvariantCulture),
+            "--cap-drop", "ALL",
+            "--security-opt", "no-new-privileges=true",
+            "--read-only",
+            "--user", ContainerUser,
+            "--ulimit", "core=0:0",
+            "--ulimit", "nofile=64:64"
+        ];
+    }
+
+    private static string CreateContainerName(string stage)
+    {
+        return $"algojudge-{stage}-{Guid.NewGuid():N}";
+    }
+
+    private static string DecodeUtf8(byte[] bytes) => Encoding.UTF8.GetString(bytes);
+
+    private static void PrepareCompileDirectory(string path)
+    {
+        if (!OperatingSystem.IsLinux())
+            return;
+
+        File.SetUnixFileMode(
+            path,
+            UnixFileMode.UserRead |
+            UnixFileMode.UserWrite |
+            UnixFileMode.UserExecute |
+            UnixFileMode.GroupRead |
+            UnixFileMode.GroupWrite |
+            UnixFileMode.GroupExecute |
+            UnixFileMode.OtherRead |
+            UnixFileMode.OtherWrite |
+            UnixFileMode.OtherExecute);
+    }
+
+    private static void MakeSourceReadable(string path)
+    {
+        if (!OperatingSystem.IsLinux())
+            return;
+
+        File.SetUnixFileMode(
+            path,
+            UnixFileMode.UserRead |
+            UnixFileMode.UserWrite |
+            UnixFileMode.GroupRead |
+            UnixFileMode.OtherRead);
+    }
+
+    private static void TryDeleteFile(string path)
+    {
+        try
         {
-            if (!OperatingSystem.IsWindows()) return path;
-
-            // C:\foo\bar → /c/foo/bar
-            return "/" + path[0].ToString().ToLower() + path[2..].Replace('\\', '/');
+            if (File.Exists(path))
+                File.Delete(path);
         }
+        catch
+        {
+            // A clear write/compile failure follows if a stale artifact cannot be removed.
+        }
+    }
+
+    private static string ToDockerPath(string path)
+    {
+        if (!OperatingSystem.IsWindows())
+            return path;
+
+        return "/" + char.ToLowerInvariant(path[0]) + path[2..].Replace('\\', '/');
     }
 }

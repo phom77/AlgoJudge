@@ -20,6 +20,7 @@ namespace AlgoJudge.Application.Interfaces
     {
         public SandboxRunStatus Status { get; init; }
         public string Output { get; init; } = string.Empty;
+        public string ErrorOutput { get; init; } = string.Empty;
         public int ExecutionTimeMs { get; init; }
         public long MemoryUsedBytes { get; init; }
     }
@@ -28,6 +29,8 @@ namespace AlgoJudge.Application.Interfaces
     {
         Success,
         TimeLimitExceeded,
+        MemoryLimitExceeded,
+        OutputLimitExceeded,
         RuntimeError,
         SystemError 
     }

@@ -13,7 +13,7 @@ isolation from the application and host infrastructure.
 | API language value | `cpp17` |
 | Compiler | `g++` with C++17 enabled |
 | Optimisation | `-O2` |
-| Compiler image | A pinned image digest, not a floating tag |
+| Compiler image | AlgoJudge image based on pinned `gcc:14.3.0-bookworm` digest |
 | Source limit | 64 KiB by default; configurable |
 
 The API rejects every other language. The database and judge adapter should be
@@ -53,11 +53,16 @@ must be recorded with its test suite version.
   in KiB.
 - CPU time is measured inside the execution environment; Docker startup time is
   not considered solution runtime.
+- Wall time is measured by the in-container runner with a monotonic clock.
+- Peak memory is reported from `wait4/getrusage`; Docker cgroup OOM state is a
+  hard fallback for Memory Limit Exceeded.
 - Memory enforcement and measurement must use a mechanism supported by the
   deployment OS. If peak memory cannot be measured reliably, MLE must not be
   claimed as implemented.
 - The runner applies an outer watchdog timeout only as a fail-safe.
-- Stdout, stderr, process count, file size, and disk write limits are bounded.
+- Stdout and stderr are captured through independent bounded pipes. Exceeding
+  either limit stops the program without growing worker memory without bound.
+- Process count, file descriptors, core files, memory, and swap are bounded.
 
 ## 6. Sandbox requirements
 
@@ -77,6 +82,11 @@ Every execution container must have:
 Compilation may need a writable isolated build directory. Execution must use a
 separate, read-only artifact mount whenever practical.
 
+Compilation and execution always use different containers. The compile stage
+receives a writable build mount and bounded temporary filesystem. The runtime
+stage receives only the compiled artifact through a read-only mount and has no
+writable root filesystem.
+
 ## 7. Verdict mapping
 
 | Observation | Verdict |
@@ -84,6 +94,7 @@ separate, read-only artifact mount whenever practical.
 | Compiler returns non-zero | Compile Error |
 | Process exceeds runtime watchdog | Time Limit Exceeded |
 | Cgroup/resource enforcement reports memory excess | Memory Limit Exceeded |
+| Stdout or stderr exceeds its configured byte limit | Runtime Error in MVP |
 | Process returns non-zero, signal, or forbidden operation | Runtime Error |
 | Process exits normally with different normalized output | Wrong Answer |
 | Every testcase exits normally and output matches | Accepted |
