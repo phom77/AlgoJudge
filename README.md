@@ -31,6 +31,7 @@ rules and dependency direction.
 ## Current prerequisites
 
 - .NET SDK 10
+- Node.js 20.20.2 and npm 10.8.2 for the Angular client
 - Docker Desktop or a compatible Docker Engine
 - PowerShell for the provided local scripts
 
@@ -47,8 +48,17 @@ rules and dependency direction.
 Run `./scripts/test-backend-e2e.ps1` to exercise the complete backend acceptance
 flow against an ephemeral PostgreSQL database and the pinned Docker judge image.
 
-The frontend will use Angular and will be scaffolded only after the backend API
-and judge contract are stable. The MVP worker uses PostgreSQL as its durable
+## Local frontend setup
+
+1. Start the API on `http://localhost:5016`.
+2. Run `npm ci` from `web`.
+3. Run `npm start` from `web` and open `http://localhost:4200`.
+
+The Angular development proxy keeps `/api` calls and secure browser sessions on
+one origin. See [web/README.md](web/README.md) for frontend commands and
+[web/AGENTS.md](web/AGENTS.md) for architecture and security rules.
+
+The MVP worker uses PostgreSQL as its durable
 submission queue, with atomic claims, renewable leases, and bounded retries;
 Redis and RabbitMQ are not required at this stage. See
 [ADR-0007](docs/adr/0007-use-postgresql-submission-queue.md).

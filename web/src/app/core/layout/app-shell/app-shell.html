@@ -1,0 +1,22 @@
+<header class="topbar">
+  <div class="topbar__content">
+    <a class="brand" routerLink="/problems" data-testid="brand" aria-label="AlgoJudge home">
+      <span class="brand__mark" aria-hidden="true">A</span>
+      <span>AlgoJudge</span>
+    </a>
+
+    <nav class="navigation" aria-label="Primary navigation">
+      <a class="navigation__link" routerLink="/problems" routerLinkActive="navigation__link--active"
+        >Problems</a
+      >
+    </nav>
+
+    <button class="sign-in" type="button" disabled title="Authentication is coming next">
+      Sign in
+    </button>
+  </div>
+</header>
+
+<main class="main-content">
+  <router-outlet />
+</main>
