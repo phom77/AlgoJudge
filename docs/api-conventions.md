@@ -16,11 +16,12 @@ requiring the reader to inspect a controller signature.
 
 Do not combine redundant suffixes such as `RequestDto` or `ResponseDto`.
 
-## Adoption plan
+## Adoption status
 
-The scope-reset change intentionally keeps the existing `*Dto` class names to
-avoid mixing a mechanical rename with domain removal. Starting with the Problem
-Catalogue API contract, new public types use `Request`, `Response`, and `Query`.
-Existing public DTOs are renamed when their endpoint contract is redesigned.
+The MVP authentication, problem catalogue, and submission endpoints use these
+directional names. `Dto` is reserved for data that never crosses the public API
+boundary. This convention applies to class names and file names.
 
-This convention applies to class names and file names.
+Public collection endpoints return `PagedResponse<T>`. Repository pagination
+uses an internal application `PagedResult<T>` model and is never returned
+directly by a controller.

@@ -10,6 +10,7 @@ using AlgoJudge.Infrastructure.Health;
 using AlgoJudge.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -58,7 +59,13 @@ builder.Services.AddProblemDetails(options =>
 {
     options.CustomizeProblemDetails = context =>
     {
-        context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
+        if (context.ProblemDetails is ApiProblemDetails or ApiValidationProblemDetails)
+            return;
+
+        context.ProblemDetails.Extensions["code"] =
+            ApiErrorContract.GetCode(context.ProblemDetails.Type);
+        context.ProblemDetails.Extensions["traceId"] =
+            context.HttpContext.TraceIdentifier;
     };
 });
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
@@ -87,20 +94,30 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     context.HttpContext,
                     StatusCodes.Status401Unauthorized,
                     "Authentication is required.",
-                    "urn:algojudge:error:authentication",
+                    ApiErrorContract.AuthenticationType,
                     "Provide a valid bearer token to access this resource.");
             },
             OnForbidden = context => ProblemDetailsResponse.WriteAsync(
                 context.HttpContext,
                 StatusCodes.Status403Forbidden,
                 "Access is forbidden.",
-                "urn:algojudge:error:forbidden",
+                ApiErrorContract.ForbiddenType,
                 "The authenticated user cannot access this resource.")
         };
     });
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var result = new BadRequestObjectResult(
+                ApiErrorContract.CreateValidation(context));
+            result.ContentTypes.Add("application/problem+json");
+            return result;
+        };
+    })
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
@@ -145,7 +162,7 @@ builder.Services.AddRateLimiter(options =>
             context.HttpContext,
             StatusCodes.Status429TooManyRequests,
             "Too many requests.",
-            "urn:algojudge:error:rate-limit",
+            ApiErrorContract.RateLimitType,
             "The request rate limit has been exceeded. Retry later.");
     };
 });

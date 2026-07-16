@@ -25,9 +25,10 @@ Compose health check based on `pg_isready`.
 ## Errors and logging
 
 API errors use Problem Details responses with a stable status, title, type,
-detail, instance, and `traceId`. Expected application failures map to HTTP 400,
-401, 403, 404, or 409. Unexpected exceptions are logged with their stack traces
-and return a non-sensitive HTTP 500 response.
+detail, instance, `code`, and `traceId`. Validation failures additionally expose
+an `errors` dictionary. Expected application failures map to HTTP 400, 401, 403,
+404, or 409. Unexpected exceptions are logged with their stack traces and
+return a non-sensitive HTTP 500 response.
 
 API and worker console logs are JSON. Request logs and worker events use named
 properties so a log platform can index fields such as request path, status,

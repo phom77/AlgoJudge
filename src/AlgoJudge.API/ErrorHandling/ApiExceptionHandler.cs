@@ -20,22 +20,22 @@ public sealed class ApiExceptionHandler(
             RequestValidationException => (
                 StatusCodes.Status400BadRequest,
                 "The request is invalid.",
-                "urn:algojudge:error:validation",
+                ApiErrorContract.ValidationType,
                 exception.Message),
             AuthenticationException => (
                 StatusCodes.Status401Unauthorized,
                 "Authentication failed.",
-                "urn:algojudge:error:authentication",
+                ApiErrorContract.AuthenticationType,
                 exception.Message),
             ForbiddenException => (
                 StatusCodes.Status403Forbidden,
                 "Access is forbidden.",
-                "urn:algojudge:error:forbidden",
+                ApiErrorContract.ForbiddenType,
                 exception.Message),
             ResourceNotFoundException => (
                 StatusCodes.Status404NotFound,
                 "The requested resource was not found.",
-                "urn:algojudge:error:not-found",
+                ApiErrorContract.NotFoundType,
                 exception.Message),
             ConflictException or DbUpdateException
                 {
@@ -46,12 +46,12 @@ public sealed class ApiExceptionHandler(
                 } => (
                 StatusCodes.Status409Conflict,
                 "The request conflicts with the current state.",
-                "urn:algojudge:error:conflict",
+                ApiErrorContract.ConflictType,
                 exception is ConflictException ? exception.Message : "A conflicting resource already exists."),
             _ => (
                 StatusCodes.Status500InternalServerError,
                 "An unexpected error occurred.",
-                "urn:algojudge:error:internal",
+                ApiErrorContract.InternalType,
                 "The server could not complete the request.")
         };
 
@@ -75,14 +75,12 @@ public sealed class ApiExceptionHandler(
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {
             HttpContext = httpContext,
-            ProblemDetails = new ProblemDetails
-            {
-                Status = status,
-                Title = title,
-                Type = type,
-                Detail = detail,
-                Instance = httpContext.Request.Path
-            },
+            ProblemDetails = ApiErrorContract.Create(
+                httpContext,
+                status,
+                title,
+                type,
+                detail),
             Exception = exception
         });
     }

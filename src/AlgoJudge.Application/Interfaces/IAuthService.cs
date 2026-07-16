@@ -1,15 +1,11 @@
-﻿using AlgoJudge.Application.DTOs.Auth;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using AlgoJudge.Application.Contracts.Auth;
 
-namespace AlgoJudge.Application.Interfaces
+namespace AlgoJudge.Application.Interfaces;
+
+public interface IAuthService
 {
-    public interface IAuthService
-    {
-        Task<AuthResultDto> RegisterAsync(RegisterDto registerDto);
-        Task<AuthResultDto> LoginAsync(LoginDto loginDto);
-        Task<AuthResultDto> RefreshAsync(string refreshToken);
-        Task RevokeAsync(string refreshToken, Guid callerId);
-    }
+    Task<AuthResponse> RegisterAsync(RegisterRequest request);
+    Task<AuthResponse> LoginAsync(LoginRequest request);
+    Task<AuthResponse> RefreshAsync(string refreshToken);
+    Task RevokeAsync(string refreshToken, Guid callerId);
 }

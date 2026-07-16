@@ -32,7 +32,7 @@ public class ProductionBaselineTests
         var openApi = await client.GetFromJsonAsync<JsonElement>("/openapi/v1.json");
         Assert.Equal("AlgoJudge API", openApi.GetProperty("info").GetProperty("title").GetString());
         Assert.Equal("v1", openApi.GetProperty("info").GetProperty("version").GetString());
-        var cataloguePath = openApi.GetProperty("paths").GetProperty("/api/Problems");
+        var cataloguePath = openApi.GetProperty("paths").GetProperty("/api/problems");
         var successResponse = cataloguePath
             .GetProperty("get")
             .GetProperty("responses")
@@ -56,13 +56,32 @@ public class ProductionBaselineTests
         Assert.Equal("application/problem+json", invalidFilter.Content.Headers.ContentType?.MediaType);
         var validationProblem = await invalidFilter.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(400, validationProblem.GetProperty("status").GetInt32());
-        Assert.True(validationProblem.TryGetProperty("traceId", out _));
+        Assert.Equal("validation", validationProblem.GetProperty("code").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(
+            validationProblem.GetProperty("traceId").GetString()));
+
+        var invalidRequest = await client.PostAsJsonAsync(
+            "/api/auth/register",
+            new { });
+        Assert.Equal(HttpStatusCode.BadRequest, invalidRequest.StatusCode);
+        Assert.Equal("application/problem+json", invalidRequest.Content.Headers.ContentType?.MediaType);
+        var modelValidationProblem = await invalidRequest.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("urn:algojudge:error:validation",
+            modelValidationProblem.GetProperty("type").GetString());
+        Assert.Equal("validation", modelValidationProblem.GetProperty("code").GetString());
+        Assert.True(modelValidationProblem.GetProperty("errors").TryGetProperty("UserName", out _));
+
+        var invalidPage = await client.GetAsync("/api/problems?pageNumber=0");
+        Assert.Equal(HttpStatusCode.BadRequest, invalidPage.StatusCode);
 
         var authenticationFailure = await client.GetAsync("/api/submissions");
         Assert.Equal(HttpStatusCode.Unauthorized, authenticationFailure.StatusCode);
         Assert.Equal(
             "application/problem+json",
             authenticationFailure.Content.Headers.ContentType?.MediaType);
+        var authenticationProblem = await authenticationFailure.Content
+            .ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("authentication", authenticationProblem.GetProperty("code").GetString());
     }
 
     [PostgreSqlFact]

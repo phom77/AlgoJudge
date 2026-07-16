@@ -1,8 +1,8 @@
 using AlgoJudge.Application.Contracts.Problems;
-using AlgoJudge.Application.DTOs.Common;
-using AlgoJudge.Application.DTOs.Submission;
+using AlgoJudge.Application.Contracts.Submissions;
 using AlgoJudge.Application.Exceptions;
 using AlgoJudge.Application.Interfaces;
+using AlgoJudge.Application.Models.Common;
 using AlgoJudge.Application.Models.SubmissionQueue;
 using AlgoJudge.Application.Services;
 using AlgoJudge.Domain.Entities;
@@ -107,7 +107,12 @@ public class ProblemCatalogTests
 
         var exception = await Assert.ThrowsAsync<RequestValidationException>(() =>
             service.SubmitCodeAsync(
-                new CreateSubmissionDto { ProblemId = problem.Id },
+                new CreateSubmissionRequest
+                {
+                    ProblemId = problem.Id,
+                    SourceCode = "int main() { return 0; }",
+                    Language = "cpp17"
+                },
                 Guid.NewGuid()));
 
         Assert.Contains("published problems", exception.Message);

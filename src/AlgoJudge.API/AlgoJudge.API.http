@@ -1,6 +1,29 @@
 @AlgoJudge.API_HostAddress = http://localhost:5016
+@AccessToken = replace-with-access-token
 
-GET {{AlgoJudge.API_HostAddress}}/weatherforecast/
+GET {{AlgoJudge.API_HostAddress}}/api/problems?pageNumber=1&pageSize=20
 Accept: application/json
 
 ###
+
+POST {{AlgoJudge.API_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "userName": "example_user",
+  "email": "example@example.test",
+  "password": "replace-with-a-local-password",
+  "fullName": "Example User"
+}
+
+###
+
+POST {{AlgoJudge.API_HostAddress}}/api/submissions
+Authorization: Bearer {{AccessToken}}
+Content-Type: application/json
+
+{
+  "problemId": 1,
+  "sourceCode": "int main() { return 0; }",
+  "language": "cpp17"
+}

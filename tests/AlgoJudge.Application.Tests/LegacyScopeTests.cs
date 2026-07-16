@@ -1,7 +1,7 @@
-using AlgoJudge.Application.DTOs.Auth;
-using AlgoJudge.Application.DTOs.Common;
+using AlgoJudge.Application.Contracts.Auth;
 using AlgoJudge.Application.Exceptions;
 using AlgoJudge.Application.Interfaces;
+using AlgoJudge.Application.Models.Common;
 using AlgoJudge.Application.Models.SubmissionQueue;
 using AlgoJudge.Application.Services;
 using AlgoJudge.Domain.Entities;
@@ -14,8 +14,8 @@ public class LegacyScopeTests
     [Fact]
     public void PublicAndDomainModelsDoNotExposeLegacyRoleOrScoreFields()
     {
-        Assert.Null(typeof(RegisterDto).GetProperty("Role"));
-        Assert.Null(typeof(AuthResultDto).GetProperty("Role"));
+        Assert.Null(typeof(RegisterRequest).GetProperty("Role"));
+        Assert.Null(typeof(AuthResponse).GetProperty("Role"));
         Assert.Null(typeof(User).GetProperty("Role"));
         Assert.Null(typeof(Problem).GetProperty("Score"));
         Assert.Null(typeof(Problem).GetProperty("CreatedBy"));
