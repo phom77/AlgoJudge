@@ -24,6 +24,7 @@ rules and dependency direction.
 - [Problem Catalogue API](docs/problem-catalog-api.md)
 - [Problem package format](docs/problem-package-format.md)
 - [Judge specification](docs/judge-spec.md)
+- [Backend operations baseline](docs/backend-operations.md)
 - [Delivery roadmap](docs/roadmap.md)
 
 ## Current prerequisites

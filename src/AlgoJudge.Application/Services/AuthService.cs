@@ -1,4 +1,5 @@
 using AlgoJudge.Application.DTOs.Auth;
+using AlgoJudge.Application.Exceptions;
 using AlgoJudge.Application.Helpers;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Domain.Entities;
@@ -34,7 +35,7 @@ namespace AlgoJudge.Application.Services
             var user = await _userRepository.GetByUserNameAsync(dto.UserName);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-                throw new UnauthorizedAccessException("Username or password is incorrect.");
+                throw new AuthenticationException("Username or password is incorrect.");
 
             var result = await GenerateAuthResultAsync(user);
             await _unitOfWork.SaveChangesAsync();
@@ -44,10 +45,10 @@ namespace AlgoJudge.Application.Services
         public async Task<AuthResultDto> RegisterAsync(RegisterDto dto)
         {
             if (await _userRepository.GetByUserNameAsync(dto.UserName) != null)
-                throw new ArgumentException("Username is already taken.");
+                throw new ConflictException("Username is already taken.");
 
             if (await _userRepository.GetByEmailAsync(dto.Email) != null)
-                throw new ArgumentException("Email is already in use.");
+                throw new ConflictException("Email is already in use.");
 
             var user = new User
             {
@@ -72,18 +73,18 @@ namespace AlgoJudge.Application.Services
             var stored = await _refreshTokenRepository.GetByTokenAsync(hash);
 
             if (stored == null)
-                throw new UnauthorizedAccessException("Refresh token is invalid.");
+                throw new AuthenticationException("Refresh token is invalid.");
 
             if (stored.IsRevoked)
             {
                 await _refreshTokenRepository.RevokeAllByUserIdAsync(stored.UserId);
                 await _unitOfWork.SaveChangesAsync();
-                throw new UnauthorizedAccessException(
+                throw new AuthenticationException(
                     "Refresh token has been revoked. All active sessions were closed for security.");
             }
 
             if (stored.ExpiresAt <= DateTime.UtcNow)
-                throw new UnauthorizedAccessException("Refresh token has expired.");
+                throw new AuthenticationException("Refresh token has expired.");
 
             stored.IsRevoked = true;
 
@@ -98,10 +99,11 @@ namespace AlgoJudge.Application.Services
             var stored = await _refreshTokenRepository.GetByTokenAsync(hash);
 
             if (stored == null || stored.IsRevoked)
-                throw new ArgumentException("Refresh token does not exist or has been revoked.");
+                throw new RequestValidationException(
+                    "Refresh token does not exist or has been revoked.");
 
             if (stored.UserId != callerId)
-                throw new UnauthorizedAccessException(
+                throw new ForbiddenException(
                     "You are not allowed to revoke this refresh token.");
 
             stored.IsRevoked = true;

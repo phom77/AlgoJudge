@@ -1,5 +1,7 @@
 using AlgoJudge.Application.DTOs.Submission;
+using AlgoJudge.Application.DTOs.Common;
 using AlgoJudge.Application.Interfaces;
+using AlgoJudge.Application.Exceptions;
 using AlgoJudge.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +12,10 @@ namespace AlgoJudge.API.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public class SubmissionsController : ControllerBase
     {
         private readonly ISubmissionService _submissionService;
@@ -20,43 +26,39 @@ namespace AlgoJudge.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> SubmitCode([FromBody] CreateSubmissionDto dto)
+        [ProducesResponseType(typeof(SubmissionDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<SubmissionDto>> SubmitCode(
+            [FromBody] CreateSubmissionDto dto)
         {
             var userId = GetUserIdFromToken();
             if (userId == null)
-                return Unauthorized(new { message = "Token is invalid." });
+                throw new AuthenticationException("Token is invalid.");
 
-            try
-            {
-                var result = await _submissionService.SubmitCodeAsync(dto, userId.Value);
-                return CreatedAtAction(nameof(GetSubmissionById), new { id = result.Id }, result);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            var result = await _submissionService.SubmitCodeAsync(dto, userId.Value);
+            return CreatedAtAction(nameof(GetSubmissionById), new { id = result.Id }, result);
         }
 
         [HttpGet("{id:guid}")]
-        public async Task<IActionResult> GetSubmissionById(Guid id)
+        [ProducesResponseType(typeof(SubmissionDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<SubmissionDto>> GetSubmissionById(Guid id)
         {
             var userId = GetUserIdFromToken();
             if (userId == null)
-                return Unauthorized(new { message = "Token is invalid." });
+                throw new AuthenticationException("Token is invalid.");
 
-            try
-            {
-                var result = await _submissionService.GetSubmissionByIdAsync(id, userId.Value);
-                return result == null ? NotFound() : Ok(result);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
+            var result = await _submissionService.GetSubmissionByIdAsync(id, userId.Value);
+            if (result == null)
+                throw new ResourceNotFoundException($"Submission '{id}' was not found.");
+
+            return Ok(result);
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetHistory(
+        [ProducesResponseType(typeof(PagedResult<SubmissionDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PagedResult<SubmissionDto>>> GetHistory(
             [FromQuery] int? problemId,
             [FromQuery] SubmissionStatus? status,
             [FromQuery] int pageNumber = 1,
@@ -67,7 +69,7 @@ namespace AlgoJudge.API.Controllers
 
             var userId = GetUserIdFromToken();
             if (userId == null)
-                return Unauthorized(new { message = "Token is invalid." });
+                throw new AuthenticationException("Token is invalid.");
 
             var result = await _submissionService.GetHistoryAsync(
                 userId.Value, problemId, status, pageNumber, pageSize);

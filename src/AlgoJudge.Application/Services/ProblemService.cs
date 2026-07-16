@@ -1,5 +1,6 @@
 using AlgoJudge.Application.Contracts.Common;
 using AlgoJudge.Application.Contracts.Problems;
+using AlgoJudge.Application.Exceptions;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Domain.Entities;
 
@@ -24,7 +25,7 @@ namespace AlgoJudge.Application.Services
         {
             if (query.Solved.HasValue && !userId.HasValue)
             {
-                throw new ArgumentException(
+                throw new RequestValidationException(
                     "The solved filter is available only to authenticated users.");
             }
 

@@ -8,17 +8,20 @@ namespace AlgoJudge.Worker
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly SubmissionQueueOptions _options;
         private readonly WorkerIdentity _identity;
+        private readonly WorkerHealthState _healthState;
         private readonly ILogger<GraderWorker> _logger;
 
         public GraderWorker(
             IServiceScopeFactory scopeFactory,
             SubmissionQueueOptions options,
             WorkerIdentity identity,
+            WorkerHealthState healthState,
             ILogger<GraderWorker> logger)
         {
             _scopeFactory = scopeFactory;
             _options = options;
             _identity = identity;
+            _healthState = healthState;
             _logger = logger;
         }
 
@@ -29,26 +32,33 @@ namespace AlgoJudge.Worker
                 _identity.Value,
                 _options.LeaseDurationSeconds);
 
-            while (!stoppingToken.IsCancellationRequested)
+            _healthState.MarkRunning();
+            try
             {
-                try
+                while (!stoppingToken.IsCancellationRequested)
                 {
-                    var processedClaim = await TryProcessNextClaimAsync(stoppingToken);
-                    if (!processedClaim)
+                    try
+                    {
+                        var processedClaim = await TryProcessNextClaimAsync(stoppingToken);
+                        if (!processedClaim)
+                            await Task.Delay(_options.PollInterval, stoppingToken);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger.LogError(exception, "Unexpected error in the grader worker loop.");
                         await Task.Delay(_options.PollInterval, stoppingToken);
-                }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                {
-                    break;
-                }
-                catch (Exception exception)
-                {
-                    _logger.LogError(exception, "Unexpected error in the grader worker loop.");
-                    await Task.Delay(_options.PollInterval, stoppingToken);
+                    }
                 }
             }
-
-            _logger.LogInformation("Grader worker {WorkerId} stopped.", _identity.Value);
+            finally
+            {
+                _healthState.MarkStopped();
+                _logger.LogInformation("Grader worker {WorkerId} stopped.", _identity.Value);
+            }
         }
 
         private async Task<bool> TryProcessNextClaimAsync(CancellationToken stoppingToken)

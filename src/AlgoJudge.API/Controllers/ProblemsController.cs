@@ -1,5 +1,7 @@
 using AlgoJudge.Application.Contracts.Problems;
+using AlgoJudge.Application.Contracts.Common;
 using AlgoJudge.Application.Interfaces;
+using AlgoJudge.Application.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -7,6 +9,9 @@ namespace AlgoJudge.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public class ProblemsController : ControllerBase
     {
         private readonly IProblemService _problemService;
@@ -17,28 +22,28 @@ namespace AlgoJudge.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetProblems([FromQuery] ProblemListQuery query)
+        [ProducesResponseType(typeof(PagedResponse<ProblemListItemResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<PagedResponse<ProblemListItemResponse>>> GetProblems(
+            [FromQuery] ProblemListQuery query)
         {
             var userId = GetAuthenticatedUserId();
-            if (query.Solved.HasValue && !userId.HasValue)
-            {
-                return BadRequest(new
-                {
-                    message = "The solved filter is available only to authenticated users."
-                });
-            }
-
             var result = await _problemService.GetProblemsAsync(query, userId);
             return Ok(result);
         }
 
         [HttpGet("{slug}")]
-        public async Task<IActionResult> GetBySlug(string slug)
+        [ProducesResponseType(typeof(ProblemDetailResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<ProblemDetailResponse>> GetBySlug(string slug)
         {
             var result = await _problemService.GetProblemBySlugAsync(
                 slug,
                 GetAuthenticatedUserId());
-            return result == null ? NotFound() : Ok(result);
+            if (result == null)
+                throw new ResourceNotFoundException($"Problem '{slug}' was not found.");
+
+            return Ok(result);
         }
 
         private Guid? GetAuthenticatedUserId()

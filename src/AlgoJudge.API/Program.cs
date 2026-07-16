@@ -1,21 +1,67 @@
+using AlgoJudge.API.Configuration;
+using AlgoJudge.API.ErrorHandling;
+using AlgoJudge.API.Health;
+using AlgoJudge.API.Middleware;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Application.Mappings;
 using AlgoJudge.Application.Services;
 using AlgoJudge.Infrastructure.Data;
+using AlgoJudge.Infrastructure.Health;
 using AlgoJudge.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Logging.ClearProviders();
+builder.Logging.AddJsonConsole(options =>
+{
+    options.IncludeScopes = true;
+    options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ";
+    options.UseUtcTimestamp = true;
+});
 
-var jwtSettings = builder.Configuration.GetSection("Jwt");
-var secretKey = jwtSettings["SecretKey"]!;
+var connectionString = PostgreSqlHealthCheck.ValidateConnectionString(
+    builder.Configuration.GetConnectionString("DefaultConnection"),
+    "API");
+
+var jwtOptions = builder.Configuration
+    .GetSection(JwtOptions.SectionName)
+    .Get<JwtOptions>() ?? new JwtOptions();
+jwtOptions.Validate();
+
+var rateLimitingOptions = builder.Configuration
+    .GetSection(RateLimitingOptions.SectionName)
+    .Get<RateLimitingOptions>() ?? new RateLimitingOptions();
+rateLimitingOptions.Validate();
+
+var databaseOptions = builder.Configuration
+    .GetSection(DatabaseOptions.SectionName)
+    .Get<DatabaseOptions>() ?? new DatabaseOptions();
+
+builder.Services.AddSingleton(jwtOptions);
+builder.Services.AddSingleton(rateLimitingOptions);
+builder.Services.AddSingleton(databaseOptions);
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = context =>
+    {
+        context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
+    };
+});
+builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -26,10 +72,30 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtSettings["Issuer"],
-            ValidAudience = jwtSettings["Audience"],
+            ValidIssuer = jwtOptions.Issuer,
+            ValidAudience = jwtOptions.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(secretKey))
+                Encoding.UTF8.GetBytes(jwtOptions.SecretKey)),
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnChallenge = async context =>
+            {
+                context.HandleResponse();
+                await ProblemDetailsResponse.WriteAsync(
+                    context.HttpContext,
+                    StatusCodes.Status401Unauthorized,
+                    "Authentication is required.",
+                    "urn:algojudge:error:authentication",
+                    "Provide a valid bearer token to access this resource.");
+            },
+            OnForbidden = context => ProblemDetailsResponse.WriteAsync(
+                context.HttpContext,
+                StatusCodes.Status403Forbidden,
+                "Access is forbidden.",
+                "urn:algojudge:error:forbidden",
+                "The authenticated user cannot access this resource.")
         };
     });
 
@@ -37,7 +103,64 @@ builder.Services.AddAuthorization();
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-builder.Services.AddOpenApi();
+
+builder.Services.AddOpenApi("v1", options =>
+{
+    options.AddDocumentTransformer((document, _, _) =>
+    {
+        document.Info.Title = "AlgoJudge API";
+        document.Info.Version = "v1";
+        document.Info.Description =
+            "Stable backend contract for the AlgoJudge problem catalogue and submission workflow.";
+        return Task.CompletedTask;
+    });
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+    {
+        var partitionKey = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? context.Connection.RemoteIpAddress?.ToString()
+            ?? "unknown";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = rateLimitingOptions.PermitLimit,
+                Window = TimeSpan.FromSeconds(rateLimitingOptions.WindowSeconds),
+                QueueLimit = rateLimitingOptions.QueueLimit,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                AutoReplenishment = true
+            });
+    });
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+            context.HttpContext.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+
+        await ProblemDetailsResponse.WriteAsync(
+            context.HttpContext,
+            StatusCodes.Status429TooManyRequests,
+            "Too many requests.",
+            "urn:algojudge:error:rate-limit",
+            "The request rate limit has been exceeded. Retry later.");
+    };
+});
+
+builder.Services.AddHealthChecks()
+    .AddCheck(
+        "self",
+        () => HealthCheckResult.Healthy("The API process is running."),
+        tags: ["live", "ready"])
+    .AddCheck(
+        "postgresql",
+        new PostgreSqlHealthCheck(connectionString),
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready"]);
+
 builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -51,14 +174,36 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+if (databaseOptions.MigrateOnStartup)
 {
-    app.MapOpenApi();
+    await using var scope = app.Services.CreateAsyncScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await dbContext.Database.MigrateAsync();
 }
 
+app.UseMiddleware<RequestLoggingMiddleware>();
+app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
+
+app.MapOpenApi("/openapi/{documentName}.json")
+    .DisableRateLimiting();
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+    {
+        Predicate = registration => registration.Tags.Contains("live"),
+        ResponseWriter = HealthCheckResponseWriter.WriteAsync
+    })
+    .DisableRateLimiting();
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate = registration => registration.Tags.Contains("ready"),
+        ResponseWriter = HealthCheckResponseWriter.WriteAsync
+    })
+    .DisableRateLimiting();
 app.MapControllers();
 
-app.Run();
+await app.RunAsync();
+
+public partial class Program;
