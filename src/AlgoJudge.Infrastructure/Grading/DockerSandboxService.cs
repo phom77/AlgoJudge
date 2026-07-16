@@ -103,7 +103,6 @@ public sealed class DockerSandboxService : IDockerSandbox
                     "Compiler container exited successfully without producing an artifact.");
             }
 
-            MakeBinaryReadOnly(binaryFile);
             return new SandboxCompileResult { Success = true };
         }
         finally
@@ -273,21 +272,6 @@ public sealed class DockerSandboxService : IDockerSandbox
             UnixFileMode.UserWrite |
             UnixFileMode.GroupRead |
             UnixFileMode.OtherRead);
-    }
-
-    private static void MakeBinaryReadOnly(string path)
-    {
-        if (!OperatingSystem.IsLinux())
-            return;
-
-        File.SetUnixFileMode(
-            path,
-            UnixFileMode.UserRead |
-            UnixFileMode.UserExecute |
-            UnixFileMode.GroupRead |
-            UnixFileMode.GroupExecute |
-            UnixFileMode.OtherRead |
-            UnixFileMode.OtherExecute);
     }
 
     private static void TryDeleteFile(string path)
