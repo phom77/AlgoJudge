@@ -9,12 +9,14 @@ using AlgoJudge.Infrastructure.Data;
 using AlgoJudge.Infrastructure.Health;
 using AlgoJudge.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -129,6 +131,39 @@ builder.Services.AddOpenApi("v1", options =>
         document.Info.Version = "v1";
         document.Info.Description =
             "Stable backend contract for the AlgoJudge problem catalogue and submission workflow.";
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??=
+            new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            Description = "JWT access token using the Bearer scheme."
+        };
+        return Task.CompletedTask;
+    });
+    options.AddOperationTransformer((operation, context, _) =>
+    {
+        var metadata = context.Description.ActionDescriptor.EndpointMetadata;
+        var bearerRequirement = new OpenApiSecurityRequirement
+        {
+            [new OpenApiSecuritySchemeReference("Bearer", context.Document)] = []
+        };
+        var requiresBearer = metadata.OfType<IAuthorizeData>().Any() &&
+            !metadata.OfType<IAllowAnonymous>().Any();
+        if (requiresBearer)
+        {
+            operation.Security = [bearerRequirement];
+        }
+        else if (string.Equals(
+                     context.Description.ActionDescriptor.RouteValues["controller"],
+                     "Problems",
+                     StringComparison.Ordinal))
+        {
+            operation.Security = [new OpenApiSecurityRequirement(), bearerRequirement];
+        }
+
         return Task.CompletedTask;
     });
 });

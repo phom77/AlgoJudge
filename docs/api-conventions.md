@@ -25,3 +25,17 @@ boundary. This convention applies to class names and file names.
 Public collection endpoints return `PagedResponse<T>`. Repository pagination
 uses an internal application `PagedResult<T>` model and is never returned
 directly by a controller.
+
+## Contract regression workflow
+
+The approved v1 document is stored at
+`tests/AlgoJudge.Api.IntegrationTests/Snapshots/openapi-v1.json`. The API test
+suite generates `/openapi/v1.json`, removes environment-specific root server
+URLs, canonicalizes object and semantic collection ordering, and compares the
+result with this snapshot.
+
+An intentional contract change must update the relevant API documentation and
+be reviewed before running `./scripts/update-openapi-snapshot.ps1`. The snapshot
+diff is part of the change; CI must never update it automatically. Unintentional
+route, method, parameter, response, schema, enum, or security changes fail the
+test suite.

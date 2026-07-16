@@ -54,6 +54,16 @@ The versioned contract is always available at `/openapi/v1.json`. Its document
 name and API version remain stable for the lifetime of v1. Breaking route or
 schema changes require a new API document version.
 
+OpenAPI declares the JWT bearer scheme. Submission endpoints and refresh-token
+revocation require it; problem catalogue endpoints declare it as optional so a
+client can send a token to receive solved state. CI compares the generated
+document with the approved semantic snapshot. After reviewing an intentional
+contract change, regenerate it with:
+
+```powershell
+./scripts/update-openapi-snapshot.ps1
+```
+
 ## Database migrations
 
 `Database:MigrateOnStartup` defaults to `false`. Compose enables it for the
