@@ -1,4 +1,4 @@
-using AlgoJudge.Application.DTOs.Common;
+using AlgoJudge.Application.Models.Common;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
 

@@ -1,3 +1,4 @@
+using AlgoJudge.API.ErrorHandling;
 using AlgoJudge.Application.Contracts.Problems;
 using AlgoJudge.Application.Contracts.Common;
 using AlgoJudge.Application.Interfaces;
@@ -7,11 +8,10 @@ using System.Security.Claims;
 
 namespace AlgoJudge.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/problems")]
     [ApiController]
-    [Produces("application/json")]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(typeof(ApiProblemDetails), StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(typeof(ApiProblemDetails), StatusCodes.Status500InternalServerError)]
     public class ProblemsController : ControllerBase
     {
         private readonly IProblemService _problemService;
@@ -23,7 +23,7 @@ namespace AlgoJudge.API.Controllers
 
         [HttpGet]
         [ProducesResponseType(typeof(PagedResponse<ProblemListItemResponse>), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiValidationProblemDetails), StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<PagedResponse<ProblemListItemResponse>>> GetProblems(
             [FromQuery] ProblemListQuery query)
         {
@@ -34,7 +34,7 @@ namespace AlgoJudge.API.Controllers
 
         [HttpGet("{slug}")]
         [ProducesResponseType(typeof(ProblemDetailResponse), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiProblemDetails), StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ProblemDetailResponse>> GetBySlug(string slug)
         {
             var result = await _problemService.GetProblemBySlugAsync(

@@ -14,7 +14,7 @@ state when a valid access token is present.
 |---|---|---|---|
 | `search` | string | none | Case-insensitive match against title or slug. Maximum 100 characters. |
 | `difficulty` | `Easy`, `Medium`, `Hard` | none | Exact difficulty filter. |
-| `tags` | string, repeatable | none | Every supplied tag slug must belong to the problem. |
+| `tags` | string, repeatable | none | At most 10 tag slugs, each at most 50 characters; every supplied tag must belong to the problem. |
 | `solved` | boolean | none | Filters by Accepted-submission history. Requires authentication. |
 | `pageNumber` | integer | `1` | Must be at least 1. |
 | `pageSize` | integer | `20` | Must be between 1 and 100. |

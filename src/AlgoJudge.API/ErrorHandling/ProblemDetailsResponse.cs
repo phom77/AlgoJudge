@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
-
 namespace AlgoJudge.API.ErrorHandling;
 
 public static class ProblemDetailsResponse
@@ -12,14 +10,12 @@ public static class ProblemDetailsResponse
         string detail)
     {
         context.Response.StatusCode = status;
-        var problemDetails = new ProblemDetails
-        {
-            Status = status,
-            Title = title,
-            Type = type,
-            Detail = detail,
-            Instance = context.Request.Path
-        };
+        var problemDetails = ApiErrorContract.Create(
+            context,
+            status,
+            title,
+            type,
+            detail);
 
         var service = context.RequestServices.GetRequiredService<IProblemDetailsService>();
         var written = await service.TryWriteAsync(new ProblemDetailsContext

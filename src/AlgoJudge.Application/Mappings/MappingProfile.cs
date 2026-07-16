@@ -1,15 +1,20 @@
-using AlgoJudge.Application.DTOs.Submission;
+using AlgoJudge.Application.Contracts.Submissions;
 using AlgoJudge.Domain.Entities;
 using AutoMapper;
 
-namespace AlgoJudge.Application.Mappings
+namespace AlgoJudge.Application.Mappings;
+
+public sealed class MappingProfile : Profile
 {
-    public class MappingProfile : Profile
+    public MappingProfile()
     {
-        public MappingProfile()
-        {
-            CreateMap<Submission, SubmissionDto>();
-            CreateMap<CreateSubmissionDto, Submission>();
-        }
+        CreateMap<Submission, SubmissionResponse>()
+            .ForMember(
+                response => response.ExecutionTimeMs,
+                options => options.MapFrom(submission => submission.ExecutionTime))
+            .ForMember(
+                response => response.MemoryUsedKb,
+                options => options.MapFrom(submission => submission.MemoryUsed));
+        CreateMap<CreateSubmissionRequest, Submission>();
     }
 }

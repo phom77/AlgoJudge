@@ -1,4 +1,4 @@
-using AlgoJudge.Application.DTOs.Auth;
+using AlgoJudge.Application.Contracts.Auth;
 using AlgoJudge.Application.Exceptions;
 using AlgoJudge.Application.Helpers;
 using AlgoJudge.Application.Interfaces;
@@ -30,11 +30,11 @@ namespace AlgoJudge.Application.Services
             _configuration = configuration;
         }
 
-        public async Task<AuthResultDto> LoginAsync(LoginDto dto)
+        public async Task<AuthResponse> LoginAsync(LoginRequest request)
         {
-            var user = await _userRepository.GetByUserNameAsync(dto.UserName);
+            var user = await _userRepository.GetByUserNameAsync(request.UserName);
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+            if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
                 throw new AuthenticationException("Username or password is incorrect.");
 
             var result = await GenerateAuthResultAsync(user);
@@ -42,21 +42,21 @@ namespace AlgoJudge.Application.Services
             return result;
         }
 
-        public async Task<AuthResultDto> RegisterAsync(RegisterDto dto)
+        public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
         {
-            if (await _userRepository.GetByUserNameAsync(dto.UserName) != null)
+            if (await _userRepository.GetByUserNameAsync(request.UserName) != null)
                 throw new ConflictException("Username is already taken.");
 
-            if (await _userRepository.GetByEmailAsync(dto.Email) != null)
+            if (await _userRepository.GetByEmailAsync(request.Email) != null)
                 throw new ConflictException("Email is already in use.");
 
             var user = new User
             {
                 Id = Guid.NewGuid(),
-                UserName = dto.UserName,
-                Email = dto.Email,
-                FullName = dto.FullName,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+                UserName = request.UserName,
+                Email = request.Email,
+                FullName = request.FullName,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -67,7 +67,7 @@ namespace AlgoJudge.Application.Services
             return result;
         }
 
-        public async Task<AuthResultDto> RefreshAsync(string refreshToken)
+        public async Task<AuthResponse> RefreshAsync(string refreshToken)
         {
             var hash = TokenHelper.Hash(refreshToken);
             var stored = await _refreshTokenRepository.GetByTokenAsync(hash);
@@ -110,7 +110,7 @@ namespace AlgoJudge.Application.Services
             await _unitOfWork.SaveChangesAsync();
         }
 
-        private async Task<AuthResultDto> GenerateAuthResultAsync(User user)
+        private async Task<AuthResponse> GenerateAuthResultAsync(User user)
         {
             var accessToken = GenerateJwtToken(user);
             var refreshToken = TokenHelper.GenerateRefreshToken();
@@ -127,9 +127,9 @@ namespace AlgoJudge.Application.Services
                 IsRevoked = false
             });
 
-            return new AuthResultDto
+            return new AuthResponse
             {
-                Token = accessToken,
+                AccessToken = accessToken,
                 RefreshToken = refreshToken,
                 UserName = user.UserName,
                 Email = user.Email,

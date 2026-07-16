@@ -1,18 +1,15 @@
-using AlgoJudge.Application.DTOs.Common;
-using AlgoJudge.Application.DTOs.Submission;
-using AlgoJudge.Domain.Enums;
+using AlgoJudge.Application.Contracts.Common;
+using AlgoJudge.Application.Contracts.Submissions;
 
-namespace AlgoJudge.Application.Interfaces
+namespace AlgoJudge.Application.Interfaces;
+
+public interface ISubmissionService
 {
-    public interface ISubmissionService
-    {
-        Task<SubmissionDto> SubmitCodeAsync(CreateSubmissionDto dto, Guid userId);
-        Task<SubmissionDto?> GetSubmissionByIdAsync(Guid id, Guid requesterId);
-        Task<PagedResult<SubmissionDto>> GetHistoryAsync(
-            Guid userId,
-            int? problemId,
-            SubmissionStatus? status,
-            int pageNumber,
-            int pageSize);
-    }
+    Task<SubmissionResponse> SubmitCodeAsync(
+        CreateSubmissionRequest request,
+        Guid userId);
+    Task<SubmissionResponse?> GetSubmissionByIdAsync(Guid id, Guid requesterId);
+    Task<PagedResponse<SubmissionResponse>> GetHistoryAsync(
+        Guid userId,
+        SubmissionHistoryQuery query);
 }

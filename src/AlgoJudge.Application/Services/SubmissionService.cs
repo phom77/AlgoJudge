@@ -1,85 +1,133 @@
-using AlgoJudge.Application.DTOs.Common;
-using AlgoJudge.Application.DTOs.Submission;
+using AlgoJudge.Application.Contracts.Common;
+using AlgoJudge.Application.Contracts.Submissions;
 using AlgoJudge.Application.Exceptions;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
 using AutoMapper;
+using System.Text;
 
-namespace AlgoJudge.Application.Services
+namespace AlgoJudge.Application.Services;
+
+public sealed class SubmissionService : ISubmissionService
 {
-    public class SubmissionService : ISubmissionService
+    private readonly ISubmissionRepository _submissionRepository;
+    private readonly IProblemRepository _problemRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMapper _mapper;
+
+    public SubmissionService(
+        ISubmissionRepository submissionRepository,
+        IProblemRepository problemRepository,
+        IUnitOfWork unitOfWork,
+        IMapper mapper)
     {
-        private readonly ISubmissionRepository _submissionRepository;
-        private readonly IProblemRepository _problemRepository;
-        private readonly IUnitOfWork _unitOfWork;
-        private readonly IMapper _mapper;
+        _submissionRepository = submissionRepository;
+        _problemRepository = problemRepository;
+        _unitOfWork = unitOfWork;
+        _mapper = mapper;
+    }
 
-        public SubmissionService(
-            ISubmissionRepository submissionRepository,
-            IProblemRepository problemRepository,
-            IUnitOfWork unitOfWork,
-            IMapper mapper)
+    public async Task<PagedResponse<SubmissionResponse>> GetHistoryAsync(
+        Guid userId,
+        SubmissionHistoryQuery query)
+    {
+        ValidatePagination(query.PageNumber, query.PageSize);
+        if (query.ProblemId is <= 0)
+            throw new RequestValidationException("Problem ID must be greater than zero.");
+        if (query.Status.HasValue && !Enum.IsDefined(query.Status.Value))
+            throw new RequestValidationException("Submission status is invalid.");
+
+        var pagedEntities = await _submissionRepository.GetPagedAsync(
+            userId,
+            query.ProblemId,
+            query.Status,
+            query.PageNumber,
+            query.PageSize);
+
+        return new PagedResponse<SubmissionResponse>
         {
-            _submissionRepository = submissionRepository;
-            _problemRepository = problemRepository;
-            _unitOfWork = unitOfWork;
-            _mapper = mapper;
+            Items = _mapper.Map<IReadOnlyCollection<SubmissionResponse>>(
+                pagedEntities.Items),
+            TotalCount = pagedEntities.TotalCount,
+            PageNumber = pagedEntities.PageNumber,
+            PageSize = pagedEntities.PageSize
+        };
+    }
+
+    public async Task<SubmissionResponse?> GetSubmissionByIdAsync(
+        Guid id,
+        Guid requesterId)
+    {
+        var submission = await _submissionRepository.GetByIdAsync(id);
+        if (submission == null)
+            return null;
+
+        if (submission.UserId != requesterId)
+        {
+            throw new ForbiddenException(
+                "You cannot access another user's submission.");
         }
 
-        public async Task<PagedResult<SubmissionDto>> GetHistoryAsync(
-            Guid userId,
-            int? problemId,
-            SubmissionStatus? status,
-            int pageNumber,
-            int pageSize)
-        {
-            var pagedEntities = await _submissionRepository.GetPagedAsync(
-                userId, problemId, status, pageNumber, pageSize);
+        return _mapper.Map<SubmissionResponse>(submission);
+    }
 
-            return new PagedResult<SubmissionDto>
-            {
-                Items = _mapper.Map<IEnumerable<SubmissionDto>>(pagedEntities.Items).ToList(),
-                TotalCount = pagedEntities.TotalCount,
-                PageNumber = pagedEntities.PageNumber,
-                PageSize = pagedEntities.PageSize
-            };
+    public async Task<SubmissionResponse> SubmitCodeAsync(
+        CreateSubmissionRequest request,
+        Guid userId)
+    {
+        ValidateSubmissionRequest(request);
+
+        var problem = await _problemRepository.GetByIdAsync(request.ProblemId);
+        if (problem == null)
+        {
+            throw new RequestValidationException(
+                $"Problem with ID {request.ProblemId} does not exist.");
         }
 
-        public async Task<SubmissionDto?> GetSubmissionByIdAsync(Guid id, Guid requesterId)
+        if (problem.Status != ProblemStatus.Published)
         {
-            var submission = await _submissionRepository.GetByIdAsync(id);
-            if (submission == null) return null;
-
-            if (submission.UserId != requesterId)
-                throw new ForbiddenException(
-                    "You cannot access another user's submission.");
-
-            return _mapper.Map<SubmissionDto>(submission);
+            throw new RequestValidationException(
+                "Submissions are accepted only for published problems.");
         }
 
-        public async Task<SubmissionDto> SubmitCodeAsync(CreateSubmissionDto dto, Guid userId)
+        var submission = _mapper.Map<Submission>(request);
+        submission.UserId = userId;
+        submission.Status = SubmissionStatus.Pending;
+        submission.CreatedAt = DateTime.UtcNow;
+        submission.ExecutionTime = 0;
+        submission.MemoryUsed = 0;
+
+        await _submissionRepository.AddAsync(submission);
+        await _unitOfWork.SaveChangesAsync();
+
+        return _mapper.Map<SubmissionResponse>(submission);
+    }
+
+    private static void ValidateSubmissionRequest(CreateSubmissionRequest request)
+    {
+        if (request.ProblemId < 1)
+            throw new RequestValidationException("Problem ID must be greater than zero.");
+
+        if (!string.Equals(request.Language, "cpp17", StringComparison.Ordinal))
+            throw new RequestValidationException("Language must be 'cpp17'.");
+
+        if (string.IsNullOrWhiteSpace(request.SourceCode))
+            throw new RequestValidationException("Source code is required.");
+
+        if (Encoding.UTF8.GetByteCount(request.SourceCode) >
+            SubmissionContractLimits.MaxSourceCodeBytes)
         {
-            var problem = await _problemRepository.GetByIdAsync(dto.ProblemId);
-            if (problem == null)
-                throw new RequestValidationException(
-                    $"Problem with ID {dto.ProblemId} does not exist.");
-
-            if (problem.Status != ProblemStatus.Published)
-                throw new RequestValidationException(
-                    "Submissions are accepted only for published problems.");
-
-            var submission = _mapper.Map<Submission>(dto);
-            submission.UserId = userId;
-            submission.Status = SubmissionStatus.Pending;
-            submission.CreatedAt = DateTime.UtcNow;
-            submission.ExecutionTime = 0;
-            submission.MemoryUsed = 0;
-
-            await _submissionRepository.AddAsync(submission);
-            await _unitOfWork.SaveChangesAsync();
-
-            return _mapper.Map<SubmissionDto>(submission);
+            throw new RequestValidationException(
+                $"Source code must not exceed {SubmissionContractLimits.MaxSourceCodeBytes} UTF-8 bytes.");
         }
+    }
+
+    private static void ValidatePagination(int pageNumber, int pageSize)
+    {
+        if (pageNumber < 1)
+            throw new RequestValidationException("Page number must be at least 1.");
+        if (pageSize is < 1 or > 100)
+            throw new RequestValidationException("Page size must be between 1 and 100.");
     }
 }

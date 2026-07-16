@@ -22,6 +22,7 @@ rules and dependency direction.
 - [Product requirements](docs/requirements.md)
 - [Domain model](docs/domain-model.md)
 - [Problem Catalogue API](docs/problem-catalog-api.md)
+- [Authentication and Submission API](docs/auth-submission-api.md)
 - [Problem package format](docs/problem-package-format.md)
 - [Judge specification](docs/judge-spec.md)
 - [Backend operations baseline](docs/backend-operations.md)

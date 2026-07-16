@@ -23,6 +23,8 @@ namespace AlgoJudge.Application.Services
             ProblemListQuery query,
             Guid? userId)
         {
+            ValidateListQuery(query);
+
             if (query.Solved.HasValue && !userId.HasValue)
             {
                 throw new RequestValidationException(
@@ -140,6 +142,22 @@ namespace AlgoJudge.Application.Services
                     Name = tag.Name
                 })
                 .ToArray();
+        }
+
+        private static void ValidateListQuery(ProblemListQuery query)
+        {
+            if (query.PageNumber < 1)
+                throw new RequestValidationException("Page number must be at least 1.");
+            if (query.PageSize is < 1 or > 100)
+                throw new RequestValidationException("Page size must be between 1 and 100.");
+            if (query.Search?.Length > 100)
+                throw new RequestValidationException("Search must not exceed 100 characters.");
+            if (query.Difficulty.HasValue && !Enum.IsDefined(query.Difficulty.Value))
+                throw new RequestValidationException("Difficulty is invalid.");
+            if (query.Tags is { Length: > 10 })
+                throw new RequestValidationException("No more than 10 tags may be supplied.");
+            if (query.Tags?.Any(tag => tag?.Length > 50) == true)
+                throw new RequestValidationException("Tag slugs must not exceed 50 characters.");
         }
     }
 }
