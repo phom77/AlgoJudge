@@ -7,6 +7,7 @@ public static class ApiErrorContract
     public const string ValidationType = "urn:algojudge:error:validation";
     public const string AuthenticationType = "urn:algojudge:error:authentication";
     public const string ForbiddenType = "urn:algojudge:error:forbidden";
+    public const string CsrfType = "urn:algojudge:error:csrf";
     public const string NotFoundType = "urn:algojudge:error:not-found";
     public const string ConflictType = "urn:algojudge:error:conflict";
     public const string RateLimitType = "urn:algojudge:error:rate-limit";
@@ -53,6 +54,7 @@ public static class ApiErrorContract
             ValidationType => "validation",
             AuthenticationType => "authentication",
             ForbiddenType => "forbidden",
+            CsrfType => "csrf",
             NotFoundType => "not-found",
             ConflictType => "conflict",
             RateLimitType => "rate-limit",

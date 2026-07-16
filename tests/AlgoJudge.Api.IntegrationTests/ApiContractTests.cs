@@ -76,23 +76,48 @@ public class ApiContractTests
             schemas.EnumerateObject().Select(schema => schema.Name),
             name => name.Contains("JudgeTestCase", StringComparison.OrdinalIgnoreCase));
 
-        var bearerScheme = openApi.RootElement
+        var cookieScheme = openApi.RootElement
             .GetProperty("components")
             .GetProperty("securitySchemes")
-            .GetProperty("Bearer");
-        Assert.Equal("http", bearerScheme.GetProperty("type").GetString());
-        Assert.Equal("bearer", bearerScheme.GetProperty("scheme").GetString());
-        Assert.Equal("JWT", bearerScheme.GetProperty("bearerFormat").GetString());
+            .GetProperty("CookieSession");
+        Assert.Equal("apiKey", cookieScheme.GetProperty("type").GetString());
+        Assert.Equal("cookie", cookieScheme.GetProperty("in").GetString());
+        Assert.Equal(
+            "__Host-algojudge-access",
+            cookieScheme.GetProperty("name").GetString());
 
-        AssertBearerRequired(paths, "/api/submissions", "get");
-        AssertBearerRequired(paths, "/api/submissions", "post");
-        AssertBearerRequired(paths, "/api/submissions/{id}", "get");
-        AssertBearerRequired(paths, "/api/auth/revoke", "post");
-        Assert.False(paths.GetProperty("/api/auth/register")
-            .GetProperty("post")
-            .TryGetProperty("security", out _));
-        AssertOptionalBearer(paths, "/api/problems", "get");
-        AssertOptionalBearer(paths, "/api/problems/{slug}", "get");
+        AssertSecurityRequired(paths, "/api/submissions", "get", "CookieSession");
+        AssertSecurityRequired(
+            paths,
+            "/api/submissions",
+            "post",
+            "CookieSession",
+            "AntiforgeryHeader");
+        AssertSecurityRequired(
+            paths,
+            "/api/auth/register",
+            "post",
+            "AntiforgeryHeader");
+        AssertSecurityRequired(
+            paths,
+            "/api/auth/refresh",
+            "post",
+            "RefreshCookie",
+            "AntiforgeryHeader");
+        AssertSecurityRequired(
+            paths,
+            "/api/auth/revoke",
+            "post",
+            "CookieSession",
+            "RefreshCookie",
+            "AntiforgeryHeader");
+        AssertSecurityRequired(
+            paths,
+            "/api/submissions/{id}",
+            "get",
+            "CookieSession");
+        AssertOptionalCookie(paths, "/api/problems", "get");
+        AssertOptionalCookie(paths, "/api/problems/{slug}", "get");
     }
 
     [Fact]
@@ -100,6 +125,7 @@ public class ApiContractTests
     {
         await using var factory = new AlgoJudgeApiFactory(UnusedConnectionString);
         using var client = CreateClient(factory);
+        await ApiTestClientSecurity.EnableAntiforgeryAsync(client);
 
         var response = await client.PostAsJsonAsync("/api/auth/register", new { });
 
@@ -153,10 +179,11 @@ public class ApiContractTests
             });
     }
 
-    private static void AssertBearerRequired(
+    private static void AssertSecurityRequired(
         JsonElement paths,
         string path,
-        string method)
+        string method,
+        params string[] schemes)
     {
         var requirements = paths.GetProperty(path)
             .GetProperty(method)
@@ -164,10 +191,12 @@ public class ApiContractTests
             .EnumerateArray()
             .ToArray();
         var requirement = Assert.Single(requirements);
-        Assert.True(requirement.TryGetProperty("Bearer", out _));
+        Assert.Equal(schemes.Length, requirement.EnumerateObject().Count());
+        Assert.All(schemes, scheme =>
+            Assert.True(requirement.TryGetProperty(scheme, out _)));
     }
 
-    private static void AssertOptionalBearer(
+    private static void AssertOptionalCookie(
         JsonElement paths,
         string path,
         string method)
@@ -181,6 +210,6 @@ public class ApiContractTests
         Assert.Contains(requirements, requirement =>
             !requirement.EnumerateObject().Any());
         Assert.Contains(requirements, requirement =>
-            requirement.TryGetProperty("Bearer", out _));
+            requirement.TryGetProperty("CookieSession", out _));
     }
 }

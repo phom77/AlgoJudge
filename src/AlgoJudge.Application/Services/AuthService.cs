@@ -2,6 +2,7 @@ using AlgoJudge.Application.Contracts.Auth;
 using AlgoJudge.Application.Exceptions;
 using AlgoJudge.Application.Helpers;
 using AlgoJudge.Application.Interfaces;
+using AlgoJudge.Application.Models.Auth;
 using AlgoJudge.Domain.Entities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -30,7 +31,7 @@ namespace AlgoJudge.Application.Services
             _configuration = configuration;
         }
 
-        public async Task<AuthResponse> LoginAsync(LoginRequest request)
+        public async Task<AuthSessionResult> LoginAsync(LoginRequest request)
         {
             var user = await _userRepository.GetByUserNameAsync(request.UserName);
 
@@ -42,7 +43,7 @@ namespace AlgoJudge.Application.Services
             return result;
         }
 
-        public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
+        public async Task<AuthSessionResult> RegisterAsync(RegisterRequest request)
         {
             if (await _userRepository.GetByUserNameAsync(request.UserName) != null)
                 throw new ConflictException("Username is already taken.");
@@ -67,7 +68,7 @@ namespace AlgoJudge.Application.Services
             return result;
         }
 
-        public async Task<AuthResponse> RefreshAsync(string refreshToken)
+        public async Task<AuthSessionResult> RefreshAsync(string refreshToken)
         {
             var hash = TokenHelper.Hash(refreshToken);
             var stored = await _refreshTokenRepository.GetByTokenAsync(hash);
@@ -110,7 +111,7 @@ namespace AlgoJudge.Application.Services
             await _unitOfWork.SaveChangesAsync();
         }
 
-        private async Task<AuthResponse> GenerateAuthResultAsync(User user)
+        private async Task<AuthSessionResult> GenerateAuthResultAsync(User user)
         {
             var accessToken = GenerateJwtToken(user);
             var refreshToken = TokenHelper.GenerateRefreshToken();
@@ -127,14 +128,13 @@ namespace AlgoJudge.Application.Services
                 IsRevoked = false
             });
 
-            return new AuthResponse
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken,
-                UserName = user.UserName,
-                Email = user.Email,
-                ExpiresAt = DateTime.UtcNow.AddHours(expiresInHours)
-            };
+            return new AuthSessionResult(
+                accessToken,
+                refreshToken,
+                user.UserName,
+                user.Email,
+                DateTime.UtcNow.AddHours(expiresInHours),
+                DateTime.UtcNow.AddDays(refreshExpiryDays));
         }
 
         private string GenerateJwtToken(User user)

@@ -7,7 +7,6 @@ using AlgoJudge.Domain.Enums;
 using AlgoJudge.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -63,9 +62,7 @@ public sealed class BackendAcceptanceTests
         Assert.Null(anonymousDetail.IsSolved);
         Assert.Equal("2", Assert.Single(anonymousDetail.Samples).Input.Trim());
 
-        var account = await RegisterAndLoginAsync(client, "owner");
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", account.AccessToken);
+        _ = await RegisterAndLoginAsync(client, "owner");
 
         var unsolvedDetail = await GetJsonAsync<ProblemDetailResponse>(
             client,
@@ -148,21 +145,16 @@ public sealed class BackendAcceptanceTests
             $"/api/problems?search={problem.Slug}&solved=true");
         Assert.True(Assert.Single(solvedCatalogue.Items).IsSolved);
 
-        var otherAccount = await RegisterAndLoginAsync(client, "other");
+        using var otherClient = CreateClient(factory);
+        _ = await RegisterAndLoginAsync(otherClient, "other");
         var submissionId = expectedVerdicts.Keys.First();
-        using var forbiddenRequest = CreateAuthenticatedRequest(
-            HttpMethod.Get,
-            $"/api/submissions/{submissionId}",
-            otherAccount.AccessToken);
-        var forbiddenResponse = await client.SendAsync(forbiddenRequest);
+        var forbiddenResponse = await otherClient.GetAsync(
+            $"/api/submissions/{submissionId}");
         Assert.Equal(HttpStatusCode.Forbidden, forbiddenResponse.StatusCode);
         AssertPrivateDataAbsent(await forbiddenResponse.Content.ReadAsStringAsync());
 
-        using var otherHistoryRequest = CreateAuthenticatedRequest(
-            HttpMethod.Get,
-            "/api/submissions?pageSize=100",
-            otherAccount.AccessToken);
-        var otherHistoryResponse = await client.SendAsync(otherHistoryRequest);
+        var otherHistoryResponse = await otherClient.GetAsync(
+            "/api/submissions?pageSize=100");
         otherHistoryResponse.EnsureSuccessStatusCode();
         var otherHistoryJson = await otherHistoryResponse.Content.ReadAsStringAsync();
         Assert.DoesNotContain(
@@ -183,9 +175,7 @@ public sealed class BackendAcceptanceTests
         await using var factory = new EndToEndApiFactory(database.ConnectionString, logs);
         using var client = CreateClient(factory);
         var problem = await SeedProblemAsync(database);
-        var account = await RegisterAndLoginAsync(client, "workers");
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", account.AccessToken);
+        _ = await RegisterAndLoginAsync(client, "workers");
         var created = await SubmitAsync(client, problem.Id, AcceptedSource);
         var sandbox = new CountingDockerSandbox(
             EndToEndWorkerHost.CreateDockerSandbox());
@@ -224,9 +214,7 @@ public sealed class BackendAcceptanceTests
         await using var factory = new EndToEndApiFactory(database.ConnectionString, logs);
         using var client = CreateClient(factory);
         var problem = await SeedProblemAsync(database);
-        var account = await RegisterAndLoginAsync(client, "recovery");
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", account.AccessToken);
+        _ = await RegisterAndLoginAsync(client, "recovery");
         var created = await SubmitAsync(client, problem.Id, AcceptedSource);
 
         await using var crashedContext = database.CreateContext();
@@ -324,6 +312,7 @@ public sealed class BackendAcceptanceTests
         HttpClient client,
         string prefix)
     {
+        await EnableAntiforgeryAsync(client);
         var unique = Guid.NewGuid().ToString("N");
         var userName = $"{prefix}_{unique}";
         const string password = "test-password-123";
@@ -344,6 +333,19 @@ public sealed class BackendAcceptanceTests
         await AssertSuccessAsync(loginResponse, "login test account");
         return Deserialize<AuthResponse>(
             await loginResponse.Content.ReadAsStringAsync());
+    }
+
+    private static async Task EnableAntiforgeryAsync(HttpClient client)
+    {
+        var response = await client.GetAsync("/api/auth/csrf");
+        response.EnsureSuccessStatusCode();
+        var cookieHeader = response.Headers.GetValues("Set-Cookie")
+            .Single(value => value.StartsWith("XSRF-TOKEN=", StringComparison.Ordinal));
+        var encodedToken = cookieHeader.Split(';', 2)[0].Split('=', 2)[1];
+        client.DefaultRequestHeaders.Remove("X-XSRF-TOKEN");
+        client.DefaultRequestHeaders.Add(
+            "X-XSRF-TOKEN",
+            Uri.UnescapeDataString(encodedToken));
     }
 
     private static async Task AssertSuccessAsync(
@@ -415,25 +417,14 @@ public sealed class BackendAcceptanceTests
         Assert.DoesNotContain(SourceSentinel, value, StringComparison.Ordinal);
     }
 
-    private static HttpRequestMessage CreateAuthenticatedRequest(
-        HttpMethod method,
-        string path,
-        string accessToken)
-    {
-        var request = new HttpRequestMessage(method, path);
-        request.Headers.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            accessToken);
-        return request;
-    }
-
     private static HttpClient CreateClient(EndToEndApiFactory factory)
     {
         return factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing
             .WebApplicationFactoryClientOptions
         {
             BaseAddress = new Uri("https://localhost"),
-            AllowAutoRedirect = false
+            AllowAutoRedirect = false,
+            HandleCookies = true
         });
     }
 

@@ -12,28 +12,45 @@ enums are serialized as strings.
 
 The request contains `userName`, `email`, `password`, and `fullName`.
 Registration returns `200 OK` with an `AuthResponse`. A duplicate username or
-email returns `409 Conflict`.
+email returns `409 Conflict`. Access and refresh credentials are issued only as
+secure HttpOnly cookies and never appear in the JSON response.
 
 ### Login
 
 `POST /api/auth/login`
 
 The request contains `userName` and `password`. Valid credentials return
-`200 OK` with an `AuthResponse`; invalid credentials return `401 Unauthorized`.
+`200 OK` with an `AuthResponse` and replace the credential cookies; invalid
+credentials return `401 Unauthorized`.
 
-### Refresh and revoke
+### Browser session and antiforgery
 
-- `POST /api/auth/refresh` accepts a `refreshToken` and returns a new
-  `AuthResponse` with `200 OK`.
-- `POST /api/auth/revoke` requires bearer authentication, accepts a
-  `refreshToken`, and returns `204 No Content`.
+- `GET /api/auth/csrf` issues the antiforgery cookies required before an unsafe
+  cookie-authenticated request. Angular reads `XSRF-TOKEN` and sends it in the
+  `X-XSRF-TOKEN` header.
+- `GET /api/auth/session` requires the access cookie and returns the current
+  `AuthResponse` without credentials.
+- `POST /api/auth/refresh` reads and rotates the HttpOnly refresh cookie. It has
+  no request body and returns a new `AuthResponse` with `200 OK`.
+- `POST /api/auth/revoke` reads the HttpOnly credential cookies, revokes the
+  refresh token, deletes both cookies, and returns `204 No Content`. It has no
+  request body.
 
-`AuthResponse` contains `accessToken`, `refreshToken`, `tokenType`, `userName`,
-`email`, and `expiresAt`. `tokenType` is `Bearer`.
+`AuthResponse` contains only `userName`, `email`, and `expiresAt`. The access
+cookie is host-only with path `/`; the refresh cookie is restricted to
+`/api/auth`. Both are `HttpOnly`, `Secure`, `SameSite=Strict`, and omit the
+`Domain` attribute. The SPA and API must use one origin; local Angular
+development uses an API proxy.
+
+All unsafe `/api` requests authenticated by cookies require antiforgery
+validation. Missing or invalid antiforgery state returns `403` with code
+`csrf`. Machine clients that explicitly send a Bearer header remain supported
+and are not subject to browser-cookie antiforgery validation.
 
 ## Submissions
 
-Every submission endpoint requires bearer authentication.
+Every submission endpoint requires the secure access cookie (or an explicit
+Bearer credential for a non-browser client).
 
 ### Create a submission
 
@@ -84,7 +101,7 @@ Errors use `application/problem+json` and contain the RFC 7807 fields `type`,
 `title`, `status`, `detail`, and `instance`, plus stable `code` and `traceId`
 fields. Validation responses additionally contain an `errors` dictionary.
 
-The stable error codes are `validation`, `authentication`, `forbidden`,
+The stable error codes are `validation`, `authentication`, `forbidden`, `csrf`,
 `not-found`, `conflict`, `rate-limit`, and `internal`. Error responses never
 contain stack traces, secrets, source code, or hidden testcase content.
 

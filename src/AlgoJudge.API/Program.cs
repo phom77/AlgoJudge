@@ -2,6 +2,7 @@ using AlgoJudge.API.Configuration;
 using AlgoJudge.API.ErrorHandling;
 using AlgoJudge.API.Health;
 using AlgoJudge.API.Middleware;
+using AlgoJudge.API.Security;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Application.Mappings;
 using AlgoJudge.Application.Services;
@@ -9,6 +10,7 @@ using AlgoJudge.Infrastructure.Data;
 using AlgoJudge.Infrastructure.Health;
 using AlgoJudge.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
@@ -89,6 +91,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
         options.Events = new JwtBearerEvents
         {
+            OnMessageReceived = context =>
+            {
+                if (string.IsNullOrWhiteSpace(context.Token) &&
+                    context.Request.Cookies.TryGetValue(
+                        AuthCookieManager.AccessCookieName,
+                        out var accessToken))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            },
             OnChallenge = async context =>
             {
                 context.HandleResponse();
@@ -109,6 +123,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = AuthCookieManager.AntiforgeryHeaderName;
+    options.Cookie.Name = AuthCookieManager.AntiforgeryCookieName;
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.Path = "/";
+    options.Cookie.IsEssential = true;
+});
 builder.Services.AddControllers()
     .ConfigureApiBehaviorOptions(options =>
     {
@@ -134,34 +158,70 @@ builder.Services.AddOpenApi("v1", options =>
         document.Components ??= new OpenApiComponents();
         document.Components.SecuritySchemes ??=
             new Dictionary<string, IOpenApiSecurityScheme>();
-        document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+        document.Components.SecuritySchemes["CookieSession"] = new OpenApiSecurityScheme
         {
-            Type = SecuritySchemeType.Http,
-            Scheme = "bearer",
-            BearerFormat = "JWT",
-            Description = "JWT access token using the Bearer scheme."
+            Type = SecuritySchemeType.ApiKey,
+            In = ParameterLocation.Cookie,
+            Name = AuthCookieManager.AccessCookieName,
+            Description = "Secure HttpOnly access-token cookie issued by the authentication endpoints."
+        };
+        document.Components.SecuritySchemes["RefreshCookie"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.ApiKey,
+            In = ParameterLocation.Cookie,
+            Name = AuthCookieManager.RefreshCookieName,
+            Description = "Secure HttpOnly refresh-token cookie restricted to authentication endpoints."
+        };
+        document.Components.SecuritySchemes["AntiforgeryHeader"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.ApiKey,
+            In = ParameterLocation.Header,
+            Name = AuthCookieManager.AntiforgeryHeaderName,
+            Description = "Angular antiforgery header paired with the cookies from GET /api/auth/csrf."
         };
         return Task.CompletedTask;
     });
     options.AddOperationTransformer((operation, context, _) =>
     {
         var metadata = context.Description.ActionDescriptor.EndpointMetadata;
-        var bearerRequirement = new OpenApiSecurityRequirement
-        {
-            [new OpenApiSecuritySchemeReference("Bearer", context.Document)] = []
-        };
+        var cookieRequirement = new OpenApiSecurityRequirement();
         var requiresBearer = metadata.OfType<IAuthorizeData>().Any() &&
             !metadata.OfType<IAllowAnonymous>().Any();
         if (requiresBearer)
         {
-            operation.Security = [bearerRequirement];
+            cookieRequirement[
+                new OpenApiSecuritySchemeReference("CookieSession", context.Document)] = [];
         }
-        else if (string.Equals(
-                     context.Description.ActionDescriptor.RouteValues["controller"],
-                     "Problems",
-                     StringComparison.Ordinal))
+
+        var controller = context.Description.ActionDescriptor.RouteValues["controller"];
+        var action = context.Description.ActionDescriptor.RouteValues["action"];
+        if (string.Equals(controller, "Auth", StringComparison.Ordinal) &&
+            action is "Refresh" or "Revoke")
         {
-            operation.Security = [new OpenApiSecurityRequirement(), bearerRequirement];
+            cookieRequirement[
+                new OpenApiSecuritySchemeReference("RefreshCookie", context.Document)] = [];
+        }
+
+        var httpMethod = context.Description.HttpMethod ?? string.Empty;
+        var isUnsafe = !HttpMethods.IsGet(httpMethod) &&
+            !HttpMethods.IsHead(httpMethod) &&
+            !HttpMethods.IsOptions(httpMethod) &&
+            !HttpMethods.IsTrace(httpMethod);
+        if (isUnsafe)
+        {
+            cookieRequirement[
+                new OpenApiSecuritySchemeReference("AntiforgeryHeader", context.Document)] = [];
+        }
+
+        if (cookieRequirement.Count > 0)
+            operation.Security = [cookieRequirement];
+        else if (string.Equals(controller, "Problems", StringComparison.Ordinal))
+        {
+            var optionalCookie = new OpenApiSecurityRequirement
+            {
+                [new OpenApiSecuritySchemeReference("CookieSession", context.Document)] = []
+            };
+            operation.Security = [new OpenApiSecurityRequirement(), optionalCookie];
         }
 
         return Task.CompletedTask;
@@ -223,6 +283,7 @@ builder.Services.AddScoped<ISubmissionService, SubmissionService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddSingleton<AuthCookieManager>();
 
 var app = builder.Build();
 
@@ -236,6 +297,7 @@ if (databaseOptions.MigrateOnStartup)
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
+app.UseMiddleware<AntiforgeryValidationMiddleware>();
 app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();

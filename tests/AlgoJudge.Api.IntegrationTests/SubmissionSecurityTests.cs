@@ -5,7 +5,6 @@ using AlgoJudge.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
 namespace AlgoJudge.Api.IntegrationTests;
@@ -22,51 +21,40 @@ public class SubmissionSecurityTests
     {
         await using var database = await ApiPostgreSqlDatabase.CreateAsync();
         await using var factory = new AlgoJudgeApiFactory(database.ConnectionString);
-        using var client = CreateClient(factory);
+        using var ownerClient = CreateClient(factory);
+        using var otherClient = CreateClient(factory);
 
-        var ownerAuth = await RegisterAsync(client, "owner");
-        var otherAuth = await RegisterAsync(client, "other");
+        var ownerAuth = await RegisterAsync(ownerClient, "owner");
+        _ = await RegisterAsync(otherClient, "other");
         var seeded = await SeedSubmissionAsync(factory, ownerAuth.UserName);
 
-        using var ownerDetail = CreateAuthenticatedRequest(
-            HttpMethod.Get,
-            $"/api/submissions/{seeded.SubmissionId}",
-            ownerAuth.AccessToken);
-        var ownerResponse = await client.SendAsync(ownerDetail);
+        var ownerResponse = await ownerClient.GetAsync(
+            $"/api/submissions/{seeded.SubmissionId}");
         Assert.Equal(HttpStatusCode.OK, ownerResponse.StatusCode);
         var ownerJson = await ownerResponse.Content.ReadAsStringAsync();
         Assert.DoesNotContain(SourceSentinel, ownerJson, StringComparison.Ordinal);
         Assert.DoesNotContain(HiddenInputSentinel, ownerJson, StringComparison.Ordinal);
         Assert.DoesNotContain(HiddenOutputSentinel, ownerJson, StringComparison.Ordinal);
 
-        using var deniedDetail = CreateAuthenticatedRequest(
-            HttpMethod.Get,
-            $"/api/submissions/{seeded.SubmissionId}",
-            otherAuth.AccessToken);
-        var deniedResponse = await client.SendAsync(deniedDetail);
+        var deniedResponse = await otherClient.GetAsync(
+            $"/api/submissions/{seeded.SubmissionId}");
         Assert.Equal(HttpStatusCode.Forbidden, deniedResponse.StatusCode);
         var deniedJson = await deniedResponse.Content.ReadAsStringAsync();
         Assert.DoesNotContain(SourceSentinel, deniedJson, StringComparison.Ordinal);
 
-        using var missingDetail = CreateAuthenticatedRequest(
-            HttpMethod.Get,
-            $"/api/submissions/{Guid.NewGuid()}",
-            otherAuth.AccessToken);
-        var missingResponse = await client.SendAsync(missingDetail);
+        var missingResponse = await otherClient.GetAsync(
+            $"/api/submissions/{Guid.NewGuid()}");
         Assert.Equal(HttpStatusCode.NotFound, missingResponse.StatusCode);
 
-        using var otherHistory = CreateAuthenticatedRequest(
-            HttpMethod.Get,
-            "/api/submissions",
-            otherAuth.AccessToken);
-        var historyResponse = await client.SendAsync(otherHistory);
+        var historyResponse = await otherClient.GetAsync("/api/submissions");
         Assert.Equal(HttpStatusCode.OK, historyResponse.StatusCode);
         Assert.DoesNotContain(
             seeded.SubmissionId.ToString(),
             await historyResponse.Content.ReadAsStringAsync(),
             StringComparison.OrdinalIgnoreCase);
 
-        var problemResponse = await client.GetAsync($"/api/problems/{seeded.ProblemSlug}");
+        var problemResponse = await ownerClient.GetAsync(
+            $"/api/problems/{seeded.ProblemSlug}");
         Assert.Equal(HttpStatusCode.OK, problemResponse.StatusCode);
         var problemJson = await problemResponse.Content.ReadAsStringAsync();
         Assert.DoesNotContain(HiddenInputSentinel, problemJson, StringComparison.Ordinal);
@@ -75,6 +63,7 @@ public class SubmissionSecurityTests
 
     private static async Task<AuthResponse> RegisterAsync(HttpClient client, string prefix)
     {
+        await ApiTestClientSecurity.EnableAntiforgeryAsync(client);
         var unique = Guid.NewGuid().ToString("N");
         var response = await client.PostAsJsonAsync(
             "/api/auth/register",
@@ -130,23 +119,14 @@ public class SubmissionSecurityTests
         return (submission.Id, problem.Slug);
     }
 
-    private static HttpRequestMessage CreateAuthenticatedRequest(
-        HttpMethod method,
-        string path,
-        string accessToken)
-    {
-        var request = new HttpRequestMessage(method, path);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return request;
-    }
-
     private static HttpClient CreateClient(AlgoJudgeApiFactory factory)
     {
         return factory.CreateClient(
             new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
             {
                 BaseAddress = new Uri("https://localhost"),
-                AllowAutoRedirect = false
+                AllowAutoRedirect = false,
+                HandleCookies = true
             });
     }
 }

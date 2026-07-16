@@ -19,7 +19,9 @@ public class PublicContractTests
 
         Assert.Empty(legacyContracts);
         Assert.Null(typeof(AuthResponse).GetProperty("Token"));
-        Assert.NotNull(typeof(AuthResponse).GetProperty("AccessToken"));
+        Assert.Null(typeof(AuthResponse).GetProperty("AccessToken"));
+        Assert.Null(typeof(AuthResponse).GetProperty("RefreshToken"));
+        Assert.Null(typeof(AuthResponse).GetProperty("TokenType"));
         Assert.Null(typeof(SubmissionResponse).GetProperty("UserId"));
     }
 

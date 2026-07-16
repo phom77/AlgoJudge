@@ -60,6 +60,7 @@ public class ProductionBaselineTests
         Assert.False(string.IsNullOrWhiteSpace(
             validationProblem.GetProperty("traceId").GetString()));
 
+        await ApiTestClientSecurity.EnableAntiforgeryAsync(client);
         var invalidRequest = await client.PostAsJsonAsync(
             "/api/auth/register",
             new { });
