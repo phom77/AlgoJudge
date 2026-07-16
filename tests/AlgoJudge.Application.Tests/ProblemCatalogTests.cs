@@ -1,6 +1,7 @@
 using AlgoJudge.Application.Contracts.Problems;
 using AlgoJudge.Application.DTOs.Common;
 using AlgoJudge.Application.DTOs.Submission;
+using AlgoJudge.Application.Exceptions;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Application.Models.SubmissionQueue;
 using AlgoJudge.Application.Services;
@@ -50,7 +51,7 @@ public class ProblemCatalogTests
             new ProblemRepositoryStub([]),
             new SubmissionRepositoryStub([]));
 
-        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+        var exception = await Assert.ThrowsAsync<RequestValidationException>(() =>
             service.GetProblemsAsync(new ProblemListQuery { Solved = true }, null));
 
         Assert.Contains("authenticated users", exception.Message);
@@ -104,7 +105,7 @@ public class ProblemCatalogTests
             null!,
             null!);
 
-        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+        var exception = await Assert.ThrowsAsync<RequestValidationException>(() =>
             service.SubmitCodeAsync(
                 new CreateSubmissionDto { ProblemId = problem.Id },
                 Guid.NewGuid()));

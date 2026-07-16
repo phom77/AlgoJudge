@@ -1,5 +1,6 @@
 using AlgoJudge.Application.DTOs.Common;
 using AlgoJudge.Application.DTOs.Submission;
+using AlgoJudge.Application.Exceptions;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
@@ -51,7 +52,7 @@ namespace AlgoJudge.Application.Services
             if (submission == null) return null;
 
             if (submission.UserId != requesterId)
-                throw new UnauthorizedAccessException(
+                throw new ForbiddenException(
                     "You cannot access another user's submission.");
 
             return _mapper.Map<SubmissionDto>(submission);
@@ -61,11 +62,12 @@ namespace AlgoJudge.Application.Services
         {
             var problem = await _problemRepository.GetByIdAsync(dto.ProblemId);
             if (problem == null)
-                throw new ArgumentException(
+                throw new RequestValidationException(
                     $"Problem with ID {dto.ProblemId} does not exist.");
 
             if (problem.Status != ProblemStatus.Published)
-                throw new ArgumentException("Submissions are accepted only for published problems.");
+                throw new RequestValidationException(
+                    "Submissions are accepted only for published problems.");
 
             var submission = _mapper.Map<Submission>(dto);
             submission.UserId = userId;

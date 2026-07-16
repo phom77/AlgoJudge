@@ -1,5 +1,6 @@
 using AlgoJudge.Application.DTOs.Auth;
 using AlgoJudge.Application.DTOs.Common;
+using AlgoJudge.Application.Exceptions;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Application.Models.SubmissionQueue;
 using AlgoJudge.Application.Services;
@@ -39,7 +40,7 @@ public class LegacyScopeTests
             null!,
             null!);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
             service.GetSubmissionByIdAsync(submission.Id, requesterId));
     }
 

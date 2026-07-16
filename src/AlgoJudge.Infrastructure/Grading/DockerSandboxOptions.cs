@@ -3,7 +3,7 @@ using System.Globalization;
 
 namespace AlgoJudge.Infrastructure.Grading;
 
-internal sealed record DockerSandboxOptions(
+public sealed record DockerSandboxOptions(
     string Image,
     int StdoutLimitBytes,
     int StderrLimitBytes,

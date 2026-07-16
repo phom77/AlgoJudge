@@ -1,7 +1,7 @@
 ﻿using AlgoJudge.Application.DTOs.Auth;
 using AlgoJudge.Application.Interfaces;
+using AlgoJudge.Application.Exceptions;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -9,6 +9,9 @@ namespace AlgoJudge.API.Controllers
 {
     [Route("api/auth")]
     [ApiController]
+    [Produces("application/json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -20,80 +23,54 @@ namespace AlgoJudge.API.Controllers
 
         // POST /api/auth/register
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterDto dto)
+        [ProducesResponseType(typeof(AuthResultDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+        public async Task<ActionResult<AuthResultDto>> Register([FromBody] RegisterDto dto)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
-            try
-            {
-                var result = await _authService.RegisterAsync(dto);
-                return Ok(result);
-            }
-            catch (ArgumentException ex)
-            {
-                return Conflict(new { message = ex.Message });
-            }
+            var result = await _authService.RegisterAsync(dto);
+            return Ok(result);
         }
 
         // POST /api/auth/login
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginDto dto)
+        [ProducesResponseType(typeof(AuthResultDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<AuthResultDto>> Login([FromBody] LoginDto dto)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
-            try
-            {
-                var result = await _authService.LoginAsync(dto);
-                return Ok(result);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { message = ex.Message });
-            }
+            var result = await _authService.LoginAsync(dto);
+            return Ok(result);
         }
 
         // POST /api/auth/refresh
         [HttpPost("refresh")]
-        public async Task<IActionResult> Refresh([FromBody] RefreshRequestDto dto)
+        [ProducesResponseType(typeof(AuthResultDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<AuthResultDto>> Refresh([FromBody] RefreshRequestDto dto)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-            try
-            {
-                var result = await _authService.RefreshAsync(dto.RefreshToken);
-                return Ok(result);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(new { message = ex.Message });
-            }
+            var result = await _authService.RefreshAsync(dto.RefreshToken);
+            return Ok(result);
         }
 
         // POST /api/auth/revoke
         [HttpPost("revoke")]
         [Authorize]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> Revoke([FromBody] RevokeRequestDto dto)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
             var callerIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)
                      ?? User.FindFirst("sub");
 
             if (callerIdClaim == null || !Guid.TryParse(callerIdClaim.Value, out var callerId))
-                return Unauthorized(new { message = "Token is invalid." });
+                throw new AuthenticationException("Token is invalid.");
 
-            try
-            {
-                await _authService.RevokeAsync(dto.RefreshToken, callerId);
-                return NoContent();
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid(); 
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            await _authService.RevokeAsync(dto.RefreshToken, callerId);
+            return NoContent();
         }
     }
 }

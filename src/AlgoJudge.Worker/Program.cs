@@ -1,11 +1,23 @@
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Infrastructure.Data;
 using AlgoJudge.Infrastructure.Grading;
+using AlgoJudge.Infrastructure.Health;
 using AlgoJudge.Infrastructure.Repositories;
 using AlgoJudge.Worker;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-var builder = Host.CreateApplicationBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Logging.AddJsonConsole(options =>
+{
+    options.IncludeScopes = true;
+    options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ";
+    options.UseUtcTimestamp = true;
+});
 
 var queueOptions = builder.Configuration
     .GetSection("Queue")
@@ -13,12 +25,11 @@ var queueOptions = builder.Configuration
 queueOptions.Validate();
 var workerIdentity = WorkerIdentity.Create(queueOptions.WorkerId);
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (string.IsNullOrWhiteSpace(connectionString))
-{
-    throw new InvalidOperationException(
-        "ConnectionStrings:DefaultConnection must be configured for the worker.");
-}
+_ = DockerSandboxOptions.FromConfiguration(builder.Configuration);
+
+var connectionString = PostgreSqlHealthCheck.ValidateConnectionString(
+    builder.Configuration.GetConnectionString("DefaultConnection"),
+    "worker");
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -31,7 +42,30 @@ builder.Services.AddScoped<IGraderService, GraderService>();
 builder.Services.AddScoped<IDockerSandbox, DockerSandboxService>();
 builder.Services.AddSingleton(queueOptions);
 builder.Services.AddSingleton(workerIdentity);
+builder.Services.AddSingleton<WorkerHealthState>();
 builder.Services.AddHostedService<GraderWorker>();
 
-var host = builder.Build();
-await host.RunAsync();
+builder.Services.AddHealthChecks()
+    .AddCheck<WorkerProcessHealthCheck>(
+        "worker",
+        tags: ["live", "ready"])
+    .AddCheck(
+        "postgresql",
+        new PostgreSqlHealthCheck(connectionString),
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready"]);
+
+var app = builder.Build();
+
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("live"),
+    ResponseWriter = WorkerHealthResponseWriter.WriteAsync
+});
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("ready"),
+    ResponseWriter = WorkerHealthResponseWriter.WriteAsync
+});
+
+await app.RunAsync();
