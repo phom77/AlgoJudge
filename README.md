@@ -37,8 +37,10 @@ rules and dependency direction.
 1. Copy `.env.example` to `.env` and replace the local secrets.
 2. Run `./scripts/dev.ps1` to start PostgreSQL.
 3. Apply EF Core migrations.
-4. Run `./scripts/run-api.ps1`.
-5. Run `./scripts/run-worker.ps1` in another terminal.
+4. Run `./scripts/build-judge-image.ps1` once to build the pinned C++17 judge
+   image.
+5. Run `./scripts/run-api.ps1`.
+6. Run `./scripts/run-worker.ps1` in another terminal.
 
 The frontend will use Angular and will be scaffolded only after the backend API
 and judge contract are stable. The MVP worker uses PostgreSQL as its durable

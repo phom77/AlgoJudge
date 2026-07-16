@@ -117,7 +117,15 @@ namespace AlgoJudge.Infrastructure.Grading
                         break;
                     }
 
-                    if (runResult.Status == SandboxRunStatus.RuntimeError)
+                    if (runResult.Status == SandboxRunStatus.MemoryLimitExceeded)
+                    {
+                        finalStatus = SubmissionStatus.MemoryLimitExceeded;
+                        break;
+                    }
+
+                    if (runResult.Status is
+                        SandboxRunStatus.RuntimeError or
+                        SandboxRunStatus.OutputLimitExceeded)
                     {
                         finalStatus = SubmissionStatus.RuntimeError;
                         break;
@@ -129,18 +137,18 @@ namespace AlgoJudge.Infrastructure.Grading
                             $"Sandbox system error while grading submission {submission.Id}.");
                     }
 
+                    var memoryLimitBytes = (long)problem.MemoryLimitKb * 1024;
+                    if (runResult.MemoryUsedBytes > memoryLimitBytes)
+                    {
+                        finalStatus = SubmissionStatus.MemoryLimitExceeded;
+                        break;
+                    }
+
                     var actualOutput = runResult.Output.Trim();
                     var expectedOutput = testCase.ExpectedOutput.Trim();
                     if (actualOutput != expectedOutput)
                     {
                         finalStatus = SubmissionStatus.WrongAnswer;
-                        break;
-                    }
-
-                    var memoryLimitBytes = (long)problem.MemoryLimitKb * 1024;
-                    if (runResult.MemoryUsedBytes > memoryLimitBytes)
-                    {
-                        finalStatus = SubmissionStatus.MemoryLimitExceeded;
                         break;
                     }
                 }

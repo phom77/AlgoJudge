@@ -32,3 +32,24 @@ jobs:
       - run: dotnet restore AlgoJudge.slnx
       - run: dotnet build AlgoJudge.slnx --configuration Release --no-restore
       - run: dotnet test AlgoJudge.slnx --configuration Release --no-build
+
+  judge-integration-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      TEST_DOCKER_JUDGE_IMAGE: algojudge/judge-cpp17:14.3.0-v1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Build pinned C++17 judge image
+        run: >-
+          docker build
+          --file infra/docker/judge-cpp17.Dockerfile
+          --tag "$TEST_DOCKER_JUDGE_IMAGE"
+          infra/docker
+      - run: >-
+          dotnet test
+          tests/AlgoJudge.Judge.IntegrationTests/AlgoJudge.Judge.IntegrationTests.csproj
+          --configuration Release
