@@ -57,19 +57,23 @@ public sealed class SubmissionService : ISubmissionService
 
     public async Task<SubmissionResponse?> GetSubmissionByIdAsync(
         Guid id,
-        Guid requesterId)
+        Guid requesterId,
+        CancellationToken cancellationToken = default)
     {
-        var submission = await _submissionRepository.GetByIdAsync(id);
-        if (submission == null)
-            return null;
+        var submission = await _submissionRepository.GetByIdForUserAsync(
+            id,
+            requesterId,
+            cancellationToken);
+        if (submission is not null)
+            return _mapper.Map<SubmissionResponse>(submission);
 
-        if (submission.UserId != requesterId)
+        if (await _submissionRepository.ExistsAsync(id, cancellationToken))
         {
             throw new ForbiddenException(
                 "You cannot access another user's submission.");
         }
 
-        return _mapper.Map<SubmissionResponse>(submission);
+        return null;
     }
 
     public async Task<SubmissionResponse> SubmitCodeAsync(

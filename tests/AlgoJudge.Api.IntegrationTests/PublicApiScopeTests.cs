@@ -1,5 +1,7 @@
 using AlgoJudge.API.Controllers;
 using AlgoJudge.Application.Contracts.Problems;
+using AlgoJudge.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AlgoJudge.Api.IntegrationTests;
@@ -53,5 +55,43 @@ public class PublicApiScopeTests
             typeof(ProblemDetailResponse).GetProperties(),
             property => property.Name.Contains("TestCase", StringComparison.OrdinalIgnoreCase) ||
                         property.Name.Contains("Hidden", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void PublicResponseContractsExcludeOperationalAndSensitiveFields()
+    {
+        var forbiddenNames = new[]
+        {
+            "JudgeTestCase",
+            "Hidden",
+            "SourceCode",
+            "WorkerId",
+            "ClaimToken",
+            "LeaseExpiresAt",
+            "AttemptCount"
+        };
+        var responseProperties = typeof(IAuthService).Assembly
+            .GetExportedTypes()
+            .Where(type =>
+                type.Namespace?.Contains(".Contracts.", StringComparison.Ordinal) == true &&
+                type.Name.EndsWith("Response", StringComparison.Ordinal))
+            .SelectMany(type => type.GetProperties().Select(property =>
+                $"{type.Name}.{property.Name}"))
+            .ToArray();
+
+        Assert.DoesNotContain(responseProperties, property =>
+            forbiddenNames.Any(forbidden =>
+                property.Contains(forbidden, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    [Fact]
+    public void EverySubmissionEndpointRequiresAuthentication()
+    {
+        Assert.NotEmpty(typeof(SubmissionsController)
+            .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true));
+        Assert.DoesNotContain(
+            typeof(SubmissionsController).GetMethods()
+                .Where(method => method.DeclaringType == typeof(SubmissionsController)),
+            method => method.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Length > 0);
     }
 }

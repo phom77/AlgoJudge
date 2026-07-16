@@ -193,7 +193,13 @@ public class ProblemCatalogTests
             Task.FromResult(_solvedProblemIds.Contains(problemId));
 
         public Task AddAsync(Submission submission) => throw new NotSupportedException();
-        public Task<Submission?> GetByIdAsync(Guid id) => throw new NotSupportedException();
+        public Task<Submission?> GetByIdForUserAsync(
+            Guid id,
+            Guid userId,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> ExistsAsync(
+            Guid id,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<Submission?> GetClaimedAsync(
             SubmissionClaim claim,
             CancellationToken cancellationToken = default) => throw new NotSupportedException();

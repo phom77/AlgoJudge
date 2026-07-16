@@ -57,6 +57,10 @@ submission, and a `SubmissionResponse` whose initial status is `Pending`.
 The response contains `id`, `problemId`, `language`, `status`,
 `executionTimeMs`, `memoryUsedKb`, `createdAt`, `startedAt`, and `finishedAt`.
 The user ID is intentionally absent because ownership is enforced by the API.
+The database lookup includes both submission ID and authenticated user ID, so a
+non-owner's source and operational fields are never materialized by the API.
+An existing submission owned by another user returns `403 Forbidden`; an
+unknown submission returns `404 Not Found`.
 
 ### Get submission history
 
@@ -83,3 +87,7 @@ fields. Validation responses additionally contain an `errors` dictionary.
 The stable error codes are `validation`, `authentication`, `forbidden`,
 `not-found`, `conflict`, `rate-limit`, and `internal`. Error responses never
 contain stack traces, secrets, source code, or hidden testcase content.
+
+History queries derive their user scope exclusively from the authenticated
+token. There is no public user ID filter. Problem responses expose public
+samples but never load or serialize private `JudgeTestCase` rows.

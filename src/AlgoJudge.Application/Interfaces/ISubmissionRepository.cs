@@ -8,7 +8,13 @@ namespace AlgoJudge.Application.Interfaces
     public interface ISubmissionRepository
     {
         Task AddAsync(Submission submission);
-        Task<Submission?> GetByIdAsync(Guid id);
+        Task<Submission?> GetByIdForUserAsync(
+            Guid id,
+            Guid userId,
+            CancellationToken cancellationToken = default);
+        Task<bool> ExistsAsync(
+            Guid id,
+            CancellationToken cancellationToken = default);
         Task<Submission?> GetClaimedAsync(
             SubmissionClaim claim,
             CancellationToken cancellationToken = default);

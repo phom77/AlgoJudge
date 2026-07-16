@@ -66,9 +66,11 @@ public sealed class ApiExceptionHandler(
         else
         {
             logger.LogWarning(
-                "Request failed with status {StatusCode}: {ExceptionMessage}",
+                "Request failed with status {StatusCode}, error type {ErrorType}, " +
+                "exception type {ExceptionType}.",
                 status,
-                exception.Message);
+                type,
+                exception.GetType().Name);
         }
 
         httpContext.Response.StatusCode = status;

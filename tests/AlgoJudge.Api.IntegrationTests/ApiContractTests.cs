@@ -36,6 +36,9 @@ public class ApiContractTests
         Assert.True(schemas.TryGetProperty("SubmissionResponse", out _));
         Assert.True(schemas.TryGetProperty("ApiProblemDetails", out _));
         Assert.True(schemas.TryGetProperty("ApiValidationProblemDetails", out _));
+        Assert.DoesNotContain(
+            schemas.EnumerateObject().Select(schema => schema.Name),
+            name => name.Contains("JudgeTestCase", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
