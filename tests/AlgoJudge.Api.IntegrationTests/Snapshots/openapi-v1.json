@@ -100,20 +100,11 @@
       },
       "AuthResponse": {
         "properties": {
-          "accessToken": {
-            "type": "string"
-          },
           "email": {
             "type": "string"
           },
           "expiresAt": {
             "format": "date-time",
-            "type": "string"
-          },
-          "refreshToken": {
-            "type": "string"
-          },
-          "tokenType": {
             "type": "string"
           },
           "userName": {
@@ -394,17 +385,6 @@
         },
         "type": "object"
       },
-      "RefreshTokenRequest": {
-        "properties": {
-          "refreshToken": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "refreshToken"
-        ],
-        "type": "object"
-      },
       "RegisterRequest": {
         "properties": {
           "email": {
@@ -434,17 +414,6 @@
           "fullName",
           "password",
           "userName"
-        ],
-        "type": "object"
-      },
-      "RevokeTokenRequest": {
-        "properties": {
-          "refreshToken": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "refreshToken"
         ],
         "type": "object"
       },
@@ -521,11 +490,23 @@
       }
     },
     "securitySchemes": {
-      "Bearer": {
-        "bearerFormat": "JWT",
-        "description": "JWT access token using the Bearer scheme.",
-        "scheme": "bearer",
-        "type": "http"
+      "AntiforgeryHeader": {
+        "description": "Angular antiforgery header paired with the cookies from GET /api/auth/csrf.",
+        "in": "header",
+        "name": "X-XSRF-TOKEN",
+        "type": "apiKey"
+      },
+      "CookieSession": {
+        "description": "Secure HttpOnly access-token cookie issued by the authentication endpoints.",
+        "in": "cookie",
+        "name": "__Host-algojudge-access",
+        "type": "apiKey"
+      },
+      "RefreshCookie": {
+        "description": "Secure HttpOnly refresh-token cookie restricted to authentication endpoints.",
+        "in": "cookie",
+        "name": "__Secure-algojudge-refresh",
+        "type": "apiKey"
       }
     }
   },
@@ -536,6 +517,58 @@
   },
   "openapi": "3.1.1",
   "paths": {
+    "/api/auth/csrf": {
+      "get": {
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblemDetails"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblemDetails"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblemDetails"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblemDetails"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
     "/api/auth/login": {
       "post": {
         "requestBody": {
@@ -660,6 +693,11 @@
             "description": "Internal Server Error"
           }
         },
+        "security": [
+          {
+            "AntiforgeryHeader": []
+          }
+        ],
         "tags": [
           "Auth"
         ]
@@ -667,26 +705,6 @@
     },
     "/api/auth/refresh": {
       "post": {
-        "requestBody": {
-          "content": {
-            "application/*\u002Bjson": {
-              "schema": {
-                "$ref": "#/components/schemas/RefreshTokenRequest"
-              }
-            },
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RefreshTokenRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RefreshTokenRequest"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "content": {
@@ -707,26 +725,6 @@
               }
             },
             "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiValidationProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiValidationProblemDetails"
-                }
-              },
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiValidationProblemDetails"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "401": {
             "content": {
@@ -789,6 +787,12 @@
             "description": "Internal Server Error"
           }
         },
+        "security": [
+          {
+            "AntiforgeryHeader": [],
+            "RefreshCookie": []
+          }
+        ],
         "tags": [
           "Auth"
         ]
@@ -918,6 +922,11 @@
             "description": "Internal Server Error"
           }
         },
+        "security": [
+          {
+            "AntiforgeryHeader": []
+          }
+        ],
         "tags": [
           "Auth"
         ]
@@ -925,49 +934,9 @@
     },
     "/api/auth/revoke": {
       "post": {
-        "requestBody": {
-          "content": {
-            "application/*\u002Bjson": {
-              "schema": {
-                "$ref": "#/components/schemas/RevokeTokenRequest"
-              }
-            },
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RevokeTokenRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RevokeTokenRequest"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "204": {
             "description": "No Content"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiValidationProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiValidationProblemDetails"
-                }
-              },
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiValidationProblemDetails"
-                }
-              }
-            },
-            "description": "Bad Request"
           },
           "401": {
             "content": {
@@ -1052,7 +1021,103 @@
         },
         "security": [
           {
-            "Bearer": []
+            "AntiforgeryHeader": [],
+            "CookieSession": [],
+            "RefreshCookie": []
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/session": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblemDetails"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblemDetails"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblemDetails"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblemDetails"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblemDetails"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblemDetails"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
           }
         ],
         "tags": [
@@ -1209,7 +1274,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "CookieSession": []
           },
           {}
         ],
@@ -1314,7 +1379,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "CookieSession": []
           },
           {}
         ],
@@ -1480,7 +1545,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "CookieSession": []
           }
         ],
         "tags": [
@@ -1612,7 +1677,8 @@
         },
         "security": [
           {
-            "Bearer": []
+            "AntiforgeryHeader": [],
+            "CookieSession": []
           }
         ],
         "tags": [
@@ -1757,7 +1823,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "CookieSession": []
           }
         ],
         "tags": [

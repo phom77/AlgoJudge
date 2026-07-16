@@ -54,15 +54,21 @@ The versioned contract is always available at `/openapi/v1.json`. Its document
 name and API version remain stable for the lifetime of v1. Breaking route or
 schema changes require a new API document version.
 
-OpenAPI declares the JWT bearer scheme. Submission endpoints and refresh-token
-revocation require it; problem catalogue endpoints declare it as optional so a
-client can send a token to receive solved state. CI compares the generated
+OpenAPI declares the secure cookie session scheme. Submission endpoints and
+refresh-token revocation require it; problem catalogue endpoints declare it as
+optional so a browser session can receive solved state. CI compares the generated
 document with the approved semantic snapshot. After reviewing an intentional
 contract change, regenerate it with:
 
 ```powershell
 ./scripts/update-openapi-snapshot.ps1
 ```
+
+Browser credentials are issued only through HttpOnly, Secure, SameSite=Strict
+cookies. The SPA and API must be served from one origin. Angular development
+uses a same-origin proxy rather than broad credentialed CORS. Unsafe
+cookie-authenticated API requests require the `X-XSRF-TOKEN` header paired with
+the antiforgery cookies issued by `GET /api/auth/csrf`.
 
 ## Database migrations
 

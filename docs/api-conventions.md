@@ -39,3 +39,8 @@ be reviewed before running `./scripts/update-openapi-snapshot.ps1`. The snapshot
 diff is part of the change; CI must never update it automatically. Unintentional
 route, method, parameter, response, schema, enum, or security changes fail the
 test suite.
+
+ADR-0009 records the intentional final pre-frontend reset that replaced JSON
+Bearer-token responses with secure cookie sessions. The resulting snapshot is
+the baseline for the first generated Angular client. Any later breaking change
+requires a new API document version.
