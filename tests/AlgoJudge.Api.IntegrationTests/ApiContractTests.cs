@@ -10,6 +10,41 @@ public class ApiContractTests
         "Host=127.0.0.1;Port=1;Database=unused;Username=unused;Password=unused";
 
     [Fact]
+    public async Task OpenApiV1MatchesApprovedSnapshot()
+    {
+        await using var factory = new AlgoJudgeApiFactory(UnusedConnectionString);
+        using var client = CreateClient(factory);
+        var openApiJson = await client.GetStringAsync("/openapi/v1.json");
+        var actual = OpenApiSnapshot.Canonicalize(openApiJson);
+        var snapshotPath = OpenApiSnapshot.GetSnapshotPath();
+
+        if (Environment.GetEnvironmentVariable(
+                OpenApiSnapshot.UpdateEnvironmentVariable) == "1")
+        {
+            Assert.False(
+                string.Equals(
+                    Environment.GetEnvironmentVariable("CI"),
+                    "true",
+                    StringComparison.OrdinalIgnoreCase),
+                "OpenAPI snapshots cannot be updated in CI.");
+            await OpenApiSnapshot.WriteAsync(snapshotPath, actual);
+            return;
+        }
+
+        Assert.True(
+            File.Exists(snapshotPath),
+            $"OpenAPI snapshot is missing at '{snapshotPath}'. " +
+            "Run ./scripts/update-openapi-snapshot.ps1 to create it.");
+        var expected = await File.ReadAllTextAsync(snapshotPath);
+        Assert.True(
+            string.Equals(expected, actual, StringComparison.Ordinal),
+            "OpenAPI v1 differs from the approved semantic snapshot. " +
+            "Review the generated contract and, only if intentional, run " +
+            "./scripts/update-openapi-snapshot.ps1." + Environment.NewLine +
+            OpenApiSnapshot.DescribeDifference(expected, actual));
+    }
+
+    [Fact]
     public async Task OpenApiUsesDirectionalContractNamesAndLowercaseRoutes()
     {
         await using var factory = new AlgoJudgeApiFactory(UnusedConnectionString);
@@ -39,6 +74,24 @@ public class ApiContractTests
         Assert.DoesNotContain(
             schemas.EnumerateObject().Select(schema => schema.Name),
             name => name.Contains("JudgeTestCase", StringComparison.OrdinalIgnoreCase));
+
+        var bearerScheme = openApi.RootElement
+            .GetProperty("components")
+            .GetProperty("securitySchemes")
+            .GetProperty("Bearer");
+        Assert.Equal("http", bearerScheme.GetProperty("type").GetString());
+        Assert.Equal("bearer", bearerScheme.GetProperty("scheme").GetString());
+        Assert.Equal("JWT", bearerScheme.GetProperty("bearerFormat").GetString());
+
+        AssertBearerRequired(paths, "/api/submissions", "get");
+        AssertBearerRequired(paths, "/api/submissions", "post");
+        AssertBearerRequired(paths, "/api/submissions/{id}", "get");
+        AssertBearerRequired(paths, "/api/auth/revoke", "post");
+        Assert.False(paths.GetProperty("/api/auth/register")
+            .GetProperty("post")
+            .TryGetProperty("security", out _));
+        AssertOptionalBearer(paths, "/api/problems", "get");
+        AssertOptionalBearer(paths, "/api/problems/{slug}", "get");
     }
 
     [Fact]
@@ -97,5 +150,36 @@ public class ApiContractTests
                 BaseAddress = new Uri("https://localhost"),
                 AllowAutoRedirect = false
             });
+    }
+
+    private static void AssertBearerRequired(
+        JsonElement paths,
+        string path,
+        string method)
+    {
+        var requirements = paths.GetProperty(path)
+            .GetProperty(method)
+            .GetProperty("security")
+            .EnumerateArray()
+            .ToArray();
+        var requirement = Assert.Single(requirements);
+        Assert.True(requirement.TryGetProperty("Bearer", out _));
+    }
+
+    private static void AssertOptionalBearer(
+        JsonElement paths,
+        string path,
+        string method)
+    {
+        var requirements = paths.GetProperty(path)
+            .GetProperty(method)
+            .GetProperty("security")
+            .EnumerateArray()
+            .ToArray();
+        Assert.Equal(2, requirements.Length);
+        Assert.Contains(requirements, requirement =>
+            !requirement.EnumerateObject().Any());
+        Assert.Contains(requirements, requirement =>
+            requirement.TryGetProperty("Bearer", out _));
     }
 }
