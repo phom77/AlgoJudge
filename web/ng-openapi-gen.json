@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/ng-openapi-gen/ng-openapi-gen-schema.json",
+  "input": "../tests/AlgoJudge.Api.IntegrationTests/Snapshots/openapi-v1.json",
+  "output": "src/app/core/api/generated",
+  "removeStaleFiles": true,
+  "ignoreUnusedModels": false,
+  "configuration": "AlgoJudgeApiConfiguration",
+  "apiService": "AlgoJudgeApi",
+  "functionIndex": false,
+  "modelIndex": false,
+  "enumStyle": "alias",
+  "enumArray": true,
+  "promises": false,
+  "services": false,
+  "module": false,
+  "indexFile": false,
+  "endOfLineStyle": "lf"
+}

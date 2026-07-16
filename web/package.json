@@ -9,10 +9,12 @@
     "test": "ng test --watch=false",
     "test:watch": "ng test",
     "test:coverage": "ng test --watch=false --coverage",
+    "api:generate": "ng-openapi-gen --config ng-openapi-gen.json",
+    "api:check": "node scripts/check-api-client-drift.mjs",
     "lint": "ng lint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run format:check && npm run lint && npm run test && npm run build"
+    "check": "npm run api:check && npm run format:check && npm run lint && npm run test && npm run build"
   },
   "private": true,
   "packageManager": "npm@10.8.2",
@@ -34,6 +36,7 @@
     "angular-eslint": "21.4.0",
     "eslint": "10.7.0",
     "jsdom": "28.1.0",
+    "ng-openapi-gen": "1.0.5",
     "prettier": "3.9.5",
     "typescript": "5.9.3",
     "typescript-eslint": "8.59.2",

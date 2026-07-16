@@ -34,6 +34,8 @@ cookies remain HttpOnly and must never be read or persisted by frontend code.
 
 ```bash
 npm start             # development server with API proxy
+npm run api:generate  # regenerate the typed client from the approved v1 snapshot
+npm run api:check     # fail when checked-in generated code has contract drift
 npm run format        # apply Prettier
 npm run format:check  # verify formatting
 npm run lint          # TypeScript and Angular template lint
@@ -69,6 +71,25 @@ src/styles/              reset, typography, and CSS custom-property tokens
 Routes are lazy-loaded at feature boundaries. Routed `*.page.ts` files
 orchestrate state and focused child components; HTTP and DTO mapping belong in
 feature data-access gateways. Tests stay beside the code they cover.
+
+## OpenAPI client
+
+`ng-openapi-gen.json` is the single generator configuration. It reads the
+approved backend snapshot at
+`tests/AlgoJudge.Api.IntegrationTests/Snapshots/openapi-v1.json` and writes the
+typed Angular client to `src/app/core/api/generated`. Generated files are
+committed for review but must never be edited by hand.
+
+Run `npm run api:generate` after an intentional, reviewed OpenAPI snapshot
+change. `npm run api:check` generates into a temporary directory and compares
+every file with the checked-in client, including added and stale files. Frontend
+CI runs this drift check without modifying the workspace.
+
+Application code configures the generated client through `provideAlgoJudgeApi`
+and keeps its root URL same-origin. Feature gateways may import generated
+operations and models; components must not. Convert `HttpErrorResponse` values
+with `mapProblemDetails` so validation, CSRF, authorization, rate-limit, network,
+and unknown failures share one safe `ApiProblem` shape.
 
 ## Toolchain policy
 
