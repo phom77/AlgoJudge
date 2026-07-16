@@ -63,7 +63,7 @@ public sealed class BackendAcceptanceTests
         Assert.Null(anonymousDetail.IsSolved);
         Assert.Equal("2", Assert.Single(anonymousDetail.Samples).Input.Trim());
 
-        var account = await RegisterAndLoginAsync(client, "acceptance-owner");
+        var account = await RegisterAndLoginAsync(client, "owner");
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", account.AccessToken);
 
@@ -148,7 +148,7 @@ public sealed class BackendAcceptanceTests
             $"/api/problems?search={problem.Slug}&solved=true");
         Assert.True(Assert.Single(solvedCatalogue.Items).IsSolved);
 
-        var otherAccount = await RegisterAndLoginAsync(client, "acceptance-other");
+        var otherAccount = await RegisterAndLoginAsync(client, "other");
         var submissionId = expectedVerdicts.Keys.First();
         using var forbiddenRequest = CreateAuthenticatedRequest(
             HttpMethod.Get,
@@ -183,7 +183,7 @@ public sealed class BackendAcceptanceTests
         await using var factory = new EndToEndApiFactory(database.ConnectionString, logs);
         using var client = CreateClient(factory);
         var problem = await SeedProblemAsync(database);
-        var account = await RegisterAndLoginAsync(client, "two-workers");
+        var account = await RegisterAndLoginAsync(client, "workers");
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", account.AccessToken);
         var created = await SubmitAsync(client, problem.Id, AcceptedSource);
@@ -224,7 +224,7 @@ public sealed class BackendAcceptanceTests
         await using var factory = new EndToEndApiFactory(database.ConnectionString, logs);
         using var client = CreateClient(factory);
         var problem = await SeedProblemAsync(database);
-        var account = await RegisterAndLoginAsync(client, "lease-recovery");
+        var account = await RegisterAndLoginAsync(client, "recovery");
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", account.AccessToken);
         var created = await SubmitAsync(client, problem.Id, AcceptedSource);
@@ -336,14 +336,24 @@ public sealed class BackendAcceptanceTests
                 password,
                 fullName = $"{prefix} user"
             });
-        registerResponse.EnsureSuccessStatusCode();
+        await AssertSuccessAsync(registerResponse, "register test account");
 
         var loginResponse = await client.PostAsJsonAsync(
             "/api/auth/login",
             new { userName, password });
-        loginResponse.EnsureSuccessStatusCode();
+        await AssertSuccessAsync(loginResponse, "login test account");
         return Deserialize<AuthResponse>(
             await loginResponse.Content.ReadAsStringAsync());
+    }
+
+    private static async Task AssertSuccessAsync(
+        HttpResponseMessage response,
+        string operation)
+    {
+        var responseBody = await response.Content.ReadAsStringAsync();
+        Assert.True(
+            response.IsSuccessStatusCode,
+            $"Could not {operation}. HTTP {(int)response.StatusCode}: {responseBody}");
     }
 
     private static async Task<Problem> SeedProblemAsync(
