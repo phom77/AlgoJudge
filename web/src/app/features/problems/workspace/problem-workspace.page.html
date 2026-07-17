@@ -1,0 +1,91 @@
+@if (store.loading()) {
+  <section class="workspace-state" role="status" aria-live="polite">
+    <span class="spinner" aria-hidden="true"></span>
+    <p>Opening workspace…</p>
+  </section>
+} @else if (store.problem(); as problem) {
+  <section class="workspace-state" role="alert">
+    <span class="state-icon" aria-hidden="true">!</span>
+    <h1>{{ problem.title }}</h1>
+    <p>The problem could not be loaded.</p>
+    <div class="state-actions">
+      <a routerLink="/problems">Back to problems</a>
+      <button type="button" (click)="store.retry()">Retry</button>
+    </div>
+  </section>
+} @else if (store.detail(); as problem) {
+  <header class="problem-header">
+    <div class="problem-header__main">
+      <a class="back-link" routerLink="/problems" aria-label="Back to problem catalogue">←</a>
+      <div>
+        <div class="title-line">
+          <h1>{{ problem.title }}</h1>
+          <aj-problem-solved-status [isSolved]="problem.isSolved" [showLabel]="true" />
+        </div>
+        <div class="metadata">
+          <aj-problem-difficulty [difficulty]="problem.difficulty" />
+          @for (tag of problem.tags; track tag.slug) {
+            <span class="tag">{{ tag.name }}</span>
+          }
+          <span>{{ problem.timeLimitMs }} ms</span>
+          <span>{{ problem.memoryLimitKb / 1024 }} MB</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="mobile-tabs" role="group" aria-label="Workspace view">
+    <button
+      type="button"
+      [class.mobile-tabs__active]="activeTab() === 'statement'"
+      [attr.aria-pressed]="activeTab() === 'statement'"
+      (click)="selectTab('statement')"
+    >
+      Description
+    </button>
+    <button
+      type="button"
+      [class.mobile-tabs__active]="activeTab() === 'code'"
+      [attr.aria-pressed]="activeTab() === 'code'"
+      (click)="selectTab('code')"
+    >
+      Code
+    </button>
+  </div>
+
+  <div class="workspace">
+    <section
+      class="panel statement-panel"
+      [class.panel--active]="activeTab() === 'statement'"
+      aria-label="Problem description"
+    >
+      <aj-problem-statement [problem]="problem" />
+    </section>
+
+    <section
+      class="panel editor-panel"
+      [class.panel--active]="activeTab() === 'code'"
+      aria-label="Solution editor"
+    >
+      <div class="editor-toolbar">
+        <div>
+          <strong>Code</strong>
+          <span>Draft stays in this tab only</span>
+        </div>
+        <label>
+          <span class="visually-hidden">Programming language</span>
+          <select aria-label="Programming language">
+            <option>C++17</option>
+          </select>
+        </label>
+      </div>
+      <div class="editor-body">
+        <aj-code-editor [value]="sourceCode()" (valueChange)="sourceCode.set($event)" />
+      </div>
+      <footer class="editor-footer">
+        <span>Submission controls arrive in the submission flow.</span>
+        <button type="button" disabled>Submit</button>
+      </footer>
+    </section>
+  </div>
+}

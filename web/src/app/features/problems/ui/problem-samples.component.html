@@ -1,0 +1,26 @@
+<section aria-labelledby="samples-heading">
+  <h2 id="samples-heading">Examples</h2>
+  @for (sample of samples(); track sample.ordinal) {
+    <article class="sample">
+      <h3>Example {{ sample.ordinal }}</h3>
+      <div class="sample__io">
+        <div>
+          <h4>Input</h4>
+          <pre><code>{{ sample.input }}</code></pre>
+        </div>
+        <div>
+          <h4>Output</h4>
+          <pre><code>{{ sample.expectedOutput }}</code></pre>
+        </div>
+      </div>
+      @if (sample.explanation) {
+        <div class="sample__explanation">
+          <strong>Explanation</strong>
+          <p>{{ sample.explanation }}</p>
+        </div>
+      }
+    </article>
+  } @empty {
+    <p class="no-samples">No public examples are available.</p>
+  }
+</section>

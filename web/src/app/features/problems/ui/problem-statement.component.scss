@@ -1,0 +1,14 @@
+.statement {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.constraints {
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--color-border);
+}
+
+h2 {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-lg);
+}

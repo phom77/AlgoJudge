@@ -1,0 +1,24 @@
+@if (isSolved() === true) {
+  <span class="status status--solved" title="Solved">
+    <span aria-hidden="true">✓</span>
+    @if (showLabel()) {
+      <span>Solved</span>
+    } @else {
+      <span class="visually-hidden">Solved</span>
+    }
+  </span>
+} @else if (isSolved() === false) {
+  <span class="status status--unsolved" title="Not solved">
+    <span aria-hidden="true">○</span>
+    @if (showLabel()) {
+      <span>Not solved</span>
+    } @else {
+      <span class="visually-hidden">Not solved</span>
+    }
+  </span>
+} @else {
+  <span class="status status--anonymous" title="Sign in to track progress">
+    <span aria-hidden="true">—</span>
+    <span class="visually-hidden">Sign in to track progress</span>
+  </span>
+}

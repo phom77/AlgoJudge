@@ -23,6 +23,14 @@ export const routes: Routes = [
     title: 'Create account | AlgoJudge',
   },
   {
+    path: 'problems/:slug',
+    loadComponent: () =>
+      import('./features/problems/workspace/problem-workspace.page').then(
+        (module) => module.ProblemWorkspacePage,
+      ),
+    title: 'Problem workspace | AlgoJudge',
+  },
+  {
     path: 'problems',
     loadComponent: () =>
       import('./features/problems/catalogue/problem-catalogue.page').then(

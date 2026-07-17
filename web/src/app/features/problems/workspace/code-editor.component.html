@@ -1,0 +1,15 @@
+<div class="editor-frame" [class.editor-frame--ready]="ready()">
+  <div #editorHost class="editor-host"></div>
+  @if (!ready()) {
+    <textarea
+      class="editor-fallback"
+      spellcheck="false"
+      [attr.aria-label]="ariaLabel()"
+      [value]="value()"
+      (input)="updateFallback($event)"
+    ></textarea>
+    <span class="editor-status" aria-live="polite">
+      {{ loadFailed() ? 'Basic editor active' : 'Loading code editor…' }}
+    </span>
+  }
+</div>

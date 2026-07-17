@@ -1,0 +1,64 @@
+<div class="primary-filters">
+  <label class="search-field">
+    <span class="visually-hidden">Search problems</span>
+    <span class="search-field__icon" aria-hidden="true">⌕</span>
+    <input
+      type="search"
+      maxlength="100"
+      autocomplete="off"
+      placeholder="Search problems"
+      [formControl]="searchControl"
+    />
+  </label>
+
+  <label>
+    <span class="visually-hidden">Difficulty</span>
+    <select [value]="query().difficulty ?? ''" (change)="changeDifficulty($event)">
+      <option value="">All difficulties</option>
+      <option value="Easy">Easy</option>
+      <option value="Medium">Medium</option>
+      <option value="Hard">Hard</option>
+    </select>
+  </label>
+
+  <label>
+    <span class="visually-hidden">Solved status</span>
+    <select
+      [value]="query().solved === null ? '' : query().solved"
+      [disabled]="!authenticated()"
+      (change)="changeSolved($event)"
+      [title]="authenticated() ? 'Filter by solved status' : 'Sign in to filter by progress'"
+    >
+      <option value="">All progress</option>
+      <option value="true">Solved</option>
+      <option value="false">Unsolved</option>
+    </select>
+  </label>
+</div>
+
+@if (availableTags().length > 0 || query().tags.length > 0) {
+  <div class="tag-filters" aria-label="Filter by tag">
+    @for (tag of availableTags(); track tag.slug) {
+      <button
+        type="button"
+        [class.tag-filter--active]="isTagActive(tag.slug)"
+        [attr.aria-pressed]="isTagActive(tag.slug)"
+        (click)="tagToggle.emit(tag.slug)"
+      >
+        {{ tag.name }}
+      </button>
+    }
+    @for (slug of query().tags; track slug) {
+      @if (!isTagAvailable(slug)) {
+        <button
+          type="button"
+          class="tag-filter--active"
+          aria-pressed="true"
+          (click)="tagToggle.emit(slug)"
+        >
+          {{ slug }}
+        </button>
+      }
+    }
+  </div>
+}

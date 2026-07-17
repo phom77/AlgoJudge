@@ -1,0 +1,11 @@
+<nav class="pagination" aria-label="Pagination">
+  <p aria-live="polite">{{ summary() }}</p>
+  <div class="pagination__actions">
+    <button type="button" [disabled]="disabled() || page() <= 1" (click)="previous()">
+      Previous
+    </button>
+    <button type="button" [disabled]="disabled() || page() >= totalPages()" (click)="next()">
+      Next
+    </button>
+  </div>
+</nav>
