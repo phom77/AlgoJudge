@@ -1,0 +1,12 @@
+<article class="statement">
+  <aj-safe-markdown [markdown]="problem().statementMarkdown" />
+
+  @if (problem().constraintsMarkdown) {
+    <section class="constraints" aria-labelledby="constraints-heading">
+      <h2 id="constraints-heading">Constraints</h2>
+      <aj-safe-markdown [markdown]="problem().constraintsMarkdown" />
+    </section>
+  }
+
+  <aj-problem-samples [samples]="problem().samples" />
+</article>

@@ -1,0 +1,33 @@
+<div class="table" role="table" aria-label="Problems">
+  <div class="table__header" role="row">
+    <span role="columnheader">Status</span>
+    <span role="columnheader">Title</span>
+    <span role="columnheader">Tags</span>
+    <span role="columnheader">Difficulty</span>
+  </div>
+
+  @for (problem of problems(); track problem.id) {
+    <div class="table__row" role="row">
+      <span class="status-cell" role="cell">
+        <aj-problem-solved-status [isSolved]="problem.isSolved" />
+      </span>
+      <span class="title-cell" role="cell">
+        <a [routerLink]="['/problems', problem.slug]">{{ problem.title }}</a>
+        <span class="mobile-meta">
+          <aj-problem-difficulty [difficulty]="problem.difficulty" />
+          @for (tag of problem.tags.slice(0, 2); track tag.slug) {
+            <span>{{ tag.name }}</span>
+          }
+        </span>
+      </span>
+      <span class="tags-cell" role="cell">
+        @for (tag of problem.tags.slice(0, 3); track tag.slug) {
+          <span>{{ tag.name }}</span>
+        } @empty {
+          <span>—</span>
+        }
+      </span>
+      <span role="cell"><aj-problem-difficulty [difficulty]="problem.difficulty" /></span>
+    </div>
+  }
+</div>
