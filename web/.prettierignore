@@ -1,6 +1,9 @@
-dist
-coverage
-node_modules
+dist/
+.generated/
+coverage/
+node_modules/
 package-lock.json
 AGENTS.md
-src/app/core/api/generated
+src/app/core/api/generated/
+playwright-report/
+test-results/

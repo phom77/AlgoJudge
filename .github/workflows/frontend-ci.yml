@@ -33,3 +33,15 @@ jobs:
       - run: npm run lint
       - run: npm run test
       - run: npm run build
+      - run: npm run security:check
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e:ci
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: frontend-playwright-report
+          path: |
+            web/playwright-report
+            web/test-results
+          if-no-files-found: ignore
+          retention-days: 7

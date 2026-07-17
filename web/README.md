@@ -43,8 +43,38 @@ npm run test          # one Vitest run
 npm run test:watch    # interactive Vitest watch mode
 npm run test:coverage # Vitest coverage
 npm run build         # optimized production build with budgets
-npm run check         # all scaffold quality gates
+npm run security:check # verify production CSP, Trusted Types, and artifacts
+npm run test:e2e      # build and run Chromium MVP acceptance + accessibility
+npm run check         # static, unit, production build, and security gates
 ```
+
+Playwright uses the optimized bundle and a deterministic same-origin acceptance
+server under `e2e/support`. The server models the stable cookie, CSRF, problem,
+submission, polling, history, and solved-status contracts; it is test-only and
+does not replace backend end-to-end acceptance against PostgreSQL and Docker.
+Install the local browser once with `npx playwright install chromium`.
+
+Frontend CI runs the critical registration/login, catalogue, C++17 submission,
+final verdict, session restore, history, logout, CSP/Trusted Types, desktop
+accessibility, and mobile workspace checks. Failure traces, screenshots, and
+videos are uploaded for seven days.
+
+## Production security and budgets
+
+The optimized index contains only external same-origin scripts and no inline
+event handlers. Deployment
+infrastructure must emit the CSP and other headers declared in
+`config/security-headers.json`; the acceptance server applies that exact file so
+browser tests exercise the deployable policy, including Trusted Types. Keep the
+Angular and Monaco policy names synchronized with `code-editor.loader.ts`.
+
+The production build fails when the initial bundle exceeds 400 kB, an individual
+script exceeds 3 MB, or a component stylesheet exceeds 8 kB. Warning thresholds
+are intentionally lower. Monaco's layout stylesheet is generated before build,
+loaded only with the workspace, and independently capped at 100 kB.
+`security:check` also fails for inline executable scripts, missing strict CSP,
+unsafe eval, missing baseline headers, missing Monaco layout CSS, or production
+source maps.
 
 ## Source layout
 
