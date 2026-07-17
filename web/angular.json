@@ -32,18 +32,38 @@
               {
                 "glob": "**/*",
                 "input": "node_modules/monaco-editor/esm/vs",
-                "output": "assets/monaco/0.53.0/esm/vs"
+                "output": "assets/monaco/0.53.0/esm/vs",
+                "ignore": ["**/*.map"]
+              },
+              {
+                "glob": "monaco-editor.css",
+                "input": ".generated",
+                "output": "assets/monaco/0.53.0"
               }
             ],
             "styles": ["src/styles.scss"]
           },
           "configurations": {
             "production": {
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": false,
+                  "removeSpecialComments": true
+                },
+                "fonts": true
+              },
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "350kB",
+                  "maximumError": "400kB"
+                },
+                {
+                  "type": "anyScript",
+                  "maximumWarning": "2750kB",
+                  "maximumError": "3MB"
                 },
                 {
                   "type": "anyComponentStyle",
