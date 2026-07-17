@@ -1,0 +1,22 @@
+<div class="table" role="table" aria-label="Submission history">
+  <div class="table__header" role="row">
+    <span role="columnheader">Verdict</span>
+    <span role="columnheader">Problem</span>
+    <span role="columnheader">Language</span>
+    <span role="columnheader">Runtime</span>
+    <span role="columnheader">Submitted</span>
+  </div>
+  @for (submission of submissions(); track submission.id) {
+    <a class="table__row" role="row" [routerLink]="['/submissions', submission.id]">
+      <span role="cell"><aj-submission-verdict [status]="submission.status" /></span>
+      <span role="cell">Problem #{{ submission.problemId }}</span>
+      <span role="cell">C++17</span>
+      <span role="cell">
+        {{ submission.executionTimeMs === null ? '—' : submission.executionTimeMs + ' ms' }}
+      </span>
+      <time role="cell" [attr.datetime]="submission.createdAt">
+        {{ submission.createdAt | date: 'medium' }}
+      </time>
+    </a>
+  }
+</div>

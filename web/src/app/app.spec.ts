@@ -16,6 +16,7 @@ describe('App', () => {
           provide: AuthStore,
           useValue: {
             user: signal(null),
+            isAuthenticated: signal(false),
             isChecking: signal(false),
             isSubmitting: signal(false),
             logout: () => of(undefined),

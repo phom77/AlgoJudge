@@ -1,0 +1,47 @@
+@if (problem(); as apiProblem) {
+  <section class="result result--error" role="alert">
+    <div>
+      <strong>{{ apiProblem.title }}</strong>
+      <p>{{ apiProblem.detail ?? 'The submission could not be created.' }}</p>
+      @if (apiProblem.retryAfterSeconds !== null) {
+        <p>Try again in {{ apiProblem.retryAfterSeconds }} seconds.</p>
+      }
+    </div>
+    @if (dismissible()) {
+      <button type="button" aria-label="Dismiss submission error" (click)="dismissed.emit()">
+        ×
+      </button>
+    }
+  </section>
+} @else if (submission(); as result) {
+  <section class="result" [attr.aria-live]="terminal() ? 'off' : 'polite'">
+    <div class="result__content">
+      <aj-submission-verdict [status]="result.status" />
+      <p>{{ message() }}</p>
+      @if (terminal()) {
+        <dl>
+          <div>
+            <dt>Runtime</dt>
+            <dd>
+              {{ result.executionTimeMs ?? '—' }}{{ result.executionTimeMs !== null ? ' ms' : '' }}
+            </dd>
+          </div>
+          <div>
+            <dt>Memory</dt>
+            <dd>{{ result.memoryUsedKb ?? '—' }}{{ result.memoryUsedKb !== null ? ' KB' : '' }}</dd>
+          </div>
+        </dl>
+      }
+    </div>
+    @if (showDetailLink() || (dismissible() && terminal())) {
+      <div class="result__actions">
+        @if (showDetailLink()) {
+          <a [routerLink]="['/submissions', result.id]">View details</a>
+        }
+        @if (dismissible() && terminal()) {
+          <button type="button" (click)="dismissed.emit()">Close</button>
+        }
+      </div>
+    }
+  </section>
+}

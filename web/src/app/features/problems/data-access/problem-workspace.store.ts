@@ -57,6 +57,13 @@ export class ProblemWorkspaceStore {
   retry(): void {
     this.requests.next(this.state().slug);
   }
+
+  markSolved(): void {
+    const detail = this.state().detail;
+    if (detail !== null && detail.isSolved !== true) {
+      this.state.update((state) => ({ ...state, detail: { ...detail, isSolved: true } }));
+    }
+  }
 }
 
 function asApiProblem(error: unknown): ApiProblem {

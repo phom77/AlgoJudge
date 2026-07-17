@@ -82,9 +82,40 @@
       <div class="editor-body">
         <aj-code-editor [value]="sourceCode()" (valueChange)="sourceCode.set($event)" />
       </div>
+      <aj-submission-result-panel
+        [submission]="submissionStore.submission()"
+        [problem]="submissionStore.problem()"
+        [dismissible]="true"
+        (dismissed)="submissionStore.clearResult()"
+      />
       <footer class="editor-footer">
-        <span>Submission controls arrive in the submission flow.</span>
-        <button type="button" disabled>Submit</button>
+        <span [class.source-size--invalid]="sourceBytes() > 65536">
+          {{ sourceBytes() }} / 65,536 bytes
+        </span>
+        @if (authStore.isAuthenticated()) {
+          <button
+            class="submit-button"
+            type="button"
+            [disabled]="submissionStore.submitting() || !sourceValid()"
+            (click)="submit(problem.id)"
+          >
+            @switch (submissionStore.phase()) {
+              @case ('creating') {
+                Submitting…
+              }
+              @case ('polling') {
+                Judging…
+              }
+              @default {
+                Submit
+              }
+            }
+          </button>
+        } @else {
+          <a class="submit-button" routerLink="/login" [queryParams]="{ returnUrl: returnUrl() }">
+            Sign in to submit
+          </a>
+        }
       </footer>
     </section>
   </div>

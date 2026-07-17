@@ -1,0 +1,49 @@
+:host {
+  display: inline-flex;
+}
+
+.verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.verdict--accepted {
+  color: var(--color-success);
+}
+
+.verdict--wronganswer,
+.verdict--timelimitexceeded,
+.verdict--memorylimitexceeded,
+.verdict--compileerror,
+.verdict--runtimeerror {
+  color: var(--color-danger);
+}
+
+.verdict--running {
+  color: var(--color-warning);
+}
+
+.verdict__pulse {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: currentcolor;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .verdict__pulse {
+    animation: none;
+  }
+}

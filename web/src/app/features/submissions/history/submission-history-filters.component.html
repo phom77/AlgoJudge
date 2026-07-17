@@ -1,0 +1,28 @@
+<label>
+  <span>Problem ID</span>
+  <input
+    type="number"
+    min="1"
+    inputmode="numeric"
+    placeholder="All problems"
+    [formControl]="problemIdControl"
+  />
+  @if (problemIdControl.invalid) {
+    <small>Problem ID must be greater than zero.</small>
+  }
+</label>
+
+<label>
+  <span>Verdict</span>
+  <select [value]="query().status ?? ''" (change)="changeStatus($event)">
+    <option value="">All verdicts</option>
+    <option value="Pending">Pending</option>
+    <option value="Running">Running</option>
+    <option value="Accepted">Accepted</option>
+    <option value="WrongAnswer">Wrong Answer</option>
+    <option value="TimeLimitExceeded">Time Limit Exceeded</option>
+    <option value="MemoryLimitExceeded">Memory Limit Exceeded</option>
+    <option value="CompileError">Compile Error</option>
+    <option value="RuntimeError">Runtime Error</option>
+  </select>
+</label>
