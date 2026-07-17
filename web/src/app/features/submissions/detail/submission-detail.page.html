@@ -1,0 +1,84 @@
+<a class="back-link" routerLink="/submissions">← Submission history</a>
+
+@if (store.loading() && !store.submission()) {
+  <section class="detail-state" role="status">
+    <span class="spinner" aria-hidden="true"></span>
+    <p>Loading submission…</p>
+  </section>
+} @else if (store.problem(); as problem) {
+  <section class="detail-state" role="alert">
+    <span class="state-icon" aria-hidden="true">!</span>
+    <h1>{{ problem.title }}</h1>
+    <p>
+      @if (problem.code === 'forbidden') {
+        You do not own this submission.
+      } @else if (problem.code === 'not-found') {
+        This submission does not exist.
+      } @else {
+        The submission could not be loaded.
+      }
+    </p>
+    <div class="state-actions">
+      <a routerLink="/submissions">Back to history</a>
+      @if (problem.code !== 'validation' && problem.code !== 'forbidden') {
+        <button type="button" (click)="store.retry()">Retry</button>
+      }
+    </div>
+  </section>
+} @else if (store.submission(); as submission) {
+  <header class="detail-heading">
+    <div>
+      <p class="eyebrow">Submission result</p>
+      <h1>Problem #{{ submission.problemId }}</h1>
+    </div>
+    <code>{{ submission.id }}</code>
+  </header>
+
+  <section class="detail-card" aria-labelledby="result-heading">
+    <h2 id="result-heading">Judge result</h2>
+    <aj-submission-result-panel [submission]="submission" [showDetailLink]="false" />
+
+    <dl class="metadata">
+      <div>
+        <dt>Language</dt>
+        <dd>C++17</dd>
+      </div>
+      <div>
+        <dt>Submitted</dt>
+        <dd>
+          <time [attr.datetime]="submission.createdAt">{{
+            submission.createdAt | date: 'medium'
+          }}</time>
+        </dd>
+      </div>
+      <div>
+        <dt>Started</dt>
+        <dd>
+          @if (submission.startedAt) {
+            <time [attr.datetime]="submission.startedAt">{{
+              submission.startedAt | date: 'medium'
+            }}</time>
+          } @else {
+            —
+          }
+        </dd>
+      </div>
+      <div>
+        <dt>Finished</dt>
+        <dd>
+          @if (submission.finishedAt) {
+            <time [attr.datetime]="submission.finishedAt">{{
+              submission.finishedAt | date: 'medium'
+            }}</time>
+          } @else {
+            —
+          }
+        </dd>
+      </div>
+    </dl>
+  </section>
+
+  <p class="privacy-note">
+    Hidden testcase input, expected output and internal testcase identifiers are never shown here.
+  </p>
+}

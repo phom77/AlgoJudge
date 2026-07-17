@@ -9,6 +9,14 @@
       <a class="navigation__link" routerLink="/problems" routerLinkActive="navigation__link--active"
         >Problems</a
       >
+      @if (authStore.isAuthenticated()) {
+        <a
+          class="navigation__link"
+          routerLink="/submissions"
+          routerLinkActive="navigation__link--active"
+          >Submissions</a
+        >
+      }
     </nav>
 
     <div class="auth-actions" aria-live="polite">

@@ -1,6 +1,6 @@
 import type { Routes } from '@angular/router';
 
-import { anonymousGuard } from './core/auth/auth.guard';
+import { anonymousGuard, authGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   {
@@ -37,6 +37,24 @@ export const routes: Routes = [
         (module) => module.ProblemCataloguePage,
       ),
     title: 'Problems | AlgoJudge',
+  },
+  {
+    path: 'submissions/:id',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/submissions/detail/submission-detail.page').then(
+        (module) => module.SubmissionDetailPage,
+      ),
+    title: 'Submission result | AlgoJudge',
+  },
+  {
+    path: 'submissions',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/submissions/history/submission-history.page').then(
+        (module) => module.SubmissionHistoryPage,
+      ),
+    title: 'Submission history | AlgoJudge',
   },
   {
     path: '**',
