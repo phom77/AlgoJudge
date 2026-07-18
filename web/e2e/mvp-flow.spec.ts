@@ -85,14 +85,16 @@ test('surfaces CSRF rejection and allows an explicit retry', async ({ page }) =>
     { times: 1 },
   );
 
-  await page.getByRole('button', { name: 'Submit', exact: true }).click();
+  await page.getByRole('tab', { name: 'Submit' }).click();
+  const submitButton = page.locator('aj-problem-execution-panel footer button.action');
+  await submitButton.click();
   await expect(page.locator('section.result[role="alert"]')).toContainText(
     'Antiforgery validation failed.',
   );
-  await expect(page.getByRole('button', { name: 'Submit', exact: true })).toBeEnabled();
+  await expect(submitButton).toBeEnabled();
 
   await page.unrouteAll({ behavior: 'wait' });
-  await page.getByRole('button', { name: 'Submit', exact: true }).click();
+  await submitButton.click();
   await expect(page.locator('aj-submission-result-panel').getByText('Accepted')).toBeVisible({
     timeout: 8_000,
   });

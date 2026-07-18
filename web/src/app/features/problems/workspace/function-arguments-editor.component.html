@@ -1,0 +1,20 @@
+<div class="arguments" [formGroup]="form">
+  @for (parameter of parameters; track parameter.name) {
+    <label>
+      <span
+        ><strong>{{ parameter.name }}</strong> <small>{{ parameter.type }}</small></span
+      >
+      <input
+        type="text"
+        [formControlName]="parameter.name"
+        [attr.aria-invalid]="isInvalid(parameter.name)"
+        [attr.aria-describedby]="isInvalid(parameter.name) ? parameter.name + '-error' : null"
+      />
+      @if (isInvalid(parameter.name)) {
+        <small class="error" [id]="parameter.name + '-error'"
+          >Enter valid JSON matching {{ parameter.type }}.</small
+        >
+      }
+    </label>
+  }
+</div>

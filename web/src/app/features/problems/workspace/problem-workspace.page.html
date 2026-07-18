@@ -1,7 +1,7 @@
 @if (store.loading()) {
   <section class="workspace-state" role="status" aria-live="polite">
     <span class="spinner" aria-hidden="true"></span>
-    <p>Opening workspace…</p>
+    <p>Opening workspace...</p>
   </section>
 } @else if (store.problem(); as problem) {
   <section class="workspace-state" role="alert">
@@ -9,14 +9,14 @@
     <h1>{{ problem.title }}</h1>
     <p>The problem could not be loaded.</p>
     <div class="state-actions">
-      <a routerLink="/problems">Back to problems</a>
-      <button type="button" (click)="store.retry()">Retry</button>
+      <a routerLink="/problems">Back to problems</a
+      ><button type="button" (click)="store.retry()">Retry</button>
     </div>
   </section>
 } @else if (store.detail(); as problem) {
   <header class="problem-header">
     <div class="problem-header__main">
-      <a class="back-link" routerLink="/problems" aria-label="Back to problem catalogue">←</a>
+      <a class="back-link" routerLink="/problems" aria-label="Back to problem catalogue">&larr;</a>
       <div>
         <div class="title-line">
           <h1>{{ problem.title }}</h1>
@@ -27,13 +27,12 @@
           @for (tag of problem.tags; track tag.slug) {
             <span class="tag">{{ tag.name }}</span>
           }
-          <span>{{ problem.timeLimitMs }} ms</span>
-          <span>{{ problem.memoryLimitKb / 1024 }} MB</span>
+          <span>{{ problem.timeLimitMs }} ms</span
+          ><span>{{ problem.memoryLimitKb / 1024 }} MB</span>
         </div>
       </div>
     </div>
   </header>
-
   <div class="mobile-tabs" role="group" aria-label="Workspace view">
     <button
       type="button"
@@ -41,9 +40,8 @@
       [attr.aria-pressed]="activeTab() === 'statement'"
       (click)="selectTab('statement')"
     >
-      Description
-    </button>
-    <button
+      Description</button
+    ><button
       type="button"
       [class.mobile-tabs__active]="activeTab() === 'code'"
       [attr.aria-pressed]="activeTab() === 'code'"
@@ -52,7 +50,6 @@
       Code
     </button>
   </div>
-
   <div class="workspace">
     <section
       class="panel statement-panel"
@@ -61,62 +58,41 @@
     >
       <aj-problem-statement [problem]="problem" />
     </section>
-
     <section
       class="panel editor-panel"
       [class.panel--active]="activeTab() === 'code'"
       aria-label="Solution editor"
     >
       <div class="editor-toolbar">
-        <div>
-          <strong>Code</strong>
-          <span>Draft stays in this tab only</span>
-        </div>
-        <label>
-          <span class="visually-hidden">Programming language</span>
-          <select aria-label="Programming language">
+        <div><strong>Code</strong><span>Draft stays in this tab only</span></div>
+        <label
+          ><span class="visually-hidden">Programming language</span
+          ><select aria-label="Programming language">
             <option>C++17</option>
-          </select>
-        </label>
+          </select></label
+        >
       </div>
       <div class="editor-body">
         <aj-code-editor [value]="sourceCode()" (valueChange)="sourceCode.set($event)" />
       </div>
-      <aj-submission-result-panel
+      <aj-problem-execution-panel
+        [problem]="problem"
+        [authenticated]="authStore.isAuthenticated()"
+        [returnUrl]="returnUrl()"
+        [sourceValid]="sourceValid()"
+        [sourceBytes]="sourceBytes()"
+        [busy]="busy()"
+        [runBusy]="runStore.running()"
+        [submissionBusy]="submissionStore.submitting()"
+        [run]="runStore.run()"
+        [runProblem]="runStore.problem()"
         [submission]="submissionStore.submission()"
-        [problem]="submissionStore.problem()"
-        [dismissible]="true"
-        (dismissed)="submissionStore.clearResult()"
+        [submissionProblem]="submissionStore.problem()"
+        (runRequested)="run(problem, $event)"
+        (submitRequested)="submit(problem.id)"
+        (runDismissed)="runStore.clearResult()"
+        (submissionDismissed)="submissionStore.clearResult()"
       />
-      <footer class="editor-footer">
-        <span [class.source-size--invalid]="sourceBytes() > 65536">
-          {{ sourceBytes() }} / 65,536 bytes
-        </span>
-        @if (authStore.isAuthenticated()) {
-          <button
-            class="submit-button"
-            type="button"
-            [disabled]="submissionStore.submitting() || !sourceValid()"
-            (click)="submit(problem.id)"
-          >
-            @switch (submissionStore.phase()) {
-              @case ('creating') {
-                Submitting…
-              }
-              @case ('polling') {
-                Judging…
-              }
-              @default {
-                Submit
-              }
-            }
-          </button>
-        } @else {
-          <a class="submit-button" routerLink="/login" [queryParams]="{ returnUrl: returnUrl() }">
-            Sign in to submit
-          </a>
-        }
-      </footer>
     </section>
   </div>
 }

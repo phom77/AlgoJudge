@@ -93,6 +93,26 @@ public class ProblemCatalogTests
             typeof(ProblemDetailResponse).GetProperties(),
             property => property.Name.Contains("TestCase", StringComparison.OrdinalIgnoreCase) ||
                         property.Name.Contains("Hidden", StringComparison.OrdinalIgnoreCase));
+        Assert.Null(typeof(ProblemDetailResponse).GetProperty("FunctionAdapterTemplate"));
+    }
+
+    [Fact]
+    public async Task FunctionDetailExposesSignatureButNeverPrivateAdapter()
+    {
+        var problem = CreatePublishedProblem(1, "two-sum");
+        problem.ExecutionMode = ProblemExecutionMode.Function;
+        problem.FunctionSignatureJson = "{\"className\":\"Solution\",\"methodName\":\"twoSum\",\"returnType\":\"Int32Array\",\"parameters\":[{\"name\":\"nums\",\"type\":\"Int32Array\"},{\"name\":\"target\",\"type\":\"Int32\"}]}";
+        problem.FunctionAdapterTemplate = "private-adapter";
+        var service = new ProblemService(
+            new ProblemRepositoryStub([problem]),
+            new SubmissionRepositoryStub([]));
+
+        var detail = await service.GetProblemBySlugAsync(problem.Slug, null);
+
+        Assert.Equal(ProblemExecutionMode.Function, detail!.ExecutionMode);
+        Assert.Equal("twoSum", detail.FunctionSignature!.MethodName);
+        Assert.Equal(["nums", "target"], detail.FunctionSignature.Parameters.Select(item => item.Name));
+        Assert.DoesNotContain("private-adapter", System.Text.Json.JsonSerializer.Serialize(detail));
     }
 
     [Theory]

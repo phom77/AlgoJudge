@@ -77,12 +77,11 @@ h1 {
 
 .editor-panel {
   display: grid;
-  grid-template-rows: auto minmax(26rem, 1fr) auto auto;
+  grid-template-rows: auto minmax(22rem, 1fr) auto auto auto auto;
   background: #1e1e1e;
 }
 
-.editor-toolbar,
-.editor-footer {
+.editor-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -97,8 +96,7 @@ h1 {
   display: grid;
 }
 
-.editor-toolbar span,
-.editor-footer span {
+.editor-toolbar span {
   color: #a3a3a3;
   font-size: var(--font-size-xs);
 }
@@ -113,30 +111,6 @@ h1 {
 
 .editor-body {
   min-height: 26rem;
-}
-
-.editor-footer {
-  border-top: 1px solid #3f3f3f;
-}
-
-.submit-button {
-  padding: var(--space-2) var(--space-5);
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--color-brand);
-  color: #1f1f1f;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.submit-button:disabled {
-  background: #3f3f3f;
-  color: #8f8f8f;
-  cursor: not-allowed;
-}
-
-.source-size--invalid {
-  color: #fca5a5;
 }
 
 .mobile-tabs {
@@ -258,7 +232,6 @@ h1 {
     padding: var(--space-4);
   }
 
-  .editor-footer span,
   .editor-toolbar > div span {
     display: none;
   }

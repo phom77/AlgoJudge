@@ -6,6 +6,7 @@ export function mapSubmission(response: SubmissionResponse): Submission {
   return {
     id: readRequiredText(response.id, 'id'),
     problemId: readPositiveInteger(response.problemId, 'problemId'),
+    systemTestSuiteVersion: readOptionalPositiveInteger(response.systemTestSuiteVersion),
     language: readLanguage(response.language),
     status: readStatus(response.status),
     executionTimeMs: readOptionalMetric(response.executionTimeMs),
@@ -68,6 +69,12 @@ function readOptionalMetric(value: unknown): number | null {
   if (value === undefined || value === null) return null;
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function readOptionalPositiveInteger(value: unknown): number | null {
+  if (value === undefined || value === null) return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 function readRequiredTimestamp(value: unknown, field: string): string {

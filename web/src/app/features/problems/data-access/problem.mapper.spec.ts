@@ -44,4 +44,38 @@ describe('problem mapper', () => {
     expect(detail.samples.map((sample) => sample.ordinal)).toEqual([1, 2]);
     expect('hiddenInput' in detail).toBe(false);
   });
+
+  it('maps a public function signature without exposing its private adapter', () => {
+    const response = {
+      id: 7,
+      slug: 'two-sum',
+      title: 'Two Sum',
+      difficulty: 1,
+      executionMode: 1,
+      functionSignature: {
+        className: 'Solution',
+        methodName: 'twoSum',
+        returnType: 5,
+        parameters: [
+          { name: 'nums', type: 5 },
+          { name: 'target', type: 0 },
+        ],
+        adapter: 'private',
+      },
+    } as unknown as ProblemDetailResponse;
+
+    const detail = mapProblemDetail(response);
+
+    expect(detail.executionMode).toBe('Function');
+    expect(detail.functionSignature).toEqual({
+      className: 'Solution',
+      methodName: 'twoSum',
+      returnType: 'Int32Array',
+      parameters: [
+        { name: 'nums', type: 'Int32Array' },
+        { name: 'target', type: 'Int32' },
+      ],
+    });
+    expect('adapter' in (detail.functionSignature ?? {})).toBe(false);
+  });
 });

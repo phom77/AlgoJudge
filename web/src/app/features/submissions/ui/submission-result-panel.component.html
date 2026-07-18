@@ -20,6 +20,12 @@
       <p>{{ message() }}</p>
       @if (terminal()) {
         <dl>
+          @if (result.systemTestSuiteVersion !== null) {
+            <div>
+              <dt>System suite</dt>
+              <dd>v{{ result.systemTestSuiteVersion }}</dd>
+            </div>
+          }
           <div>
             <dt>Runtime</dt>
             <dd>

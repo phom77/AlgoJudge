@@ -39,6 +39,12 @@ limits, difficulty, judge version, publication timestamp, tags, ordered public
 samples, and optional solved state. A missing, Draft, or Archived problem
 returns `404 Not Found`.
 
+The response also contains `executionMode`. A `StdinStdout` problem has a null
+`functionSignature`. A `Function` problem exposes the public class name, method
+name, return type, and ordered parameter names and types required to construct a
+custom-run request. The content package's adapter remains private and is never
+included in this response.
+
 The response cannot contain `JudgeTestCase` data. Public samples live in a
 separate table from private judge cases, and public repository queries never
 include the private navigation.
