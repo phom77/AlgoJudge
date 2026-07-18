@@ -6,3 +6,7 @@ packages. See `docs/problem-package-format.md` for schema version 1.
 Do not commit production hidden tests to a public repository. Production
 content should live in a private repository or private object storage and be
 imported through `AlgoJudge.ContentTool`.
+
+The `dev` directory contains explicitly non-production fixtures whose judge
+cases are intentionally visible. Run `./scripts/seed-dev-content.ps1` to
+package, validate, import, and publish the local Two Sum fixture.

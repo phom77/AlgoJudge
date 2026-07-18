@@ -10,15 +10,25 @@ public sealed class AuthCookieManager
     public const string AntiforgeryCookieName = "__Host-algojudge-antiforgery";
     public const string AntiforgeryRequestCookieName = "XSRF-TOKEN";
     public const string AntiforgeryHeaderName = "X-XSRF-TOKEN";
+    public const string DevelopmentAccessCookieName = "algojudge-access";
+    public const string DevelopmentRefreshCookieName = "algojudge-refresh";
+    public const string DevelopmentAntiforgeryCookieName = "algojudge-antiforgery";
+
+    private readonly bool _useSecureCookies;
+
+    public AuthCookieManager(IHostEnvironment environment)
+    {
+        _useSecureCookies = !environment.IsDevelopment();
+    }
 
     public void WriteSession(HttpResponse response, AuthSessionResult session)
     {
         response.Cookies.Append(
-            AccessCookieName,
+            GetAccessCookieName(),
             session.AccessToken,
             CreateSensitiveCookieOptions("/", session.AccessTokenExpiresAt));
         response.Cookies.Append(
-            RefreshCookieName,
+            GetRefreshCookieName(),
             session.RefreshToken,
             CreateSensitiveCookieOptions("/api/auth", session.RefreshTokenExpiresAt));
     }
@@ -31,22 +41,27 @@ public sealed class AuthCookieManager
             new CookieOptions
             {
                 HttpOnly = false,
-                Secure = true,
+                Secure = _useSecureCookies,
                 SameSite = SameSiteMode.Strict,
                 Path = "/",
                 IsEssential = true
             });
     }
 
+    public string? ReadAccessToken(HttpRequest request)
+    {
+        return request.Cookies[GetAccessCookieName()];
+    }
+
     public string? ReadRefreshToken(HttpRequest request)
     {
-        return request.Cookies[RefreshCookieName];
+        return request.Cookies[GetRefreshCookieName()];
     }
 
     public void DeleteSession(HttpResponse response)
     {
-        response.Cookies.Delete(AccessCookieName, CreateDeletionOptions("/"));
-        response.Cookies.Delete(RefreshCookieName, CreateDeletionOptions("/api/auth"));
+        response.Cookies.Delete(GetAccessCookieName(), CreateDeletionOptions("/"));
+        response.Cookies.Delete(GetRefreshCookieName(), CreateDeletionOptions("/api/auth"));
     }
 
     public static AuthResponse ToResponse(AuthSessionResult session)
@@ -59,14 +74,14 @@ public sealed class AuthCookieManager
         };
     }
 
-    private static CookieOptions CreateSensitiveCookieOptions(
+    private CookieOptions CreateSensitiveCookieOptions(
         string path,
         DateTime expiresAt)
     {
         return new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = _useSecureCookies,
             SameSite = SameSiteMode.Strict,
             Path = path,
             Expires = new DateTimeOffset(expiresAt),
@@ -74,15 +89,25 @@ public sealed class AuthCookieManager
         };
     }
 
-    private static CookieOptions CreateDeletionOptions(string path)
+    private CookieOptions CreateDeletionOptions(string path)
     {
         return new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = _useSecureCookies,
             SameSite = SameSiteMode.Strict,
             Path = path,
             IsEssential = true
         };
+    }
+
+    private string GetAccessCookieName()
+    {
+        return _useSecureCookies ? AccessCookieName : DevelopmentAccessCookieName;
+    }
+
+    private string GetRefreshCookieName()
+    {
+        return _useSecureCookies ? RefreshCookieName : DevelopmentRefreshCookieName;
     }
 }

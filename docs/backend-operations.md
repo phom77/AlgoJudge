@@ -30,9 +30,12 @@ an `errors` dictionary. Expected application failures map to HTTP 400, 401, 403,
 404, or 409. Unexpected exceptions are logged with their stack traces and
 return a non-sensitive HTTP 500 response.
 
-API and worker console logs are JSON. Request logs and worker events use named
-properties so a log platform can index fields such as request path, status,
-elapsed time, worker ID, submission ID, and trace ID.
+API and worker console logs are compact, colored text in Development so local
+terminal output remains readable. Non-Development environments emit structured
+JSON. Request logs and worker events use named properties so a log platform can
+index fields such as request path, status, elapsed time, worker ID, submission
+ID, and trace ID. Request completion uses Information for successful responses,
+Warning for 4xx responses, and Error for 5xx responses.
 
 Judge logs record container status, exit codes, output byte counts, and
 truncation flags when external commands fail. Raw compiler, runner, stdout,
@@ -69,6 +72,19 @@ cookies. The SPA and API must be served from one origin. Angular development
 uses a same-origin proxy rather than broad credentialed CORS. Unsafe
 cookie-authenticated API requests require the `X-XSRF-TOKEN` header paired with
 the antiforgery cookies issued by `GET /api/auth/csrf`.
+
+The HTTP-only local Development profile uses unprefixed, non-Secure cookie names
+so the Angular development proxy can bootstrap antiforgery without TLS. Testing
+and every non-Development environment retain the `__Host`/`__Secure` names and
+`Secure` cookie policy. Never enable the Development cookie policy in a deployed
+environment.
+
+ASP.NET Data Protection protects antiforgery and authentication state. Local
+Development persists its keys under the ignored repository `.local` directory
+to avoid relying on a potentially inaccessible user-profile key ring. Production
+must set `DataProtection:KeysPath` to storage that persists across restarts and
+is shared by every API replica; the key directory is sensitive operational data
+and must never be committed.
 
 ## Database migrations
 

@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging.Console;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using System.Security.Claims;
@@ -27,12 +28,26 @@ using System.Threading.RateLimiting;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
-builder.Logging.AddJsonConsole(options =>
+if (builder.Environment.IsDevelopment())
 {
-    options.IncludeScopes = true;
-    options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ";
-    options.UseUtcTimestamp = true;
-});
+    builder.Logging.AddSimpleConsole(options =>
+    {
+        options.ColorBehavior = LoggerColorBehavior.Enabled;
+        options.IncludeScopes = false;
+        options.SingleLine = true;
+        options.TimestampFormat = "HH:mm:ss ";
+        options.UseUtcTimestamp = true;
+    });
+}
+else
+{
+    builder.Logging.AddJsonConsole(options =>
+    {
+        options.IncludeScopes = true;
+        options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ";
+        options.UseUtcTimestamp = true;
+    });
+}
 
 var connectionString = PostgreSqlHealthCheck.ValidateConnectionString(
     builder.Configuration.GetConnectionString("DefaultConnection"),
@@ -64,7 +79,10 @@ builder.Services.AddProblemDetails(options =>
     options.CustomizeProblemDetails = context =>
     {
         if (context.ProblemDetails is ApiProblemDetails or ApiValidationProblemDetails)
+        {
+            context.ProblemDetails.Extensions.Remove("traceId");
             return;
+        }
 
         context.ProblemDetails.Extensions["code"] =
             ApiErrorContract.GetCode(context.ProblemDetails.Type);
@@ -93,12 +111,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             OnMessageReceived = context =>
             {
-                if (string.IsNullOrWhiteSpace(context.Token) &&
-                    context.Request.Cookies.TryGetValue(
-                        AuthCookieManager.AccessCookieName,
-                        out var accessToken))
+                if (string.IsNullOrWhiteSpace(context.Token))
                 {
-                    context.Token = accessToken;
+                    var cookieManager = context.HttpContext.RequestServices
+                        .GetRequiredService<AuthCookieManager>();
+                    context.Token = cookieManager.ReadAccessToken(context.Request);
                 }
 
                 return Task.CompletedTask;
@@ -123,12 +140,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+DataProtectionConfiguration.AddConfiguredDataProtection(builder);
 builder.Services.AddAntiforgery(options =>
 {
+    var useSecureCookies = !builder.Environment.IsDevelopment();
     options.HeaderName = AuthCookieManager.AntiforgeryHeaderName;
-    options.Cookie.Name = AuthCookieManager.AntiforgeryCookieName;
+    options.Cookie.Name = useSecureCookies
+        ? AuthCookieManager.AntiforgeryCookieName
+        : AuthCookieManager.DevelopmentAntiforgeryCookieName;
     options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SecurePolicy = useSecureCookies
+        ? CookieSecurePolicy.Always
+        : CookieSecurePolicy.None;
     options.Cookie.SameSite = SameSiteMode.Strict;
     options.Cookie.Path = "/";
     options.Cookie.IsEssential = true;
@@ -296,7 +319,8 @@ if (databaseOptions.MigrateOnStartup)
 
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseExceptionHandler();
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
 app.UseMiddleware<AntiforgeryValidationMiddleware>();
 app.UseAuthentication();
 app.UseRateLimiter();

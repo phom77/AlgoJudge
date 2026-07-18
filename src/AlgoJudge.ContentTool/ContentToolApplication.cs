@@ -1,6 +1,7 @@
 using AlgoJudge.ContentTool.Configuration;
 using AlgoJudge.ContentTool.Importing;
 using AlgoJudge.ContentTool.Packages;
+using AlgoJudge.ContentTool.Publishing;
 using AlgoJudge.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -34,46 +35,35 @@ public static class ContentToolApplication
         try
         {
             var configuration = BuildConfiguration();
-            var options = configuration
-                .GetSection(ContentImportOptions.SectionName)
-                .Get<ContentImportOptions>() ?? new ContentImportOptions();
-            var reader = new ProblemPackageReader(options);
-            var package = await reader.ReadAsync(command.PackagePath!, cancellationSource.Token);
-
-            if (command.Name == "validate")
+            if (command.Name is "validate" or "import")
             {
-                Console.WriteLine(
-                    $"Valid package '{package.Metadata.Slug}': " +
-                    $"{package.Samples.Count} sample(s), " +
-                    $"{package.JudgeTestCases.Count} private test case(s).");
-                return 0;
+                var options = configuration
+                    .GetSection(ContentImportOptions.SectionName)
+                    .Get<ContentImportOptions>() ?? new ContentImportOptions();
+                var reader = new ProblemPackageReader(options);
+                var package = await reader.ReadAsync(command.Target!, cancellationSource.Token);
+
+                if (command.Name == "validate")
+                {
+                    Console.WriteLine(
+                        $"Valid package '{package.Metadata.Slug}': " +
+                        $"{package.Samples.Count} sample(s), " +
+                        $"{package.JudgeTestCases.Count} private test case(s).");
+                    return 0;
+                }
+
+                return await ImportAsync(
+                    configuration,
+                    package,
+                    command.Replace,
+                    cancellationSource.Token);
             }
 
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                Console.Error.WriteLine(
-                    "ConnectionStrings:DefaultConnection is required for import.");
-                return 4;
-            }
-
-            var dbContextOptions = new DbContextOptionsBuilder<AppDbContext>()
-                .UseNpgsql(connectionString)
-                .Options;
-            await using var context = new AppDbContext(dbContextOptions);
-            await EnsureDatabaseReadyAsync(context, cancellationSource.Token);
-            var importer = new ProblemPackageImporter(context);
-            var result = await importer.ImportAsync(
-                package,
-                command.Replace,
+            return await ChangePublicationAsync(
+                configuration,
+                command.Name,
+                command.Target!,
                 cancellationSource.Token);
-
-            var action = result.Replaced ? "Replaced" : "Imported";
-            Console.WriteLine(
-                $"{action} Draft problem '{result.Slug}' (ID {result.ProblemId}, " +
-                $"judge version {result.JudgeVersion}, {result.SampleCount} sample(s), " +
-                $"{result.JudgeTestCaseCount} private test case(s)).");
-            return 0;
         }
         catch (PackageValidationException exception)
         {
@@ -83,6 +73,11 @@ public static class ContentToolApplication
             return 2;
         }
         catch (ContentImportConflictException exception)
+        {
+            Console.Error.WriteLine(exception.Message);
+            return 3;
+        }
+        catch (ContentPublicationConflictException exception)
         {
             Console.Error.WriteLine(exception.Message);
             return 3;
@@ -130,6 +125,74 @@ public static class ContentToolApplication
             .Build();
     }
 
+    private static async Task<int> ImportAsync(
+        IConfiguration configuration,
+        ProblemPackage package,
+        bool replace,
+        CancellationToken cancellationToken)
+    {
+        await using var context = await CreateReadyDbContextAsync(
+            configuration,
+            cancellationToken);
+        var importer = new ProblemPackageImporter(context);
+        var result = await importer.ImportAsync(package, replace, cancellationToken);
+
+        var action = result.Replaced ? "Replaced" : "Imported";
+        Console.WriteLine(
+            $"{action} Draft problem '{result.Slug}' (ID {result.ProblemId}, " +
+            $"judge version {result.JudgeVersion}, {result.SampleCount} sample(s), " +
+            $"{result.JudgeTestCaseCount} private test case(s)).");
+        return 0;
+    }
+
+    private static async Task<int> ChangePublicationAsync(
+        IConfiguration configuration,
+        string commandName,
+        string slug,
+        CancellationToken cancellationToken)
+    {
+        await using var context = await CreateReadyDbContextAsync(
+            configuration,
+            cancellationToken);
+        var publicationService = new ProblemPublicationService(context);
+        var result = commandName == "publish"
+            ? await publicationService.PublishAsync(slug, cancellationToken)
+            : await publicationService.UnpublishAsync(slug, cancellationToken);
+
+        var action = result.Changed
+            ? commandName == "publish" ? "Published" : "Unpublished"
+            : $"Already {result.Status}";
+        Console.WriteLine($"{action} problem '{result.Slug}' (ID {result.ProblemId}).");
+        return 0;
+    }
+
+    private static async Task<AppDbContext> CreateReadyDbContextAsync(
+        IConfiguration configuration,
+        CancellationToken cancellationToken)
+    {
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                "ConnectionStrings:DefaultConnection is required for content operations.");
+        }
+
+        var dbContextOptions = new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        var context = new AppDbContext(dbContextOptions);
+        try
+        {
+            await EnsureDatabaseReadyAsync(context, cancellationToken);
+            return context;
+        }
+        catch
+        {
+            await context.DisposeAsync();
+            throw;
+        }
+    }
+
     private static async Task EnsureDatabaseReadyAsync(
         AppDbContext context,
         CancellationToken cancellationToken)
@@ -150,8 +213,18 @@ public static class ContentToolApplication
         if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
             return true;
 
-        if (args[0] is not ("validate" or "import") || args.Length < 2)
+        if (args[0] is not ("validate" or "import" or "publish" or "unpublish") ||
+            args.Length < 2)
             return false;
+
+        if (args[0] is "publish" or "unpublish")
+        {
+            if (args.Length != 2)
+                return false;
+
+            command = new ContentToolCommand(args[0], args[1], Replace: false);
+            return true;
+        }
 
         var replace = false;
         foreach (var option in args.Skip(2))
@@ -174,7 +247,9 @@ public static class ContentToolApplication
         Console.WriteLine("AlgoJudge ContentTool");
         Console.WriteLine("  validate <package.zip>");
         Console.WriteLine("  import <package.zip> [--replace]");
+        Console.WriteLine("  publish <slug>");
+        Console.WriteLine("  unpublish <slug>");
     }
 
-    private sealed record ContentToolCommand(string Name, string? PackagePath, bool Replace);
+    private sealed record ContentToolCommand(string Name, string? Target, bool Replace);
 }
