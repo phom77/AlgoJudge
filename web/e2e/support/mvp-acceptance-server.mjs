@@ -18,6 +18,14 @@ const problem = {
   ],
 };
 
+const functionProblem = {
+  id: 8,
+  slug: 'double-function',
+  title: 'Double Function',
+  difficulty: 'Easy',
+  tags: [{ slug: 'math', name: 'Math' }],
+};
+
 let state = createState();
 
 const server = createServer(async (request, response) => {
@@ -33,6 +41,8 @@ const server = createServer(async (request, response) => {
       return json(response, 200, {
         createRequests: state.createRequests,
         submissions: state.submissions.size,
+        runCreateRequests: state.runCreateRequests,
+        runs: state.runs.size,
       });
     }
     if (url.pathname.startsWith('/api/')) {
@@ -64,7 +74,9 @@ function createState() {
     users: new Map(),
     sessions: new Map(),
     submissions: new Map(),
+    runs: new Map(),
     createRequests: 0,
+    runCreateRequests: 0,
   };
 }
 
@@ -145,6 +157,8 @@ async function handleApi(request, response, url) {
       timeLimitMs: 1000,
       memoryLimitKb: 262144,
       judgeVersion: 1,
+      executionMode: 0,
+      functionSignature: null,
       publishedAt: '2026-07-17T00:00:00Z',
       samples: [
         {
@@ -157,6 +171,53 @@ async function handleApi(request, response, url) {
     });
   }
 
+  if (url.pathname === `/api/problems/${functionProblem.slug}` && request.method === 'GET') {
+    return json(response, 200, {
+      ...functionProblem,
+      isSolved: userName ? hasAcceptedSubmission(userName, functionProblem.id) : null,
+      statementMarkdown: 'Implement a method that doubles one integer.',
+      constraintsMarkdown: '- The value fits in a signed 32-bit integer.\n- Use C++17.',
+      timeLimitMs: 1000,
+      memoryLimitKb: 262144,
+      judgeVersion: 1,
+      executionMode: 1,
+      functionSignature: {
+        className: 'Solution',
+        methodName: 'solve',
+        returnType: 0,
+        parameters: [{ name: 'value', type: 0 }],
+      },
+      publishedAt: '2026-07-17T00:00:00Z',
+      samples: [{ ordinal: 1, input: '{"value":2}', expectedOutput: '4', explanation: null }],
+    });
+  }
+
+  const createRunMatch = /^\/api\/problems\/([^/]+)\/runs$/i.exec(url.pathname);
+  if (createRunMatch && request.method === 'POST') {
+    if (!userName) return authenticationProblem(response);
+    if (!hasValidCsrf(request, cookies)) return csrfProblem(response);
+    state.runCreateRequests += 1;
+    const body = await readJson(request);
+    const isFunction = createRunMatch[1] === functionProblem.slug;
+    const run = {
+      id: randomUUID(),
+      owner: userName,
+      problemId: isFunction ? functionProblem.id : problem.id,
+      status: 'Pending',
+      stdout: null,
+      stderr: null,
+      executionTimeMs: null,
+      memoryUsedKb: null,
+      createdAt: '2026-07-17T00:30:00Z',
+      startedAt: null,
+      finishedAt: null,
+      polls: 0,
+      result: isFunction ? String(Number(body.arguments?.value) * 2) : String(body.input ?? ''),
+    };
+    state.runs.set(run.id, run);
+    return json(response, 201, publicRun(run));
+  }
+
   if (url.pathname === '/api/submissions' && request.method === 'POST') {
     if (!userName) return authenticationProblem(response);
     if (!hasValidCsrf(request, cookies)) return csrfProblem(response);
@@ -167,6 +228,7 @@ async function handleApi(request, response, url) {
       id: randomUUID(),
       owner: userName,
       problemId: Number(body.problemId),
+      systemTestSuiteVersion: 1,
       language: body.language,
       status: 'Pending',
       executionTimeMs: null,
@@ -215,6 +277,17 @@ async function handleApi(request, response, url) {
     return json(response, 200, publicSubmission(submission));
   }
 
+  const runMatch = /^\/api\/runs\/([0-9a-f-]+)$/i.exec(url.pathname);
+  if (runMatch && request.method === 'GET') {
+    if (!userName) return authenticationProblem(response);
+    const run = state.runs.get(runMatch[1]);
+    if (!run) return problemDetails(response, 404, 'not-found', 'Run not found.');
+    if (run.owner !== userName)
+      return problemDetails(response, 403, 'forbidden', 'Run access denied.');
+    advanceRun(run);
+    return json(response, 200, publicRun(run));
+  }
+
   return problemDetails(response, 404, 'not-found', 'API route not found.');
 }
 
@@ -253,10 +326,41 @@ function advanceSubmission(submission) {
   }
 }
 
+function advanceRun(run) {
+  run.polls += 1;
+  if (run.status === 'Pending') {
+    run.status = 'Running';
+    run.startedAt = '2026-07-17T00:30:01Z';
+  } else if (run.status === 'Running') {
+    run.status = 'Completed';
+    run.stdout = run.result;
+    run.stderr = '';
+    run.executionTimeMs = 4;
+    run.memoryUsedKb = 1024;
+    run.finishedAt = '2026-07-17T00:30:02Z';
+  }
+}
+
+function publicRun(run) {
+  return {
+    id: run.id,
+    problemId: run.problemId,
+    status: run.status,
+    stdout: run.stdout,
+    stderr: run.stderr,
+    executionTimeMs: run.executionTimeMs,
+    memoryUsedKb: run.memoryUsedKb,
+    createdAt: run.createdAt,
+    startedAt: run.startedAt,
+    finishedAt: run.finishedAt,
+  };
+}
+
 function publicSubmission(submission) {
   return {
     id: submission.id,
     problemId: submission.problemId,
+    systemTestSuiteVersion: submission.systemTestSuiteVersion,
     language: submission.language,
     status: submission.status,
     executionTimeMs: submission.executionTimeMs,
@@ -267,9 +371,12 @@ function publicSubmission(submission) {
   };
 }
 
-function hasAcceptedSubmission(userName) {
+function hasAcceptedSubmission(userName, problemId = problem.id) {
   return [...state.submissions.values()].some(
-    (submission) => submission.owner === userName && submission.status === 'Accepted',
+    (submission) =>
+      submission.owner === userName &&
+      submission.problemId === problemId &&
+      submission.status === 'Accepted',
   );
 }
 
