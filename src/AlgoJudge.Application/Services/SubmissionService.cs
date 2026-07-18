@@ -97,6 +97,7 @@ public sealed class SubmissionService : ISubmissionService
 
         var submission = _mapper.Map<Submission>(request);
         submission.UserId = userId;
+        submission.SystemTestSuiteVersion = problem.JudgeVersion;
         submission.Status = SubmissionStatus.Pending;
         submission.CreatedAt = DateTime.UtcNow;
         submission.ExecutionTime = 0;

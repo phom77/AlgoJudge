@@ -2,6 +2,7 @@ using AlgoJudge.Application.FunctionExecution;
 using AlgoJudge.Application.Models.Common;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Application.Models.SubmissionQueue;
+using AlgoJudge.Application.Models.Execution;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
 using AlgoJudge.Infrastructure.Grading;
@@ -64,7 +65,9 @@ internal static class JudgeTestHarness
         int memoryLimitKb = 64 * 1024,
         ProblemExecutionMode executionMode = ProblemExecutionMode.StdinStdout,
         string? functionSignatureJson = null,
-        string? functionAdapterTemplate = null)
+        string? functionAdapterTemplate = null,
+        int systemTestSuiteVersion = 1,
+        IReadOnlyList<JudgeTestCase>? systemTestCases = null)
     {
         var submissionId = Guid.NewGuid();
         var claimToken = Guid.NewGuid();
@@ -79,7 +82,8 @@ internal static class JudgeTestHarness
             WorkerId = "judge-integration-test",
             ClaimToken = claimToken,
             LeaseExpiresAt = DateTime.UtcNow.AddMinutes(5),
-            AttemptCount = 1
+            AttemptCount = 1,
+            SystemTestSuiteVersion = systemTestSuiteVersion
         };
         var problem = new Problem
         {
@@ -100,6 +104,7 @@ internal static class JudgeTestHarness
         {
             Id = 1,
             ProblemId = problem.Id,
+            SystemTestSuiteVersion = systemTestSuiteVersion,
             Input = input,
             ExpectedOutput = expectedOutput,
             Ordinal = 1
@@ -114,7 +119,7 @@ internal static class JudgeTestHarness
         var grader = new GraderService(
             submissionRepository,
             new StubProblemRepository(problem),
-            new StubJudgeTestCaseRepository(testCase),
+            new StubTestSuiteProvider(systemTestCases ?? [testCase]),
             sandbox,
             new Cpp17FunctionHarnessBuilder(),
             logger);
@@ -226,18 +231,29 @@ internal static class JudgeTestHarness
             int pageSize) => throw new NotSupportedException();
     }
 
-    private sealed class StubJudgeTestCaseRepository : IJudgeTestCaseRepository
+    private sealed class StubTestSuiteProvider : ITestSuiteProvider
     {
-        private readonly JudgeTestCase _testCase;
+        private readonly IReadOnlyList<JudgeTestCase> _testCases;
 
-        public StubJudgeTestCaseRepository(JudgeTestCase testCase)
+        public StubTestSuiteProvider(IReadOnlyList<JudgeTestCase> testCases)
         {
-            _testCase = testCase;
+            _testCases = testCases;
         }
 
-        public Task<IEnumerable<JudgeTestCase>> GetByProblemIdAsync(int problemId)
+        public Task<SystemTestSuite?> GetSystemSuiteAsync(
+            int problemId,
+            int version,
+            CancellationToken cancellationToken = default)
         {
-            return Task.FromResult<IEnumerable<JudgeTestCase>>([_testCase]);
+            var selected = _testCases
+                .Where(testCase =>
+                    testCase.ProblemId == problemId &&
+                    testCase.SystemTestSuiteVersion == version)
+                .OrderBy(testCase => testCase.Ordinal)
+                .ToArray();
+            return Task.FromResult<SystemTestSuite?>(selected.Length == 0
+                ? null
+                : new SystemTestSuite(problemId, version, selected));
         }
     }
 }

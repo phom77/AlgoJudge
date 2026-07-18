@@ -9,7 +9,10 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
         public void Configure(EntityTypeBuilder<JudgeTestCase> builder)
         {
             builder.ToTable("JudgeTestCases", table =>
-                table.HasCheckConstraint("CK_JudgeTestCase_Ordinal", "\"Ordinal\" > 0"));
+            {
+                table.HasCheckConstraint("CK_JudgeTestCase_Ordinal", "\"Ordinal\" > 0");
+                table.HasCheckConstraint("CK_JudgeTestCase_SystemTestSuiteVersion", "\"SystemTestSuiteVersion\" > 0");
+            });
 
             builder.HasKey(testCase => testCase.Id);
             builder.Property(testCase => testCase.Input).IsRequired();
@@ -20,7 +23,10 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
                 .HasForeignKey(testCase => testCase.ProblemId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            builder.HasIndex(testCase => new { testCase.ProblemId, testCase.Ordinal })
+            builder.Property(testCase => testCase.SystemTestSuiteVersion).HasDefaultValue(1);
+
+            builder.HasIndex(testCase => new
+                { testCase.ProblemId, testCase.SystemTestSuiteVersion, testCase.Ordinal })
                 .IsUnique();
         }
     }

@@ -37,7 +37,8 @@ contract, and hidden arguments/output must not appear in logs or diagnostics.
 
 ## 3. Judge algorithm
 
-1. A worker atomically claims a Pending submission.
+1. A worker atomically claims a Pending submission and selects the exact
+   system-suite version pinned when that submission was created.
 2. It selects the problem execution mode. For Function problems it builds the
    C++17 harness; for StdinStdout it uses the submitted source unchanged.
 3. It writes the resulting source code to a unique ephemeral work directory.
@@ -50,6 +51,12 @@ contract, and hidden arguments/output must not appear in logs or diagnostics.
    and peak memory.
 8. It stops at the first failure in MVP and finalizes one verdict.
 9. It deletes the work directory and all temporary artifacts.
+
+System suites are selected by problem ID plus positive suite version and are
+executed in stable ordinal order. Missing versions are operational failures,
+not empty Accepted suites. Generator code and reference solutions never run in
+the worker. Submission retries and reclaimed leases use the original pinned
+version.
 
 For a custom run, the same compile and sandbox stages execute exactly once with
 the user's bounded input. The worker does not load hidden testcases or compare

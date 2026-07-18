@@ -17,6 +17,9 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
                     "CK_Submission_AttemptCount",
                     "\"AttemptCount\" >= 0");
                 table.HasCheckConstraint(
+                    "CK_Submission_SystemTestSuiteVersion",
+                    "\"SystemTestSuiteVersion\" > 0");
+                table.HasCheckConstraint(
                     "CK_Submission_RunningClaim",
                     "\"Status\" <> 2 OR (\"WorkerId\" IS NOT NULL AND " +
                     "\"ClaimToken\" IS NOT NULL AND \"LeaseExpiresAt\" IS NOT NULL)");
@@ -37,6 +40,9 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
 
             builder.Property(s => s.AttemptCount)
                    .HasDefaultValue(0);
+
+            builder.Property(s => s.SystemTestSuiteVersion)
+                   .HasDefaultValue(1);
 
             builder.HasOne(s => s.User)
                    .WithMany(u => u.Submissions)

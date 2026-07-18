@@ -37,9 +37,9 @@
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
 | FR-20 | An authenticated user can submit code for a published problem. | The API accepts only a supported language and source code within the configured size limit. StdinStdout accepts a complete program; Function accepts the declared class/method implementation. The created submission starts as Pending. |
-| FR-21 | The system judges every accepted submission exactly once. | A worker claims Pending work atomically before execution. Retrying a crashed job must not produce two final results. |
+| FR-21 | The system judges every accepted submission exactly once. | A worker claims Pending work atomically before execution. Retrying a crashed job must not produce two final results or switch the system-suite version captured at submission creation. |
 | FR-22 | The user can read the state of their own submission. | The state changes from Pending to Running and then to one final verdict. The user sees compile diagnostics only for their own submission. |
-| FR-23 | A submission is Accepted only if every testcase passes. | The judge stops at the first failed case for MVP. It records an internal failure summary but does not reveal hidden input or output. |
+| FR-23 | A submission is Accepted only if every testcase in its pinned published system suite passes. | The judge executes cases in stable order and stops at the first failure for MVP. It records an internal failure summary but does not reveal hidden input or output. |
 | FR-24 | A user can view their submission history. | History is paginated and filterable by problem and verdict. A user cannot read another user's history or submission detail. |
 | FR-25 | The system protects capacity from accidental or abusive submission bursts. | Per-user and per-IP rate limits are enforced and return a clear retry response. |
 | FR-26 | An authenticated user can run code with custom input for a published problem. | The run is queued, owner-only, and executes once without reading hidden testcases or changing submission history and solved state. StdinStdout accepts raw input; Function accepts arguments matching the declared signature. |

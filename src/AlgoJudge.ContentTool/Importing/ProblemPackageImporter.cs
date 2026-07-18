@@ -127,6 +127,7 @@ public sealed class ProblemPackageImporter
         {
             problem.JudgeTestCases.Add(new JudgeTestCase
             {
+                SystemTestSuiteVersion = problem.JudgeVersion,
                 Input = testCase.Input,
                 ExpectedOutput = testCase.ExpectedOutput,
                 Ordinal = testCase.Ordinal

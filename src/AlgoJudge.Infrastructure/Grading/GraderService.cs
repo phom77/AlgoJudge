@@ -11,7 +11,7 @@ namespace AlgoJudge.Infrastructure.Grading
     {
         private readonly ISubmissionRepository _submissionRepository;
         private readonly IProblemRepository _problemRepository;
-        private readonly IJudgeTestCaseRepository _judgeTestCaseRepository;
+        private readonly ITestSuiteProvider _testSuiteProvider;
         private readonly IDockerSandbox _sandbox;
         private readonly IFunctionHarnessBuilder _functionHarnessBuilder;
         private readonly ILogger<GraderService> _logger;
@@ -19,14 +19,14 @@ namespace AlgoJudge.Infrastructure.Grading
         public GraderService(
             ISubmissionRepository submissionRepository,
             IProblemRepository problemRepository,
-            IJudgeTestCaseRepository judgeTestCaseRepository,
+            ITestSuiteProvider testSuiteProvider,
             IDockerSandbox sandbox,
             IFunctionHarnessBuilder functionHarnessBuilder,
             ILogger<GraderService> logger)
         {
             _submissionRepository = submissionRepository;
             _problemRepository = problemRepository;
-            _judgeTestCaseRepository = judgeTestCaseRepository;
+            _testSuiteProvider = testSuiteProvider;
             _sandbox = sandbox;
             _functionHarnessBuilder = functionHarnessBuilder;
             _logger = logger;
@@ -58,13 +58,15 @@ namespace AlgoJudge.Infrastructure.Grading
                 return;
             }
 
-            var testCases = (await _judgeTestCaseRepository
-                .GetByProblemIdAsync(submission.ProblemId))
-                .ToList();
-            if (testCases.Count == 0)
+            var suite = await _testSuiteProvider.GetSystemSuiteAsync(
+                submission.ProblemId,
+                submission.SystemTestSuiteVersion,
+                cancellationToken);
+            if (suite is null)
             {
                 _logger.LogError(
-                    "Problem {ProblemId} has no judge test cases for submission {SubmissionId}.",
+                    "System suite {SuiteVersion} for problem {ProblemId} is unavailable for submission {SubmissionId}.",
+                    submission.SystemTestSuiteVersion,
                     submission.ProblemId,
                     submission.Id);
                 await FinalizeOrThrowAsync(
@@ -79,7 +81,7 @@ namespace AlgoJudge.Infrastructure.Grading
             var workDirectory = Path.Combine(
                 Path.GetTempPath(),
                 "algojudge",
-                submission.Id.ToString());
+                $"submission-{submission.Id}-{claim.ClaimToken:N}");
 
             try
             {
@@ -105,7 +107,7 @@ namespace AlgoJudge.Infrastructure.Grading
                 var maxExecutionTime = 0;
                 long maxMemoryUsedBytes = 0;
 
-                foreach (var testCase in testCases)
+                foreach (var testCase in suite.TestCases)
                 {
                     var runResult = await _sandbox.RunAsync(
                         workDirectory,
