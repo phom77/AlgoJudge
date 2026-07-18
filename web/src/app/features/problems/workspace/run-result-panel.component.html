@@ -1,0 +1,36 @@
+@if (problem(); as apiProblem) {
+  <section class="run-result run-result--error" role="alert">
+    <div>
+      <strong>{{ apiProblem.title }}</strong>
+      <p>{{ apiProblem.detail ?? 'The run could not be created.' }}</p>
+    </div>
+    <button type="button" aria-label="Dismiss run error" (click)="dismissed.emit()">Close</button>
+  </section>
+} @else if (run(); as result) {
+  <section class="run-result" [attr.aria-live]="terminal() ? 'off' : 'polite'">
+    <header>
+      <strong>{{ label() }}</strong>
+      @if (terminal()) {
+        <button type="button" (click)="dismissed.emit()">Close</button>
+      }
+    </header>
+    @if (result.stdout !== null) {
+      <div>
+        <h3>stdout</h3>
+        <pre>{{ result.stdout || '(empty)' }}</pre>
+      </div>
+    }
+    @if (result.stderr) {
+      <div>
+        <h3>stderr</h3>
+        <pre class="stderr">{{ result.stderr }}</pre>
+      </div>
+    }
+    @if (terminal()) {
+      <p class="metrics">
+        Runtime: {{ result.executionTimeMs ?? '-' }} ms | Memory:
+        {{ result.memoryUsedKb ?? '-' }} KB
+      </p>
+    }
+  </section>
+}

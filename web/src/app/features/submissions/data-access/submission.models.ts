@@ -14,6 +14,7 @@ export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
 export interface Submission {
   readonly id: string;
   readonly problemId: number;
+  readonly systemTestSuiteVersion: number | null;
   readonly language: 'cpp17';
   readonly status: SubmissionStatus;
   readonly executionTimeMs: number | null;

@@ -31,12 +31,37 @@ export interface ProblemSample {
   readonly explanation: string | null;
 }
 
+export type ProblemExecutionMode = 'StdinStdout' | 'Function';
+export type FunctionValueType =
+  | 'Int32'
+  | 'Int64'
+  | 'Double'
+  | 'Boolean'
+  | 'String'
+  | 'Int32Array'
+  | 'Int64Array'
+  | 'DoubleArray'
+  | 'BooleanArray'
+  | 'StringArray';
+export interface FunctionParameter {
+  readonly name: string;
+  readonly type: FunctionValueType;
+}
+export interface FunctionSignature {
+  readonly className: string;
+  readonly methodName: string;
+  readonly returnType: FunctionValueType;
+  readonly parameters: readonly FunctionParameter[];
+}
+
 export interface ProblemDetail extends ProblemListItem {
   readonly statementMarkdown: string;
   readonly constraintsMarkdown: string;
   readonly timeLimitMs: number;
   readonly memoryLimitKb: number;
   readonly judgeVersion: number;
+  readonly executionMode: ProblemExecutionMode;
+  readonly functionSignature: FunctionSignature | null;
   readonly publishedAt: string | null;
   readonly samples: readonly ProblemSample[];
 }

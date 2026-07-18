@@ -176,6 +176,40 @@
       "DifficultyLevel": {
         "type": "integer"
       },
+      "FunctionParameterResponse": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/FunctionValueType"
+          }
+        },
+        "type": "object"
+      },
+      "FunctionSignatureResponse": {
+        "properties": {
+          "className": {
+            "type": "string"
+          },
+          "methodName": {
+            "type": "string"
+          },
+          "parameters": {
+            "items": {
+              "$ref": "#/components/schemas/FunctionParameterResponse"
+            },
+            "type": "array"
+          },
+          "returnType": {
+            "$ref": "#/components/schemas/FunctionValueType"
+          }
+        },
+        "type": "object"
+      },
+      "FunctionValueType": {
+        "type": "integer"
+      },
       "JsonElement": {},
       "LoginRequest": {
         "properties": {
@@ -290,6 +324,19 @@
           "difficulty": {
             "$ref": "#/components/schemas/DifficultyLevel"
           },
+          "executionMode": {
+            "$ref": "#/components/schemas/ProblemExecutionMode"
+          },
+          "functionSignature": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FunctionSignatureResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "format": "int32",
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -358,6 +405,9 @@
           }
         },
         "type": "object"
+      },
+      "ProblemExecutionMode": {
+        "type": "integer"
       },
       "ProblemListItemResponse": {
         "properties": {

@@ -102,6 +102,14 @@ Routes are lazy-loaded at feature boundaries. Routed `*.page.ts` files
 orchestrate state and focused child components; HTTP and DTO mapping belong in
 feature data-access gateways. Tests stay beside the code they cover.
 
+The problem workspace keeps source code and custom input in memory only. `Run`
+accepts stdin or typed Function arguments, polls one custom run to a terminal
+result, and displays its public stdout, stderr, time, and memory. `Submit` runs
+the immutable system suite, displays its version and final verdict, and marks
+the current problem solved after an Accepted result. Both actions bootstrap
+CSRF once, reject duplicate active requests, stop polling on logout or page
+destruction, and never persist source or custom testcase data.
+
 ## OpenAPI client
 
 `ng-openapi-gen.json` is the single generator configuration. It reads the

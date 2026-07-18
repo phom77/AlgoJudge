@@ -42,6 +42,7 @@ function submission(status: SubmissionStatus): Submission {
   return {
     id: '75b27e41-e942-42b1-89dc-4bc087f458c3',
     problemId: 7,
+    systemTestSuiteVersion: 1,
     language: 'cpp17',
     status,
     executionTimeMs: status === 'Accepted' ? 12 : null,

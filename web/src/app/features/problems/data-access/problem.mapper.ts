@@ -5,6 +5,8 @@ import type { ProblemSampleResponse } from '../../../core/api/generated/models/p
 import type { TagResponse } from '../../../core/api/generated/models/tag-response';
 import type {
   ProblemDetail,
+  FunctionSignature,
+  FunctionValueType,
   ProblemDifficulty,
   ProblemListItem,
   ProblemPage,
@@ -30,10 +32,47 @@ export function mapProblemDetail(response: ProblemDetailResponse): ProblemDetail
     timeLimitMs: readNonNegativeInteger(response.timeLimitMs, 0),
     memoryLimitKb: readNonNegativeInteger(response.memoryLimitKb, 0),
     judgeVersion: readNonNegativeInteger(response.judgeVersion, 0),
+    executionMode: Number(response.executionMode) === 1 ? 'Function' : 'StdinStdout',
+    functionSignature: mapFunctionSignature(response.functionSignature),
     publishedAt: readTimestamp(response.publishedAt),
     samples: (response.samples ?? [])
       .map(mapSample)
       .sort((left, right) => left.ordinal - right.ordinal),
+  };
+}
+
+const FUNCTION_TYPES: readonly FunctionValueType[] = [
+  'Int32',
+  'Int64',
+  'Double',
+  'Boolean',
+  'String',
+  'Int32Array',
+  'Int64Array',
+  'DoubleArray',
+  'BooleanArray',
+  'StringArray',
+];
+
+function mapFunctionSignature(
+  value: ProblemDetailResponse['functionSignature'],
+): FunctionSignature | null {
+  if (!value) return null;
+  const readType = (type: unknown): FunctionValueType => {
+    if (typeof type === 'string' && FUNCTION_TYPES.includes(type as FunctionValueType))
+      return type as FunctionValueType;
+    const mapped = FUNCTION_TYPES[Number(type)];
+    if (!mapped) throw new Error('The function signature contains an invalid value type.');
+    return mapped;
+  };
+  return {
+    className: readRequiredText(value.className, 'function className'),
+    methodName: readRequiredText(value.methodName, 'function methodName'),
+    returnType: readType(value.returnType),
+    parameters: (value.parameters ?? []).map((parameter) => ({
+      name: readRequiredText(parameter.name, 'function parameter name'),
+      type: readType(parameter.type),
+    })),
   };
 }
 

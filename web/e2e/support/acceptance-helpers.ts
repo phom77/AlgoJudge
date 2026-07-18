@@ -36,7 +36,8 @@ export async function openWorkspace(page: Page, expectEditorVisible = true): Pro
 }
 
 export async function submitAcceptedSolution(page: Page): Promise<string> {
-  const submitButton = page.locator('button.submit-button');
+  await page.getByRole('tab', { name: 'Submit' }).click();
+  const submitButton = page.locator('aj-problem-execution-panel footer button.action');
   await submitButton.click();
   await expect(submitButton).toBeDisabled();
   await expect(page.getByText('Your submission is queued for judging.')).toBeVisible();

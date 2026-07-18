@@ -1,0 +1,81 @@
+<div class="execution-tabs" role="tablist" aria-label="Execution type">
+  <button
+    type="button"
+    role="tab"
+    [attr.aria-selected]="action() === 'run'"
+    (click)="select('run')"
+  >
+    Run
+  </button>
+  <button
+    type="button"
+    role="tab"
+    [attr.aria-selected]="action() === 'submit'"
+    (click)="select('submit')"
+  >
+    Submit
+  </button>
+</div>
+@if (action() === 'run') {
+  <section class="run-input" aria-label="Custom testcase">
+    @if (problem().executionMode === 'Function' && problem().functionSignature; as signature) {
+      <p class="signature">
+        <strong>{{ signature.className }}.{{ signature.methodName }}</strong> returns
+        {{ signature.returnType }}
+      </p>
+      <aj-function-arguments-editor
+        [parameters]="signature.parameters"
+        (argumentsChange)="functionArguments.set($event)"
+      />
+    } @else {
+      <label for="custom-input">Custom stdin</label>
+      <textarea
+        id="custom-input"
+        rows="5"
+        [value]="customInput()"
+        (input)="customInput.set($any($event.target).value)"
+      ></textarea>
+      <span [class.invalid]="inputBytes() > 65536">{{ inputBytes() }} / 65,536 bytes</span>
+    }
+  </section>
+  <aj-run-result-panel [run]="run()" [problem]="runProblem()" (dismissed)="runDismissed.emit()" />
+} @else {
+  <p class="submit-note">
+    Submit runs every hidden testcase in system suite v{{ problem().judgeVersion }} and records the
+    verdict in history.
+  </p>
+  <aj-submission-result-panel
+    [submission]="submission()"
+    [problem]="submissionProblem()"
+    [dismissible]="true"
+    (dismissed)="submissionDismissed.emit()"
+  />
+}
+<footer>
+  <span [class.invalid]="sourceBytes() > 65536">{{ sourceBytes() }} / 65,536 bytes</span>
+  @if (authenticated()) {
+    @if (action() === 'run') {
+      <button
+        class="action run-action"
+        type="button"
+        [disabled]="busy() || !canRun()"
+        (click)="requestRun()"
+      >
+        {{ runBusy() ? 'Running...' : 'Run Code' }}
+      </button>
+    } @else {
+      <button
+        class="action"
+        type="button"
+        [disabled]="busy() || !sourceValid()"
+        (click)="submitRequested.emit()"
+      >
+        {{ submissionBusy() ? 'Judging...' : 'Submit' }}
+      </button>
+    }
+  } @else {
+    <a class="action" routerLink="/login" [queryParams]="{ returnUrl: returnUrl() }"
+      >Sign in to {{ action() === 'run' ? 'run' : 'submit' }}</a
+    >
+  }
+</footer>

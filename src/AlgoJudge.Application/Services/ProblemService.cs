@@ -2,6 +2,7 @@ using AlgoJudge.Application.Contracts.Common;
 using AlgoJudge.Application.Contracts.Problems;
 using AlgoJudge.Application.Exceptions;
 using AlgoJudge.Application.Interfaces;
+using AlgoJudge.Application.FunctionExecution;
 using AlgoJudge.Domain.Entities;
 
 namespace AlgoJudge.Application.Services
@@ -94,6 +95,8 @@ namespace AlgoJudge.Application.Services
                 StatementMarkdown = problem.StatementMarkdown,
                 ConstraintsMarkdown = problem.ConstraintsMarkdown,
                 Difficulty = problem.Difficulty,
+                ExecutionMode = problem.ExecutionMode,
+                FunctionSignature = MapFunctionSignature(problem),
                 TimeLimitMs = problem.TimeLimitMs,
                 MemoryLimitKb = problem.MemoryLimitKb,
                 JudgeVersion = problem.JudgeVersion,
@@ -142,6 +145,28 @@ namespace AlgoJudge.Application.Services
                     Name = tag.Name
                 })
                 .ToArray();
+        }
+
+        private static FunctionSignatureResponse? MapFunctionSignature(Problem problem)
+        {
+            if (problem.ExecutionMode != Domain.Enums.ProblemExecutionMode.Function)
+                return null;
+
+            var signature = FunctionSignatureJsonSerializer.Deserialize(
+                problem.FunctionSignatureJson ?? throw new InvalidOperationException(
+                    $"Function signature is missing for problem {problem.Id}."));
+            return new FunctionSignatureResponse
+            {
+                ClassName = signature.ClassName,
+                MethodName = signature.MethodName,
+                ReturnType = signature.ReturnType,
+                Parameters = signature.Parameters.Select(parameter =>
+                    new FunctionParameterResponse
+                    {
+                        Name = parameter.Name,
+                        Type = parameter.Type
+                    }).ToArray()
+            };
         }
 
         private static void ValidateListQuery(ProblemListQuery query)
