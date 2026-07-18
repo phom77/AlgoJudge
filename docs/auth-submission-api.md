@@ -74,6 +74,10 @@ submission, and a `SubmissionResponse` whose initial status is `Pending`.
 The response contains `id`, `problemId`, `language`, `status`,
 `executionTimeMs`, `memoryUsedKb`, `createdAt`, `startedAt`, and `finishedAt`.
 The user ID is intentionally absent because ownership is enforced by the API.
+The response includes `systemTestSuiteVersion`, the non-sensitive published
+judge version captured when the submission was created. It never includes
+hidden testcase identifiers, inputs, or expected outputs.
+
 The database lookup includes both submission ID and authenticated user ID, so a
 non-owner's source and operational fields are never materialized by the API.
 An existing submission owned by another user returns `403 Forbidden`; an

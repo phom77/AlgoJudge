@@ -51,7 +51,7 @@ internal sealed class EndToEndWorkerHost : IAsyncDisposable
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IProblemRepository, ProblemRepository>();
         services.AddScoped<ISubmissionRepository, SubmissionRepository>();
-        services.AddScoped<IJudgeTestCaseRepository, JudgeTestCaseRepository>();
+        services.AddScoped<ITestSuiteProvider, PostgreSqlSystemTestSuiteProvider>();
         services.AddScoped<IGraderService, GraderService>();
         services.AddScoped<IRunRepository, RunRepository>();
         services.AddScoped<IRunGraderService, RunGraderService>();

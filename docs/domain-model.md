@@ -76,6 +76,7 @@ Represents judge-only input and expected output.
 | `input` | Exact stdin content. |
 | `expectedOutput` | Canonical expected stdout. |
 | `ordinal` | Stable execution order. |
+| `systemTestSuiteVersion` | Positive version selecting the immutable published suite. |
 
 Public samples and judge test cases use separate entities and tables. This is a
 deliberate confidentiality boundary: a public catalogue query never needs to
@@ -90,6 +91,7 @@ Represents one immutable code attempt.
 | `id` | UUID primary key. |
 | `userId` | The owner. |
 | `problemId` | The submitted problem. |
+| `systemTestSuiteVersion` | Immutable published judge version captured when the submission is created. |
 | `language` | MVP allows only `cpp17`. |
 | `sourceCode` | Immutable submitted source. |
 | `status` | Lifecycle state described below. |
@@ -137,6 +139,8 @@ fencing token, while an explicitly abandoned retryable attempt returns to
 - A submission belongs to exactly one user and one problem.
 - A user can only read their own submission source and diagnostics.
 - `Accepted` means every testcase passed under the configured limits.
+- A submission is judged only against the system-suite version captured when it
+  was created; retries never switch versions.
 - A problem cannot be Published without valid samples and at least one hidden
   testcase.
 - A Function problem cannot be Published without a valid signature, adapter,

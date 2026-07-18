@@ -12,4 +12,5 @@ export interface SubmissionResponse {
   problemId?: (number | string);
   startedAt?: (string | null);
   status?: SubmissionStatus;
+  systemTestSuiteVersion?: (number | string);
 }

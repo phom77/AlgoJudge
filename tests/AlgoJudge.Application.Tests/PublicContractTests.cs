@@ -24,6 +24,9 @@ public class PublicContractTests
         Assert.Null(typeof(AuthResponse).GetProperty("RefreshToken"));
         Assert.Null(typeof(AuthResponse).GetProperty("TokenType"));
         Assert.Null(typeof(SubmissionResponse).GetProperty("UserId"));
+        Assert.Null(typeof(SubmissionResponse).GetProperty("TestCases"));
+        Assert.Null(typeof(SubmissionResponse).GetProperty("HiddenInput"));
+        Assert.Null(typeof(SubmissionResponse).GetProperty("ExpectedOutput"));
         Assert.Null(typeof(RunResponse).GetProperty("UserId"));
         Assert.Null(typeof(RunResponse).GetProperty("SourceCode"));
         Assert.Null(typeof(RunResponse).GetProperty("Input"));

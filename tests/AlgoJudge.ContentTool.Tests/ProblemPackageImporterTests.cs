@@ -31,6 +31,8 @@ public class ProblemPackageImporterTests
         Assert.Equal(1, problem.JudgeVersion);
         Assert.Single(problem.Samples);
         Assert.Equal(2, problem.JudgeTestCases.Count);
+        Assert.All(problem.JudgeTestCases, testCase =>
+            Assert.Equal(problem.JudgeVersion, testCase.SystemTestSuiteVersion));
         Assert.Equal(
             new[] { "array", "hash-table" },
             problem.Tags.Select(problemTag => problemTag.Tag.Slug).OrderBy(slug => slug));
@@ -73,7 +75,9 @@ public class ProblemPackageImporterTests
         Assert.True(result.Replaced);
         Assert.Equal("Two Sum Updated", problem.Title);
         Assert.Equal(2, problem.JudgeVersion);
-        Assert.Equal("replacement-input", Assert.Single(problem.JudgeTestCases).Input);
+        var replacementCase = Assert.Single(problem.JudgeTestCases);
+        Assert.Equal("replacement-input", replacementCase.Input);
+        Assert.Equal(2, replacementCase.SystemTestSuiteVersion);
     }
 
     [Fact]

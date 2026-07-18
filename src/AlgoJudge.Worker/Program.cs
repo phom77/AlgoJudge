@@ -53,7 +53,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IProblemRepository, ProblemRepository>();
 builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
-builder.Services.AddScoped<IJudgeTestCaseRepository, JudgeTestCaseRepository>();
+builder.Services.AddScoped<ITestSuiteProvider, PostgreSqlSystemTestSuiteProvider>();
 builder.Services.AddScoped<IGraderService, GraderService>();
 builder.Services.AddScoped<IRunRepository, RunRepository>();
 builder.Services.AddScoped<IRunGraderService, RunGraderService>();

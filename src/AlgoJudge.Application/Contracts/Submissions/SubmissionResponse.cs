@@ -6,6 +6,7 @@ public sealed class SubmissionResponse
 {
     public Guid Id { get; init; }
     public int ProblemId { get; init; }
+    public int SystemTestSuiteVersion { get; init; }
     public string Language { get; init; } = string.Empty;
     public SubmissionStatus Status { get; init; }
     public int ExecutionTimeMs { get; init; }

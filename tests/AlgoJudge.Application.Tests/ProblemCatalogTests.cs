@@ -5,8 +5,11 @@ using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Application.Models.Common;
 using AlgoJudge.Application.Models.SubmissionQueue;
 using AlgoJudge.Application.Services;
+using AlgoJudge.Application.Mappings;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
+using AutoMapper;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AlgoJudge.Application.Tests;
 
@@ -118,6 +121,32 @@ public class ProblemCatalogTests
         Assert.Contains("published problems", exception.Message);
     }
 
+    [Fact]
+    public async Task SubmissionPinsThePublishedSystemSuiteVersion()
+    {
+        var problem = CreatePublishedProblem(1, "two-sum");
+        problem.JudgeVersion = 9;
+        var submissions = new SubmissionRepositoryStub([]);
+        var mapper = new MapperConfiguration(
+            configuration => configuration.AddProfile<MappingProfile>(),
+            NullLoggerFactory.Instance).CreateMapper();
+        var service = new SubmissionService(
+            submissions,
+            new ProblemRepositoryStub([problem]),
+            new UnitOfWorkStub(),
+            mapper);
+
+        var response = await service.SubmitCodeAsync(new CreateSubmissionRequest
+        {
+            ProblemId = problem.Id,
+            SourceCode = "int main() { return 0; }",
+            Language = "cpp17"
+        }, Guid.NewGuid());
+
+        Assert.Equal(9, submissions.AddedSubmission!.SystemTestSuiteVersion);
+        Assert.Equal(9, response.SystemTestSuiteVersion);
+    }
+
     private static Problem CreatePublishedProblem(int id, string slug)
     {
         return new Problem
@@ -180,6 +209,7 @@ public class ProblemCatalogTests
         }
 
         public int[] LastRequestedProblemIds { get; private set; } = [];
+        public Submission? AddedSubmission { get; private set; }
 
         public Task<IReadOnlyCollection<int>> GetSolvedProblemIdsAsync(
             Guid userId,
@@ -192,7 +222,11 @@ public class ProblemCatalogTests
         public Task<bool> HasAcceptedSubmissionAsync(Guid userId, int problemId) =>
             Task.FromResult(_solvedProblemIds.Contains(problemId));
 
-        public Task AddAsync(Submission submission) => throw new NotSupportedException();
+        public Task AddAsync(Submission submission)
+        {
+            AddedSubmission = submission;
+            return Task.CompletedTask;
+        }
         public Task<Submission?> GetByIdForUserAsync(
             Guid id,
             Guid userId,
@@ -228,5 +262,11 @@ public class ProblemCatalogTests
             SubmissionStatus? status,
             int pageNumber,
             int pageSize) => throw new NotSupportedException();
+    }
+
+    private sealed class UnitOfWorkStub : IUnitOfWork
+    {
+        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(1);
     }
 }

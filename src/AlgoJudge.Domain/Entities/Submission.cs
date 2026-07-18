@@ -13,6 +13,8 @@ namespace AlgoJudge.Domain.Entities
 
         public int ProblemId { get; set; }
 
+        public int SystemTestSuiteVersion { get; set; } = 1;
+
         public string SourceCode { get; set; } = string.Empty;
         public string? OriginalFileName { get; set; }
 
