@@ -1,5 +1,6 @@
 using AlgoJudge.Application.Contracts.Auth;
 using AlgoJudge.Application.Contracts.Submissions;
+using AlgoJudge.Application.Contracts.Runs;
 using AlgoJudge.Application.Exceptions;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Application.Services;
@@ -23,6 +24,9 @@ public class PublicContractTests
         Assert.Null(typeof(AuthResponse).GetProperty("RefreshToken"));
         Assert.Null(typeof(AuthResponse).GetProperty("TokenType"));
         Assert.Null(typeof(SubmissionResponse).GetProperty("UserId"));
+        Assert.Null(typeof(RunResponse).GetProperty("UserId"));
+        Assert.Null(typeof(RunResponse).GetProperty("SourceCode"));
+        Assert.Null(typeof(RunResponse).GetProperty("Input"));
     }
 
     [Fact]

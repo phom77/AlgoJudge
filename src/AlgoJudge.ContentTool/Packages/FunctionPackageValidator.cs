@@ -122,7 +122,7 @@ internal static partial class FunctionPackageValidator
         {
             using var outputDocument = JsonDocument.Parse(output);
             ValidateDuplicateProperties(outputDocument.RootElement, "$", errors, description);
-            if (!MatchesType(outputDocument.RootElement, signature.ReturnType))
+            if (!FunctionValueJsonValidator.Matches(outputDocument.RootElement, signature.ReturnType))
                 errors.Add($"{description} output does not match returnType {signature.ReturnType}.");
         }
         catch (JsonException)
@@ -248,7 +248,7 @@ internal static partial class FunctionPackageValidator
                 continue;
             }
 
-            if (!MatchesType(property.Value, parameter.Type))
+            if (!FunctionValueJsonValidator.Matches(property.Value, parameter.Type))
             {
                 errors.Add(
                     $"{description} argument {property.Name} does not match type {parameter.Type}.");
@@ -261,28 +261,6 @@ internal static partial class FunctionPackageValidator
                 errors.Add($"{description} input is missing argument {parameter.Name}.");
         }
     }
-
-    private static bool MatchesType(JsonElement value, FunctionValueType type) => type switch
-    {
-        FunctionValueType.Int32 => value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out _),
-        FunctionValueType.Int64 => value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out _),
-        FunctionValueType.Double =>
-            value.ValueKind == JsonValueKind.Number &&
-            value.TryGetDouble(out var number) &&
-            double.IsFinite(number),
-        FunctionValueType.Boolean => value.ValueKind is JsonValueKind.True or JsonValueKind.False,
-        FunctionValueType.String => value.ValueKind == JsonValueKind.String,
-        FunctionValueType.Int32Array => MatchesArray(value, FunctionValueType.Int32),
-        FunctionValueType.Int64Array => MatchesArray(value, FunctionValueType.Int64),
-        FunctionValueType.DoubleArray => MatchesArray(value, FunctionValueType.Double),
-        FunctionValueType.BooleanArray => MatchesArray(value, FunctionValueType.Boolean),
-        FunctionValueType.StringArray => MatchesArray(value, FunctionValueType.String),
-        _ => false
-    };
-
-    private static bool MatchesArray(JsonElement value, FunctionValueType itemType) =>
-        value.ValueKind == JsonValueKind.Array &&
-        value.EnumerateArray().All(item => MatchesType(item, itemType));
 
     private static void ValidateSinglePlaceholder(
         string template,

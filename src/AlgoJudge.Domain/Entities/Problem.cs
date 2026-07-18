@@ -25,5 +25,6 @@ namespace AlgoJudge.Domain.Entities
         public ICollection<JudgeTestCase> JudgeTestCases { get; set; } = new List<JudgeTestCase>();
         public ICollection<ProblemTag> Tags { get; set; } = new List<ProblemTag>();
         public ICollection<Submission> Submissions { get; set; } = new List<Submission>();
+        public ICollection<CodeRun> CodeRuns { get; set; } = new List<CodeRun>();
     }
 }

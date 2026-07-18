@@ -77,7 +77,8 @@ platform using documented procedures.
 
 Only prioritize these after the MVP is stable:
 
-1. Custom-input **Run Code** against samples or explicit user input.
+1. Expand the queued custom-input **Run Code** workflow with retention controls
+   and richer client-side argument editors.
 2. Additional languages through separate compiler/runtime adapters.
 3. Problem lists, progress tracking, and a solved-count profile.
 4. Contests and rankings based on an explicitly designed rule set.

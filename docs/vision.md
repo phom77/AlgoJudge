@@ -32,6 +32,8 @@ solution passed the complete test suite."
 - Curated, published problems with Markdown statements, examples, tags,
   difficulty, and resource limits.
 - C++17 code submission and asynchronous judging.
+- C++17 custom-input runs through the same asynchronous sandbox, without
+  affecting submission history or solved state.
 - Curated problems may accept either a complete stdin/stdout program or a
   declared C++17 class method through a private system harness.
 - Standard verdicts: Pending, Running, Accepted, Wrong Answer, Time Limit
@@ -46,7 +48,6 @@ solution passed the complete test suite."
 - Numeric scoring, score-based leaderboards, ratings, or achievements.
 - Contests, teams, discussion forums, comments, and social features.
 - Multiple programming languages.
-- "Run custom input" from the browser.
 - Payments, certificates, plagiarism detection, and mobile applications.
 
 ## 5. Product principles

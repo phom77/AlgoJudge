@@ -53,6 +53,8 @@ internal sealed class EndToEndWorkerHost : IAsyncDisposable
         services.AddScoped<ISubmissionRepository, SubmissionRepository>();
         services.AddScoped<IJudgeTestCaseRepository, JudgeTestCaseRepository>();
         services.AddScoped<IGraderService, GraderService>();
+        services.AddScoped<IRunRepository, RunRepository>();
+        services.AddScoped<IRunGraderService, RunGraderService>();
         services.AddSingleton<IFunctionHarnessBuilder, Cpp17FunctionHarnessBuilder>();
         if (sandbox is null)
             services.AddScoped<IDockerSandbox, DockerSandboxService>();

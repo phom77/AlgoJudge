@@ -64,10 +64,15 @@ public sealed class ProblemExecutionModePackageTests
             .Select(entry => entry.Key == "problem.json"
                 ? KeyValuePair.Create(
                     entry.Key,
-                    entry.Value.Replace(
-                        "  \"executionMode\": \"Function\",\n",
-                        string.Empty,
-                        StringComparison.Ordinal))
+                    entry.Value
+                        .Replace(
+                            "  \"executionMode\": \"Function\",\r\n",
+                            string.Empty,
+                            StringComparison.Ordinal)
+                        .Replace(
+                            "  \"executionMode\": \"Function\",\n",
+                            string.Empty,
+                            StringComparison.Ordinal))
                 : entry)
             .ToArray();
         using var archive = TestArchive.Create(entries);

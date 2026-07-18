@@ -1,224 +1,172 @@
 using AlgoJudge.Application.Interfaces;
+using AlgoJudge.Application.Models.RunQueue;
 using AlgoJudge.Application.Models.SubmissionQueue;
+using AlgoJudge.Domain.Enums;
 
-namespace AlgoJudge.Worker
+namespace AlgoJudge.Worker;
+
+public sealed class GraderWorker : BackgroundService
 {
-    public class GraderWorker : BackgroundService
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly SubmissionQueueOptions _options;
+    private readonly WorkerIdentity _identity;
+    private readonly WorkerHealthState _healthState;
+    private readonly ILogger<GraderWorker> _logger;
+    private bool _preferRuns;
+
+    public GraderWorker(IServiceScopeFactory scopeFactory, SubmissionQueueOptions options,
+        WorkerIdentity identity, WorkerHealthState healthState, ILogger<GraderWorker> logger)
     {
-        private readonly IServiceScopeFactory _scopeFactory;
-        private readonly SubmissionQueueOptions _options;
-        private readonly WorkerIdentity _identity;
-        private readonly WorkerHealthState _healthState;
-        private readonly ILogger<GraderWorker> _logger;
+        _scopeFactory = scopeFactory; _options = options; _identity = identity;
+        _healthState = healthState; _logger = logger;
+    }
 
-        public GraderWorker(
-            IServiceScopeFactory scopeFactory,
-            SubmissionQueueOptions options,
-            WorkerIdentity identity,
-            WorkerHealthState healthState,
-            ILogger<GraderWorker> logger)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("Grader worker {WorkerId} started with a {LeaseSeconds}-second lease.", _identity.Value, _options.LeaseDurationSeconds);
+        _healthState.MarkRunning();
+        try
         {
-            _scopeFactory = scopeFactory;
-            _options = options;
-            _identity = identity;
-            _healthState = healthState;
-            _logger = logger;
-        }
-
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
-            _logger.LogInformation(
-                "Grader worker {WorkerId} started with a {LeaseSeconds}-second lease.",
-                _identity.Value,
-                _options.LeaseDurationSeconds);
-
-            _healthState.MarkRunning();
-            try
+            while (!stoppingToken.IsCancellationRequested)
             {
-                while (!stoppingToken.IsCancellationRequested)
-                {
-                    try
-                    {
-                        var processedClaim = await TryProcessNextClaimAsync(stoppingToken);
-                        if (!processedClaim)
-                            await Task.Delay(_options.PollInterval, stoppingToken);
-                    }
-                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                    {
-                        break;
-                    }
-                    catch (Exception exception)
-                    {
-                        _logger.LogError(exception, "Unexpected error in the grader worker loop.");
-                        await Task.Delay(_options.PollInterval, stoppingToken);
-                    }
-                }
-            }
-            finally
-            {
-                _healthState.MarkStopped();
-                _logger.LogInformation("Grader worker {WorkerId} stopped.", _identity.Value);
-            }
-        }
-
-        private async Task<bool> TryProcessNextClaimAsync(CancellationToken stoppingToken)
-        {
-            SubmissionClaim? claim;
-            using (var claimScope = _scopeFactory.CreateScope())
-            {
-                var repository = claimScope.ServiceProvider
-                    .GetRequiredService<ISubmissionRepository>();
-                claim = await repository.ClaimNextAsync(
-                    _identity.Value,
-                    _options.LeaseDuration,
-                    _options.MaxAttempts,
-                    stoppingToken);
-            }
-
-            if (claim is null)
-                return false;
-
-            _logger.LogInformation(
-                "Worker {WorkerId} claimed submission {SubmissionId}, attempt {AttemptCount}.",
-                _identity.Value,
-                claim.SubmissionId,
-                claim.AttemptCount);
-
-            await ProcessClaimAsync(claim, stoppingToken);
-            return true;
-        }
-
-        private async Task ProcessClaimAsync(
-            SubmissionClaim claim,
-            CancellationToken stoppingToken)
-        {
-            using var leaseLostSource = new CancellationTokenSource();
-            using var gradingSource = CancellationTokenSource.CreateLinkedTokenSource(
-                stoppingToken,
-                leaseLostSource.Token);
-            using var heartbeatSource = CancellationTokenSource.CreateLinkedTokenSource(
-                stoppingToken);
-
-            var heartbeatTask = MaintainLeaseAsync(
-                claim,
-                leaseLostSource,
-                heartbeatSource.Token);
-            var shouldAbandon = false;
-
-            try
-            {
-                using var gradingScope = _scopeFactory.CreateScope();
-                var grader = gradingScope.ServiceProvider.GetRequiredService<IGraderService>();
-                await grader.GradeAsync(claim, gradingSource.Token);
-            }
-            catch (SubmissionClaimLostException)
-            {
-                _logger.LogWarning(
-                    "Worker {WorkerId} lost ownership of submission {SubmissionId}.",
-                    _identity.Value,
-                    claim.SubmissionId);
-            }
-            catch (OperationCanceledException) when (leaseLostSource.IsCancellationRequested)
-            {
-                _logger.LogWarning(
-                    "Grading submission {SubmissionId} stopped because its lease was lost.",
-                    claim.SubmissionId);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                shouldAbandon = true;
-            }
-            catch (Exception exception)
-            {
-                shouldAbandon = true;
-                _logger.LogError(
-                    exception,
-                    "Grading attempt {AttemptCount} failed for submission {SubmissionId}.",
-                    claim.AttemptCount,
-                    claim.SubmissionId);
-            }
-            finally
-            {
-                heartbeatSource.Cancel();
                 try
                 {
-                    await heartbeatTask;
+                    if (!await TryProcessNextClaimAsync(stoppingToken))
+                        await Task.Delay(_options.PollInterval, stoppingToken);
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
+                catch (Exception exception)
                 {
-                    // Expected when grading finishes or the host stops.
+                    _logger.LogError(exception, "Unexpected error in the grader worker loop.");
+                    await Task.Delay(_options.PollInterval, stoppingToken);
                 }
-            }
-
-            if (shouldAbandon && !leaseLostSource.IsCancellationRequested)
-                await AbandonClaimAsync(claim);
-        }
-
-        private async Task MaintainLeaseAsync(
-            SubmissionClaim claim,
-            CancellationTokenSource leaseLostSource,
-            CancellationToken cancellationToken)
-        {
-            try
-            {
-                using var timer = new PeriodicTimer(_options.HeartbeatInterval);
-                while (await timer.WaitForNextTickAsync(cancellationToken))
-                {
-                    using var scope = _scopeFactory.CreateScope();
-                    var repository = scope.ServiceProvider
-                        .GetRequiredService<ISubmissionRepository>();
-                    var renewed = await repository.RenewLeaseAsync(
-                        claim,
-                        _options.LeaseDuration,
-                        cancellationToken);
-                    if (renewed)
-                        continue;
-
-                    leaseLostSource.Cancel();
-                    return;
-                }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(
-                    exception,
-                    "Lease heartbeat failed for submission {SubmissionId}.",
-                    claim.SubmissionId);
-                leaseLostSource.Cancel();
             }
         }
-
-        private async Task AbandonClaimAsync(SubmissionClaim claim)
+        finally
         {
-            using var timeoutSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            try
+            _healthState.MarkStopped();
+            _logger.LogInformation("Grader worker {WorkerId} stopped.", _identity.Value);
+        }
+    }
+
+    private async Task<bool> TryProcessNextClaimAsync(CancellationToken cancellationToken)
+    {
+        ClaimedExecution? execution;
+        using (var scope = _scopeFactory.CreateScope())
+        {
+            execution = _preferRuns
+                ? await ClaimRunThenSubmissionAsync(scope.ServiceProvider, cancellationToken)
+                : await ClaimSubmissionThenRunAsync(scope.ServiceProvider, cancellationToken);
+        }
+        if (execution is null) return false;
+        _preferRuns = execution.Kind == ExecutionKind.Submit;
+        _logger.LogInformation("Worker {WorkerId} claimed {ExecutionKind} {ExecutionId}, attempt {AttemptCount}.",
+            _identity.Value, execution.Kind, execution.Id, execution.AttemptCount);
+        await ProcessClaimAsync(execution, cancellationToken);
+        return true;
+    }
+
+    private async Task<ClaimedExecution?> ClaimSubmissionThenRunAsync(IServiceProvider services, CancellationToken token)
+    {
+        var submission = await services.GetRequiredService<ISubmissionRepository>()
+            .ClaimNextAsync(_identity.Value, _options.LeaseDuration, _options.MaxAttempts, token);
+        if (submission is not null) return ClaimedExecution.From(submission);
+        var run = await services.GetRequiredService<IRunRepository>()
+            .ClaimNextAsync(_identity.Value, _options.LeaseDuration, _options.MaxAttempts, token);
+        return run is null ? null : ClaimedExecution.From(run);
+    }
+
+    private async Task<ClaimedExecution?> ClaimRunThenSubmissionAsync(IServiceProvider services, CancellationToken token)
+    {
+        var run = await services.GetRequiredService<IRunRepository>()
+            .ClaimNextAsync(_identity.Value, _options.LeaseDuration, _options.MaxAttempts, token);
+        if (run is not null) return ClaimedExecution.From(run);
+        var submission = await services.GetRequiredService<ISubmissionRepository>()
+            .ClaimNextAsync(_identity.Value, _options.LeaseDuration, _options.MaxAttempts, token);
+        return submission is null ? null : ClaimedExecution.From(submission);
+    }
+
+    private async Task ProcessClaimAsync(ClaimedExecution execution, CancellationToken stoppingToken)
+    {
+        using var leaseLost = new CancellationTokenSource();
+        using var work = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, leaseLost.Token);
+        using var heartbeat = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+        var heartbeatTask = MaintainLeaseAsync(execution, leaseLost, heartbeat.Token);
+        var shouldAbandon = false;
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            if (execution.Submission is { } submission)
+                await scope.ServiceProvider.GetRequiredService<IGraderService>().GradeAsync(submission, work.Token);
+            else
+                await scope.ServiceProvider.GetRequiredService<IRunGraderService>().GradeAsync(execution.Run!, work.Token);
+        }
+        catch (Exception exception) when (exception is SubmissionClaimLostException or RunClaimLostException)
+        {
+            _logger.LogWarning("Worker {WorkerId} lost ownership of {ExecutionKind} {ExecutionId}.", _identity.Value, execution.Kind, execution.Id);
+        }
+        catch (OperationCanceledException) when (leaseLost.IsCancellationRequested)
+        {
+            _logger.LogWarning("Grading {ExecutionKind} {ExecutionId} stopped because its lease was lost.", execution.Kind, execution.Id);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { shouldAbandon = true; }
+        catch (Exception exception)
+        {
+            shouldAbandon = true;
+            _logger.LogError(exception, "Grading attempt {AttemptCount} failed for {ExecutionKind} {ExecutionId}.", execution.AttemptCount, execution.Kind, execution.Id);
+        }
+        finally
+        {
+            heartbeat.Cancel();
+            try { await heartbeatTask; } catch (OperationCanceledException) { }
+        }
+        if (shouldAbandon && !leaseLost.IsCancellationRequested) await AbandonAsync(execution);
+    }
+
+    private async Task MaintainLeaseAsync(ClaimedExecution execution, CancellationTokenSource leaseLost, CancellationToken token)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(_options.HeartbeatInterval);
+            while (await timer.WaitForNextTickAsync(token))
             {
                 using var scope = _scopeFactory.CreateScope();
-                var repository = scope.ServiceProvider
-                    .GetRequiredService<ISubmissionRepository>();
-                var abandoned = await repository.AbandonClaimAsync(
-                    claim,
-                    _options.MaxAttempts,
-                    timeoutSource.Token);
-
-                if (!abandoned)
-                {
-                    _logger.LogWarning(
-                        "Could not release submission {SubmissionId}; its claim is already stale.",
-                        claim.SubmissionId);
-                }
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(
-                    exception,
-                    "Could not release submission {SubmissionId}; lease recovery will handle it.",
-                    claim.SubmissionId);
+                var renewed = execution.Submission is { } submission
+                    ? await scope.ServiceProvider.GetRequiredService<ISubmissionRepository>().RenewLeaseAsync(submission, _options.LeaseDuration, token)
+                    : await scope.ServiceProvider.GetRequiredService<IRunRepository>().RenewLeaseAsync(execution.Run!, _options.LeaseDuration, token);
+                if (!renewed) { leaseLost.Cancel(); return; }
             }
         }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Lease heartbeat failed for {ExecutionKind} {ExecutionId}.", execution.Kind, execution.Id);
+            leaseLost.Cancel();
+        }
+    }
+
+    private async Task AbandonAsync(ClaimedExecution execution)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var abandoned = execution.Submission is { } submission
+                ? await scope.ServiceProvider.GetRequiredService<ISubmissionRepository>().AbandonClaimAsync(submission, _options.MaxAttempts, timeout.Token)
+                : await scope.ServiceProvider.GetRequiredService<IRunRepository>().AbandonClaimAsync(execution.Run!, _options.MaxAttempts, timeout.Token);
+            if (!abandoned) _logger.LogWarning("Could not release {ExecutionKind} {ExecutionId}; its claim is already stale.", execution.Kind, execution.Id);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Could not release {ExecutionKind} {ExecutionId}; lease recovery will handle it.", execution.Kind, execution.Id);
+        }
+    }
+
+    private sealed record ClaimedExecution(ExecutionKind Kind, SubmissionClaim? Submission, RunClaim? Run)
+    {
+        public Guid Id => Submission?.SubmissionId ?? Run!.RunId;
+        public int AttemptCount => Submission?.AttemptCount ?? Run!.AttemptCount;
+        public static ClaimedExecution From(SubmissionClaim claim) => new(ExecutionKind.Submit, claim, null);
+        public static ClaimedExecution From(RunClaim claim) => new(ExecutionKind.Run, null, claim);
     }
 }
