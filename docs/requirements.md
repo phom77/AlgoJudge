@@ -8,6 +8,8 @@
 - **Hidden test case:** judge-only input and expected output that is never
   returned by the public API.
 - **Submission:** one immutable attempt by a user to solve one problem.
+- **Execution mode:** either a complete stdin/stdout program or a declared
+  class method executed through a private system harness.
 - **Verdict:** the final or intermediate result of judging a submission.
 - **Solved:** a user has at least one Accepted submission for a problem.
 
@@ -34,7 +36,7 @@
 
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
-| FR-20 | An authenticated user can submit code for a published problem. | The API accepts only a supported language and source code within the configured size limit. The created submission starts as Pending. |
+| FR-20 | An authenticated user can submit code for a published problem. | The API accepts only a supported language and source code within the configured size limit. StdinStdout accepts a complete program; Function accepts the declared class/method implementation. The created submission starts as Pending. |
 | FR-21 | The system judges every accepted submission exactly once. | A worker claims Pending work atomically before execution. Retrying a crashed job must not produce two final results. |
 | FR-22 | The user can read the state of their own submission. | The state changes from Pending to Running and then to one final verdict. The user sees compile diagnostics only for their own submission. |
 | FR-23 | A submission is Accepted only if every testcase passes. | The judge stops at the first failed case for MVP. It records an internal failure summary but does not reveal hidden input or output. |
@@ -73,6 +75,11 @@
 - Time and memory limits must be positive and bounded by platform configuration.
 - A testcase archive has limits for compressed size, uncompressed size, file
   count, and individual file size.
+- Schema-version-1 problem packages import as StdinStdout. Schema version 2
+  explicitly declares StdinStdout or Function.
+- Function packages require a validated signature, private adapter template,
+  and JSON sample/hidden-test values matching the declared parameter and return
+  types.
 
 ## 5. API-level error behaviour
 

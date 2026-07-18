@@ -1,5 +1,7 @@
+using AlgoJudge.Application.FunctionExecution;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Application.Models.SubmissionQueue;
+using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
@@ -11,6 +13,7 @@ namespace AlgoJudge.Infrastructure.Grading
         private readonly IProblemRepository _problemRepository;
         private readonly IJudgeTestCaseRepository _judgeTestCaseRepository;
         private readonly IDockerSandbox _sandbox;
+        private readonly IFunctionHarnessBuilder _functionHarnessBuilder;
         private readonly ILogger<GraderService> _logger;
 
         public GraderService(
@@ -18,12 +21,14 @@ namespace AlgoJudge.Infrastructure.Grading
             IProblemRepository problemRepository,
             IJudgeTestCaseRepository judgeTestCaseRepository,
             IDockerSandbox sandbox,
+            IFunctionHarnessBuilder functionHarnessBuilder,
             ILogger<GraderService> logger)
         {
             _submissionRepository = submissionRepository;
             _problemRepository = problemRepository;
             _judgeTestCaseRepository = judgeTestCaseRepository;
             _sandbox = sandbox;
+            _functionHarnessBuilder = functionHarnessBuilder;
             _logger = logger;
         }
 
@@ -80,8 +85,9 @@ namespace AlgoJudge.Infrastructure.Grading
             {
                 Directory.CreateDirectory(workDirectory);
 
+                var sourceCode = BuildSourceCode(problem, submission.SourceCode);
                 var compileResult = await _sandbox.CompileAsync(
-                    submission.SourceCode,
+                    sourceCode,
                     workDirectory,
                     cancellationToken);
                 if (!compileResult.Success)
@@ -183,6 +189,21 @@ namespace AlgoJudge.Infrastructure.Grading
                 }
             }
         }
+
+        private string BuildSourceCode(Problem problem, string submittedSource) =>
+            problem.ExecutionMode switch
+            {
+                ProblemExecutionMode.StdinStdout => submittedSource,
+                ProblemExecutionMode.Function => _functionHarnessBuilder.Build(
+                    submittedSource,
+                    FunctionSignatureJsonSerializer.Deserialize(
+                        problem.FunctionSignatureJson ?? throw new InvalidOperationException(
+                            $"Function signature is missing for problem {problem.Id}.")),
+                    problem.FunctionAdapterTemplate ?? throw new InvalidOperationException(
+                        $"Function adapter is missing for problem {problem.Id}.")),
+                _ => throw new InvalidOperationException(
+                    $"Execution mode is invalid for problem {problem.Id}.")
+            };
 
         private async Task FinalizeOrThrowAsync(
             SubmissionClaim claim,

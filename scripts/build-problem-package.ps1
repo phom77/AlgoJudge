@@ -40,11 +40,14 @@ try {
         [IO.Compression.ZipArchiveMode]::Create,
         $false)
     try {
-        # Authoring-only generator/reference files stay outside the schema-v1 ZIP.
+        # Include only versioned package entries; authoring generator/reference files stay private.
         $sourceFiles = Get-ChildItem -LiteralPath $sourceDirectory -Recurse -File |
             Where-Object {
                 $relativePath = $_.FullName.Substring($sourcePrefix.Length).Replace("\", "/")
                 $relativePath -in @("problem.json", "statement.md", "constraints.md") -or
+                    $relativePath -in @(
+                        "function/signature.json",
+                        "function/adapter-template.cpp") -or
                     $relativePath -match "^(samples|tests)/[0-9]{2,4}\.(in|out|md)$"
             }
         foreach ($sourceFile in $sourceFiles) {

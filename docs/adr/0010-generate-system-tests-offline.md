@@ -34,8 +34,9 @@ generated-suite manifest. The configured package limits, including the default
 maximum of 500 private cases, apply during generation.
 
 Generator files, reference source, and generation manifests are authoring
-inputs, not schema-version-1 ZIP entries. The package build script includes only
-the existing root metadata and sample/test files. Worker and API processes do
+inputs, not package entries. The package build script includes only the
+versioned root metadata, sample/test files, and schema-version-2 function files.
+Worker and API processes do
 not load generators or run reference solutions; submission grading consumes
 only published test pairs.
 

@@ -25,6 +25,9 @@ two-sum.zip
 All file content must be valid UTF-8. Inputs and outputs are stored exactly as
 provided; ContentTool does not normalize whitespace or line endings.
 
+Schema version 1 remains supported and always imports as the `StdinStdout`
+execution mode. It cannot declare `executionMode` or contain `function/` files.
+
 ### `problem.json`
 
 ```json
@@ -47,9 +50,79 @@ provided; ContentTool does not normalize whitespace or line endings.
 - Tag slugs must be unique within the package.
 - Unknown or duplicate JSON properties are rejected.
 
+## Schema version 2
+
+Schema version 2 adds an explicit execution mode. A stdin/stdout package uses
+the version-1 layout and adds these properties to `problem.json`:
+
+```json
+{
+  "schemaVersion": 2,
+  "executionMode": "StdinStdout"
+}
+```
+
+A function package additionally contains its public signature and private C++
+adapter template:
+
+```text
+two-sum-function.zip
+|-- problem.json
+|-- statement.md
+|-- constraints.md
+|-- samples/
+|-- tests/
+`-- function/
+    |-- signature.json
+    `-- adapter-template.cpp
+```
+
+`problem.json` declares `"executionMode": "Function"`. The signature format is:
+
+```json
+{
+  "className": "Solution",
+  "methodName": "twoSum",
+  "returnType": "Int32Array",
+  "parameters": [
+    { "name": "nums", "type": "Int32Array" },
+    { "name": "target", "type": "Int32" }
+  ]
+}
+```
+
+Class, method, and parameter names must be non-keyword C++ identifiers.
+Supported value types are `Int32`, `Int64`, `Double`, `Boolean`, `String`, and
+the one-dimensional array form of each type. A signature accepts at most 16
+parameters and parameter names are unique.
+
+Function sample and hidden-test inputs are JSON objects keyed by parameter
+name. They must contain every declared parameter exactly once and no unknown
+arguments. Expected output is one JSON value matching `returnType`. Duplicate
+JSON properties, out-of-range integers, and non-finite numbers are rejected.
+For example:
+
+```json
+{"nums":[2,7,11,15],"target":9}
+```
+
+The adapter is trusted private content executed only inside the C++17 sandbox.
+It reads the normalized JSON testcase from stdin, invokes the solution, and
+writes one JSON result. It must contain each of these placeholders exactly once
+and cannot declare other `{{...}}` placeholders:
+
+- `{{USER_SOURCE}}`
+- `{{CLASS_NAME}}`
+- `{{METHOD_NAME}}`
+
+ContentTool validates and persists the adapter, but it is never returned by a
+public API.
+
 ## Entry rules
 
 - The three root files are required and their names are case-sensitive.
+- Schema version 2 requires `executionMode`.
+- `Function` requires both fixed function files; `StdinStdout` forbids them.
 - Sample and test names use a positive numeric ordinal of 2-4 digits.
 - Every `.in` file has exactly one matching `.out` file.
 - A sample may include one matching `.md` explanation.
@@ -65,6 +138,8 @@ provided; ContentTool does not normalize whitespace or line endings.
 | ZIP file size | 20 MiB |
 | Total uncompressed content | 100 MiB |
 | Individual entry | 8 MiB |
+| Function signature | 64 KiB |
+| Function adapter | 256 KiB |
 | File entries | 1,100 |
 | Public samples | 20 |
 | Private judge cases | 500 |
@@ -76,8 +151,9 @@ always validates the complete package before writing any database row.
 
 ## Creating an archive
 
-From a directory containing the schema-version-1 layout, create the ZIP so the
-three required files remain at its root:
+From a directory containing a supported versioned layout, create the ZIP so
+the three required files and optional schema-version-2 `function/` files remain
+at their defined paths:
 
 ```powershell
 ./scripts/build-problem-package.ps1 `

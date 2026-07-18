@@ -60,6 +60,7 @@ public static class ContentToolApplication
                 {
                     Console.WriteLine(
                         $"Valid package '{package.Metadata.Slug}': " +
+                        $"execution mode {package.Metadata.ExecutionMode}, " +
                         $"{package.Samples.Count} sample(s), " +
                         $"{package.JudgeTestCases.Count} private test case(s).");
                     return 0;

@@ -18,6 +18,11 @@ separate explicit operation that revalidates the problem's required public and
 private judge content. See `docs/problem-package-format.md` and ADR-0006 for the
 package contract and safety rules.
 
+Package schema version 1 remains compatible and imports as `StdinStdout`.
+Schema version 2 explicitly supports `StdinStdout` and `Function`; Function
+packages add a validated signature and private C++17 adapter template. See
+`docs/problem-package-format.md` and ADR-0011 for the complete contract.
+
 From the repository root, the PowerShell wrapper imports by default:
 
 ```powershell

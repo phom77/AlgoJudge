@@ -1,3 +1,4 @@
+using AlgoJudge.Application.FunctionExecution;
 using AlgoJudge.ContentTool.Importing;
 using AlgoJudge.ContentTool.Packages;
 using AlgoJudge.Domain.Enums;
@@ -94,9 +95,43 @@ public class ProblemPackageImporterTests
         Assert.Equal("Two Sum", (await database.Context.Problems.SingleAsync()).Title);
     }
 
+    [Fact]
+    public async Task ImportPersistsFunctionExecutionConfiguration()
+    {
+        await using var database = TestDatabase.Create();
+        var importer = new ProblemPackageImporter(database.Context);
+        var function = new ProblemPackageFunction(
+            new FunctionSignature
+            {
+                ClassName = "Solution",
+                MethodName = "solve",
+                ReturnType = FunctionValueType.Int32,
+                Parameters =
+                [
+                    new FunctionParameter { Name = "value", Type = FunctionValueType.Int32 }
+                ]
+            },
+            "{\"className\":\"Solution\",\"methodName\":\"solve\",\"returnType\":\"Int32\",\"parameters\":[{\"name\":\"value\",\"type\":\"Int32\"}]}",
+            "{{USER_SOURCE}} {{CLASS_NAME}} instance; // {{METHOD_NAME}}");
+
+        await importer.ImportAsync(
+            CreatePackage(
+                executionMode: ProblemExecutionMode.Function,
+                function: function),
+            replace: false);
+
+        database.Context.ChangeTracker.Clear();
+        var problem = await database.Context.Problems.SingleAsync();
+        Assert.Equal(ProblemExecutionMode.Function, problem.ExecutionMode);
+        Assert.Equal(function.SignatureJson, problem.FunctionSignatureJson);
+        Assert.Equal(function.AdapterTemplate, problem.FunctionAdapterTemplate);
+    }
+
     private static ProblemPackage CreatePackage(
         string title = "Two Sum",
-        IReadOnlyCollection<ProblemPackageJudgeTestCase>? judgeTestCases = null)
+        IReadOnlyCollection<ProblemPackageJudgeTestCase>? judgeTestCases = null,
+        ProblemExecutionMode executionMode = ProblemExecutionMode.StdinStdout,
+        ProblemPackageFunction? function = null)
     {
         return new ProblemPackage(
             new ProblemPackageMetadata
@@ -107,6 +142,7 @@ public class ProblemPackageImporterTests
                 Difficulty = DifficultyLevel.Easy,
                 TimeLimitMs = 1_000,
                 MemoryLimitKb = 262_144,
+                ExecutionMode = executionMode,
                 Tags =
                 [
                     new ProblemPackageTag { Slug = "array", Name = "Array" },
@@ -120,7 +156,8 @@ public class ProblemPackageImporterTests
             [
                 new ProblemPackageJudgeTestCase(1, "test-input-1", "test-output-1"),
                 new ProblemPackageJudgeTestCase(2, "test-input-2", "test-output-2")
-            ]);
+            ],
+            function);
     }
 
     private sealed class TestDatabase : IAsyncDisposable

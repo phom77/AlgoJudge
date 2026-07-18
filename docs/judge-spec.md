@@ -20,19 +20,35 @@ The API rejects every other language. The database and judge adapter should be
 designed so another language can be added later without changing submission
 semantics.
 
+## 2.1 Problem execution modes
+
+- `StdinStdout`: the submitted source is a complete C++17 program. Test input
+  is passed to stdin and program stdout is compared with expected output.
+- `Function`: the submitted source defines the class and method declared by the
+  problem signature. The judge builds a complete source file from the private
+  adapter template, user source, class name, and method name. Test input and
+  expected output are normalized JSON matching the signature.
+
+Function adapters are trusted private problem content, but the combined source
+still compiles and executes under the same sandbox boundaries as any other
+submission. Adapter source, signature internals beyond the public method
+contract, and hidden arguments/output must not appear in logs or diagnostics.
+
 ## 3. Judge algorithm
 
 1. A worker atomically claims a Pending submission.
-2. It writes source code to a unique ephemeral work directory.
-3. It compiles the source inside an isolated compiler container.
-4. On compiler failure, it stores a sanitized and truncated diagnostic and
+2. It selects the problem execution mode. For Function problems it builds the
+   C++17 harness; for StdinStdout it uses the submitted source unchanged.
+3. It writes the resulting source code to a unique ephemeral work directory.
+4. It compiles the source inside an isolated compiler container.
+5. On compiler failure, it stores a sanitized and truncated diagnostic and
    finalizes as Compile Error.
-5. On success, it executes the binary once per testcase in stable ordinal
+6. On success, it executes the binary once per testcase in stable ordinal
    order.
-6. For each run, it captures exit status, bounded stdout/stderr, elapsed time,
+7. For each run, it captures exit status, bounded stdout/stderr, elapsed time,
    and peak memory.
-7. It stops at the first failure in MVP and finalizes one verdict.
-8. It deletes the work directory and all temporary artifacts.
+8. It stops at the first failure in MVP and finalizes one verdict.
+9. It deletes the work directory and all temporary artifacts.
 
 ## 4. Output comparison
 

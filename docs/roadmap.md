@@ -41,6 +41,8 @@ has tests for authorization and sensitive-data boundaries.
 - Correct runtime and memory measurement.
 - Harden the sandbox and pin the compiler image.
 - Add judge integration tests for every verdict.
+- Support versioned stdin/stdout and function execution adapters without
+  weakening the C++17 sandbox.
 
 **Exit criteria:** two workers cannot grade the same submission concurrently,
 and all verdict paths pass automated tests in a Docker-capable environment.

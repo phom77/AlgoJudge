@@ -12,6 +12,10 @@ namespace AlgoJudge.Domain.Entities
         public int TimeLimitMs { get; set; }
         public int MemoryLimitKb { get; set; }
         public DifficultyLevel Difficulty { get; set; } = DifficultyLevel.Easy;
+        public ProblemExecutionMode ExecutionMode { get; set; } =
+            ProblemExecutionMode.StdinStdout;
+        public string? FunctionSignatureJson { get; set; }
+        public string? FunctionAdapterTemplate { get; set; }
         public ProblemStatus Status { get; set; } = ProblemStatus.Draft;
         public int JudgeVersion { get; set; } = 1;
         public DateTime? PublishedAt { get; set; }

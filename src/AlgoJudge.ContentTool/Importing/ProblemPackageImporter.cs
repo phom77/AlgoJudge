@@ -108,6 +108,9 @@ public sealed class ProblemPackageImporter
         problem.Difficulty = package.Metadata.Difficulty;
         problem.TimeLimitMs = package.Metadata.TimeLimitMs;
         problem.MemoryLimitKb = package.Metadata.MemoryLimitKb;
+        problem.ExecutionMode = package.Metadata.ExecutionMode;
+        problem.FunctionSignatureJson = package.Function?.SignatureJson;
+        problem.FunctionAdapterTemplate = package.Function?.AdapterTemplate;
 
         foreach (var sample in package.Samples)
         {

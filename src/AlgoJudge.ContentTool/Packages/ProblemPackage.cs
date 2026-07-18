@@ -10,6 +10,8 @@ public sealed class ProblemPackageMetadata
     public DifficultyLevel Difficulty { get; init; }
     public int TimeLimitMs { get; init; }
     public int MemoryLimitKb { get; init; }
+    public ProblemExecutionMode ExecutionMode { get; init; } =
+        ProblemExecutionMode.StdinStdout;
     public IReadOnlyCollection<ProblemPackageTag> Tags { get; init; } =
         Array.Empty<ProblemPackageTag>();
 }
@@ -36,4 +38,5 @@ public sealed record ProblemPackage(
     string StatementMarkdown,
     string ConstraintsMarkdown,
     IReadOnlyCollection<ProblemPackageSample> Samples,
-    IReadOnlyCollection<ProblemPackageJudgeTestCase> JudgeTestCases);
+    IReadOnlyCollection<ProblemPackageJudgeTestCase> JudgeTestCases,
+    ProblemPackageFunction? Function = null);

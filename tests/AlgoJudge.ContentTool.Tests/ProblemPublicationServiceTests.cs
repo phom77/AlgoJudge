@@ -88,6 +88,49 @@ public class ProblemPublicationServiceTests
         Assert.Equal(PublishedAt.UtcDateTime, problem.UpdatedAt);
     }
 
+    [Fact]
+    public async Task PublishRejectsFunctionProblemWithoutValidConfiguration()
+    {
+        await using var context = CreateContext();
+        var problem = CreateCompleteProblem();
+        problem.ExecutionMode = ProblemExecutionMode.Function;
+        context.Problems.Add(problem);
+        await context.SaveChangesAsync();
+        var service = new ProblemPublicationService(context);
+
+        var exception = await Assert.ThrowsAsync<ContentPublicationConflictException>(() =>
+            service.PublishAsync("two-sum"));
+
+        Assert.Contains("function configuration", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(ProblemStatus.Draft, problem.Status);
+    }
+
+    [Fact]
+    public async Task PublishAcceptsValidatedFunctionConfiguration()
+    {
+        await using var context = CreateContext();
+        var problem = CreateCompleteProblem();
+        problem.ExecutionMode = ProblemExecutionMode.Function;
+        problem.FunctionSignatureJson =
+            "{\"className\":\"Solution\",\"methodName\":\"solve\"," +
+            "\"returnType\":\"Int32\",\"parameters\":[{" +
+            "\"name\":\"value\",\"type\":\"Int32\"}]}";
+        problem.FunctionAdapterTemplate =
+            "{{USER_SOURCE}} {{CLASS_NAME}} instance; // {{METHOD_NAME}}";
+        problem.Samples.Single().Input = "{\"value\":1}";
+        problem.Samples.Single().ExpectedOutput = "1";
+        problem.JudgeTestCases.Single().Input = "{\"value\":2}";
+        problem.JudgeTestCases.Single().ExpectedOutput = "2";
+        context.Problems.Add(problem);
+        await context.SaveChangesAsync();
+        var service = new ProblemPublicationService(context);
+
+        var result = await service.PublishAsync("two-sum");
+
+        Assert.True(result.Changed);
+        Assert.Equal(ProblemStatus.Published, result.Status);
+    }
+
     private static AppDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
