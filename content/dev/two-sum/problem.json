@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "slug": "two-sum",
+  "title": "Two Sum",
+  "difficulty": "Easy",
+  "timeLimitMs": 1000,
+  "memoryLimitKb": 262144,
+  "tags": [
+    { "slug": "array", "name": "Array" },
+    { "slug": "hash-table", "name": "Hash Table" }
+  ]
+}

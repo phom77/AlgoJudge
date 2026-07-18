@@ -42,8 +42,10 @@ rules and dependency direction.
 3. Apply EF Core migrations.
 4. Run `./scripts/build-judge-image.ps1` once to build the pinned C++17 judge
    image.
-5. Run `./scripts/run-api.ps1`.
-6. Run `./scripts/run-worker.ps1` in another terminal.
+5. Run `./scripts/seed-dev-content.ps1` once to import and publish the local
+   Two Sum fixture.
+6. Run `./scripts/run-api.ps1`.
+7. Run `./scripts/run-worker.ps1` in another terminal.
 
 Run `./scripts/test-backend-e2e.ps1` to exercise the complete backend acceptance
 flow against an ephemeral PostgreSQL database and the pinned Docker judge image.

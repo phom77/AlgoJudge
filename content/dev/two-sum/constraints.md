@@ -1,0 +1,5 @@
+- `2 <= n <= 100000`
+- `-1000000000 <= values[i] <= 1000000000`
+- `-2000000000 <= target <= 2000000000`
+- Exactly one pair of distinct indices produces the target.
+- The smaller index must be printed first.

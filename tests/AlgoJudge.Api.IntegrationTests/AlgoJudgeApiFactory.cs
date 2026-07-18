@@ -5,8 +5,14 @@ namespace AlgoJudge.Api.IntegrationTests;
 
 public sealed class AlgoJudgeApiFactory : WebApplicationFactory<Program>
 {
-    public AlgoJudgeApiFactory(string connectionString, int permitLimit = 100)
+    private readonly string _environment;
+
+    public AlgoJudgeApiFactory(
+        string connectionString,
+        int permitLimit = 100,
+        string environment = "Testing")
     {
+        _environment = environment;
         Environment.SetEnvironmentVariable(
             "ConnectionStrings__DefaultConnection",
             connectionString);
@@ -29,6 +35,6 @@ public sealed class AlgoJudgeApiFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Testing");
+        builder.UseEnvironment(_environment);
     }
 }

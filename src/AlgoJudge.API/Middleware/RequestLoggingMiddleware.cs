@@ -20,7 +20,14 @@ public sealed class RequestLoggingMiddleware(
         }
         finally
         {
-            logger.LogInformation(
+            var logLevel = context.Response.StatusCode switch
+            {
+                >= StatusCodes.Status500InternalServerError => LogLevel.Error,
+                >= StatusCodes.Status400BadRequest => LogLevel.Warning,
+                _ => LogLevel.Information
+            };
+            logger.Log(
+                logLevel,
                 "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {ElapsedMilliseconds:F1} ms.",
                 context.Request.Method,
                 context.Request.Path,

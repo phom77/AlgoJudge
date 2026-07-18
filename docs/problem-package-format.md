@@ -80,7 +80,9 @@ From a directory containing the schema-version-1 layout, create the ZIP so the
 three required files remain at its root:
 
 ```powershell
-Compress-Archive -Path ./two-sum/* -DestinationPath ./content/two-sum.zip
+./scripts/build-problem-package.ps1 `
+    -SourcePath ./two-sum `
+    -PackagePath ./content/two-sum.zip
 ```
 
 ## Commands
@@ -89,7 +91,16 @@ Compress-Archive -Path ./two-sum/* -DestinationPath ./content/two-sum.zip
 dotnet run --project src/AlgoJudge.ContentTool -- validate path/to/problem.zip
 dotnet run --project src/AlgoJudge.ContentTool -- import path/to/problem.zip
 dotnet run --project src/AlgoJudge.ContentTool -- import path/to/problem.zip --replace
+dotnet run --project src/AlgoJudge.ContentTool -- publish two-sum
+dotnet run --project src/AlgoJudge.ContentTool -- unpublish two-sum
 ```
 
 `import` creates a Draft. Duplicate slugs fail unless `--replace` is supplied,
 and replacement is allowed only while the existing problem is Draft.
+`publish` verifies that the Draft has complete statement metadata, at least one
+public sample, and at least one private judge case before making it public.
+`unpublish` returns a Published problem to Draft without deleting its content.
+
+For local development only, package, import, and publish the checked-in fixture
+with `./scripts/seed-dev-content.ps1`. Its judge cases are public development
+data and must never be reused as production hidden tests.

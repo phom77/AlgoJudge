@@ -8,6 +8,68 @@ namespace AlgoJudge.Api.IntegrationTests;
 [Collection(ApiIntegrationCollection.Name)]
 public sealed class AuthCookieSecurityTests
 {
+    [Fact]
+    public async Task CsrfBootstrapIssuesProtectedAndReadableCookies()
+    {
+        const string unusedConnection =
+            "Host=127.0.0.1;Port=1;Database=unused;Username=unused;Password=unused";
+        await using var factory = new AlgoJudgeApiFactory(unusedConnection);
+        using var client = CreateClient(factory);
+
+        var response = await client.GetAsync("/api/auth/csrf");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var cookies = response.Headers.GetValues("Set-Cookie").ToArray();
+        Assert.Contains(
+            cookies,
+            value => value.StartsWith(
+                AuthCookieManager.AntiforgeryCookieName + "=",
+                StringComparison.Ordinal));
+        var requestTokenCookie = Assert.Single(
+            cookies,
+            value => value.StartsWith(
+                AuthCookieManager.AntiforgeryRequestCookieName + "=",
+                StringComparison.Ordinal));
+        Assert.DoesNotContain("httponly", requestTokenCookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("secure", requestTokenCookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("samesite=strict", requestTokenCookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Path=/", requestTokenCookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task DevelopmentCsrfBootstrapSupportsTheHttpAngularProxy()
+    {
+        const string unusedConnection =
+            "Host=127.0.0.1;Port=1;Database=unused;Username=unused;Password=unused";
+        await using var factory = new AlgoJudgeApiFactory(
+            unusedConnection,
+            environment: "Development");
+        using var client = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing
+            .WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("http://localhost"),
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        var response = await client.GetAsync("/api/auth/csrf");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var cookies = response.Headers.GetValues("Set-Cookie").ToArray();
+        var protectedCookie = Assert.Single(
+            cookies,
+            value => value.StartsWith(
+                AuthCookieManager.DevelopmentAntiforgeryCookieName + "=",
+                StringComparison.Ordinal));
+        var requestTokenCookie = Assert.Single(
+            cookies,
+            value => value.StartsWith(
+                AuthCookieManager.AntiforgeryRequestCookieName + "=",
+                StringComparison.Ordinal));
+        Assert.DoesNotContain("secure", protectedCookie, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("secure", requestTokenCookie, StringComparison.OrdinalIgnoreCase);
+    }
+
     [PostgreSqlFact]
     public async Task AuthenticationUsesHttpOnlyCookiesAndNeverReturnsTokens()
     {
