@@ -1,6 +1,7 @@
 using AlgoJudge.Application.Contracts.Auth;
 using AlgoJudge.Application.Contracts.Common;
 using AlgoJudge.Application.Contracts.Problems;
+using AlgoJudge.Application.Contracts.Runs;
 using AlgoJudge.Application.Contracts.Submissions;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
@@ -30,6 +31,31 @@ public sealed class BackendAcceptanceTests
             std::cout << value * 2 << '\n';
         }
         """;
+
+    private const string FunctionSignature =
+        "{\"className\":\"Solution\",\"methodName\":\"solve\"," +
+        "\"returnType\":\"Int32\",\"parameters\":[{" +
+        "\"name\":\"value\",\"type\":\"Int32\"}]}";
+
+    private const string FunctionAdapter = """
+        #include <iostream>
+        #include <iterator>
+        #include <string>
+        {{USER_SOURCE}}
+        int main() {
+            std::string input(
+                (std::istreambuf_iterator<char>(std::cin)),
+                std::istreambuf_iterator<char>());
+            auto colon = input.find(':');
+            int value = std::stoi(input.substr(colon + 1));
+            {{CLASS_NAME}} solution;
+            std::cout << solution.{{METHOD_NAME}}(value);
+            return 0;
+        }
+        """;
+
+    private const string FunctionSource =
+        "class Solution { public: int solve(int value) { return value * 2; } };";
 
     [BackendEndToEndFact]
     public async Task FullUserFlowProducesEveryVerdictAndProtectsPrivateData()
@@ -168,6 +194,73 @@ public sealed class BackendAcceptanceTests
     }
 
     [BackendEndToEndFact]
+    public async Task CustomRunsAndFunctionSubmissionsKeepTheirExecutionBoundaries()
+    {
+        await using var database = await EndToEndPostgreSqlDatabase.CreateAsync();
+        var logs = new CapturingLoggerProvider();
+        await using var factory = new EndToEndApiFactory(database.ConnectionString, logs);
+        using var client = CreateClient(factory);
+        var stdinProblem = await SeedProblemAsync(database, name: "custom-run");
+        var functionProblem = await SeedFunctionProblemAsync(database);
+        _ = await RegisterAndLoginAsync(client, "execution");
+
+        await using var worker = await EndToEndWorkerHost.StartAsync(
+            database.ConnectionString,
+            "execution-acceptance-worker",
+            logs);
+
+        var stdinRun = await CreateRunAsync(
+            client,
+            stdinProblem.Slug,
+            new { sourceCode = AcceptedSource, language = "cpp17", input = "21\n" });
+        var completedStdinRun = await WaitForFinalRunAsync(client, stdinRun.Id);
+        Assert.Equal(RunStatus.Completed, completedStdinRun.Status);
+        Assert.Equal("42", completedStdinRun.Stdout?.Trim());
+
+        var emptyHistory = await GetJsonAsync<PagedResponse<SubmissionResponse>>(
+            client,
+            "/api/submissions?pageSize=100");
+        Assert.Empty(emptyHistory.Items);
+        Assert.False((await GetJsonAsync<ProblemDetailResponse>(
+            client,
+            $"/api/problems/{stdinProblem.Slug}")).IsSolved);
+
+        var functionRun = await CreateRunAsync(
+            client,
+            functionProblem.Slug,
+            new
+            {
+                sourceCode = FunctionSource,
+                language = "cpp17",
+                arguments = new { value = 21 }
+            });
+        var completedFunctionRun = await WaitForFinalRunAsync(client, functionRun.Id);
+        Assert.Equal(RunStatus.Completed, completedFunctionRun.Status);
+        Assert.Equal("42", completedFunctionRun.Stdout?.Trim());
+
+        var submission = await SubmitAsync(client, functionProblem.Id, FunctionSource);
+        Assert.Equal(1, submission.SystemTestSuiteVersion);
+        var accepted = await WaitForFinalSubmissionAsync(client, submission.Id);
+        Assert.Equal(SubmissionStatus.Accepted, accepted.Status);
+
+        var history = await GetJsonAsync<PagedResponse<SubmissionResponse>>(
+            client,
+            "/api/submissions?pageSize=100");
+        Assert.Equal(submission.Id, Assert.Single(history.Items).Id);
+        Assert.True((await GetJsonAsync<ProblemDetailResponse>(
+            client,
+            $"/api/problems/{functionProblem.Slug}")).IsSolved);
+
+        await using var context = database.CreateContext();
+        Assert.Equal(2, await context.CodeRuns.CountAsync());
+        Assert.Equal(1, await context.Submissions.CountAsync());
+        Assert.Equal(1, await context.Submissions.Select(item =>
+            item.SystemTestSuiteVersion).SingleAsync());
+
+        AssertPrivateDataAbsent(string.Join(Environment.NewLine, logs.Entries));
+    }
+
+    [BackendEndToEndFact]
     public async Task TwoWorkersCompileAndJudgeOneSubmissionOnlyOnce()
     {
         await using var database = await EndToEndPostgreSqlDatabase.CreateAsync();
@@ -284,6 +377,39 @@ public sealed class BackendAcceptanceTests
         return Deserialize<SubmissionResponse>(json);
     }
 
+    private static async Task<RunResponse> CreateRunAsync(
+        HttpClient client,
+        string problemSlug,
+        object request)
+    {
+        var response = await client.PostAsJsonAsync(
+            $"/api/problems/{problemSlug}/runs",
+            request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var json = await response.Content.ReadAsStringAsync();
+        AssertPrivateDataAbsent(json);
+        return Deserialize<RunResponse>(json);
+    }
+
+    private static async Task<RunResponse> WaitForFinalRunAsync(
+        HttpClient client,
+        Guid runId)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+        while (true)
+        {
+            var response = await client.GetAsync($"/api/runs/{runId}", timeout.Token);
+            response.EnsureSuccessStatusCode();
+            var json = await response.Content.ReadAsStringAsync(timeout.Token);
+            AssertPrivateDataAbsent(json);
+            var run = Deserialize<RunResponse>(json);
+            if (run.Status is not (RunStatus.Pending or RunStatus.Running))
+                return run;
+
+            await Task.Delay(200, timeout.Token);
+        }
+    }
+
     private static async Task<SubmissionResponse> WaitForFinalSubmissionAsync(
         HttpClient client,
         Guid submissionId)
@@ -387,6 +513,44 @@ public sealed class BackendAcceptanceTests
         {
             Input = HiddenInputSentinel + "\n",
             ExpectedOutput = HiddenOutputSentinel + "\n",
+            Ordinal = 1
+        });
+        context.Problems.Add(problem);
+        await context.SaveChangesAsync();
+        return problem;
+    }
+
+    private static async Task<Problem> SeedFunctionProblemAsync(
+        EndToEndPostgreSqlDatabase database)
+    {
+        await using var context = database.CreateContext();
+        var problem = new Problem
+        {
+            Slug = $"backend-e2e-function-{Guid.NewGuid():N}",
+            Title = "Backend end-to-end function acceptance",
+            StatementMarkdown = "Double the supplied function argument.",
+            ConstraintsMarkdown = "The value fits in a signed 32-bit integer.",
+            TimeLimitMs = 1_000,
+            MemoryLimitKb = 64 * 1024,
+            Difficulty = DifficultyLevel.Easy,
+            Status = ProblemStatus.Published,
+            PublishedAt = DateTime.UtcNow,
+            ExecutionMode = ProblemExecutionMode.Function,
+            FunctionSignatureJson = FunctionSignature,
+            FunctionAdapterTemplate = FunctionAdapter
+        };
+        problem.Samples.Add(new ProblemSample
+        {
+            Input = "{\"value\":2}",
+            ExpectedOutput = "4",
+            Explanation = "Two doubled is four.",
+            Ordinal = 1
+        });
+        problem.JudgeTestCases.Add(new JudgeTestCase
+        {
+            Input = $"{{\"value\":{HiddenInputSentinel}}}",
+            ExpectedOutput = HiddenOutputSentinel,
+            SystemTestSuiteVersion = 1,
             Ordinal = 1
         });
         context.Problems.Add(problem);

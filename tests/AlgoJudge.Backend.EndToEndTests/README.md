@@ -11,6 +11,10 @@ Coverage includes:
   history, and solved state;
 - Accepted, Wrong Answer, Time Limit Exceeded, Memory Limit Exceeded, Compile
   Error, and Runtime Error;
+- stdin/stdout and Function execution through the API, PostgreSQL queues, real
+  worker, generated Function harness, and Docker sandbox;
+- custom Run output stays separate from system-suite Submit history and solved
+  state, while submissions remain pinned to their system-suite version;
 - submission ownership and absence of source or hidden testcase data from API
   responses and captured normal logs;
 - expired-lease recovery with stale-worker fencing; and
