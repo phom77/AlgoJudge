@@ -42,6 +42,8 @@
 | FR-23 | A submission is Accepted only if every testcase passes. | The judge stops at the first failed case for MVP. It records an internal failure summary but does not reveal hidden input or output. |
 | FR-24 | A user can view their submission history. | History is paginated and filterable by problem and verdict. A user cannot read another user's history or submission detail. |
 | FR-25 | The system protects capacity from accidental or abusive submission bursts. | Per-user and per-IP rate limits are enforced and return a clear retry response. |
+| FR-26 | An authenticated user can run code with custom input for a published problem. | The run is queued, owner-only, and executes once without reading hidden testcases or changing submission history and solved state. StdinStdout accepts raw input; Function accepts arguments matching the declared signature. |
+| FR-27 | A user can read the state and bounded output of their own custom run. | The response excludes source and input. Successful execution is Completed rather than Accepted; compile diagnostics, stdout, and stderr remain owner-only and bounded. |
 
 ### Content operations
 

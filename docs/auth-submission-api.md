@@ -1,6 +1,6 @@
 # Authentication and Submission API
 
-This document defines the stable MVP authentication and submission contracts.
+This document defines the stable MVP authentication, submission, and custom-run contracts.
 All JSON property names use camel case. Timestamps are UTC ISO 8601 values and
 enums are serialized as strings.
 
@@ -78,6 +78,25 @@ The database lookup includes both submission ID and authenticated user ID, so a
 non-owner's source and operational fields are never materialized by the API.
 An existing submission owned by another user returns `403 Forbidden`; an
 unknown submission returns `404 Not Found`.
+
+### Create a custom run
+
+`POST /api/problems/{slug}/runs`
+
+The authenticated request contains `sourceCode`, `language: "cpp17"`, and
+either `input` for a StdinStdout problem or an `arguments` JSON object for a
+Function problem. It returns `201 Created`, a Location header for the run, and
+a Pending `RunResponse`. Input is limited to 64 KiB of UTF-8 data.
+
+### Get custom-run detail
+
+`GET /api/runs/{id}`
+
+Only the owner can read a run. The response contains status, bounded `stdout`
+and `stderr`, execution time, peak memory, and timestamps; it never returns
+source code or input. An existing run owned by another user returns `403
+Forbidden`; an unknown run returns `404 Not Found`. Runs do not appear in
+submission history and never affect solved state.
 
 ### Get submission history
 

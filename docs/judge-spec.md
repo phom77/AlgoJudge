@@ -2,7 +2,8 @@
 
 ## 1. Purpose
 
-The judge compiles and executes untrusted user code for a submission. Its
+The judge compiles and executes untrusted user code for a submission or an
+owner-scoped custom run. Its
 primary responsibilities are verdict correctness, resource enforcement, and
 isolation from the application and host infrastructure.
 
@@ -49,6 +50,13 @@ contract, and hidden arguments/output must not appear in logs or diagnostics.
    and peak memory.
 8. It stops at the first failure in MVP and finalizes one verdict.
 9. It deletes the work directory and all temporary artifacts.
+
+For a custom run, the same compile and sandbox stages execute exactly once with
+the user's bounded input. The worker does not load hidden testcases or compare
+expected output. A successful process is `Completed`; other terminal states are
+Time Limit Exceeded, Memory Limit Exceeded, Compile Error, or Runtime Error.
+The run queue has independent claim tokens and leases, while the worker
+alternates queue priority and executes only one claim at a time.
 
 ## 4. Output comparison
 
