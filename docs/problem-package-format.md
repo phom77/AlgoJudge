@@ -104,3 +104,40 @@ public sample, and at least one private judge case before making it public.
 For local development only, package, import, and publish the checked-in fixture
 with `./scripts/seed-dev-content.ps1`. Its judge cases are public development
 data and must never be reused as production hidden tests.
+
+## Offline authoring extensions
+
+A private authoring directory may also contain `generator/` and `reference/`
+content. These directories are not schema-version-1 package entries and are
+excluded by `scripts/build-problem-package.ps1`:
+
+```text
+problem-authoring/
+|-- problem.json
+|-- statement.md
+|-- constraints.md
+|-- samples/
+|-- tests/                       # generated .in/.out pairs
+|-- generator/
+|   |-- manifest.json
+|   |-- ProblemGenerator.dll
+|   `-- generated-tests.json     # source and suite hashes
+`-- reference/
+    `-- solution.cpp
+```
+
+Run generation before creating the ZIP:
+
+```powershell
+dotnet run --project src/AlgoJudge.ContentTool -- generate path/to/problem-authoring
+dotnet run --project src/AlgoJudge.ContentTool -- validate-generated path/to/problem-authoring
+./scripts/build-problem-package.ps1 `
+    -SourcePath path/to/problem-authoring `
+    -PackagePath path/to/problem.zip
+```
+
+The manifest format and generator contracts are documented in the ContentTool
+README. Generation is deterministic by declared group seed, validates every
+input before execution, runs the reference solution offline in the pinned
+C++17 sandbox, and refuses to replace manually-authored tests. Production
+hidden tests and authoring inputs remain in a private content repository.

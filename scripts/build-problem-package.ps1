@@ -40,7 +40,13 @@ try {
         [IO.Compression.ZipArchiveMode]::Create,
         $false)
     try {
-        $sourceFiles = Get-ChildItem -LiteralPath $sourceDirectory -Recurse -File
+        # Authoring-only generator/reference files stay outside the schema-v1 ZIP.
+        $sourceFiles = Get-ChildItem -LiteralPath $sourceDirectory -Recurse -File |
+            Where-Object {
+                $relativePath = $_.FullName.Substring($sourcePrefix.Length).Replace("\", "/")
+                $relativePath -in @("problem.json", "statement.md", "constraints.md") -or
+                    $relativePath -match "^(samples|tests)/[0-9]{2,4}\.(in|out|md)$"
+            }
         foreach ($sourceFile in $sourceFiles) {
             $relativePath = $sourceFile.FullName.Substring($sourcePrefix.Length).Replace("\", "/")
             $entry = $archive.CreateEntry(

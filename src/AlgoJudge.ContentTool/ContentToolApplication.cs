@@ -1,10 +1,14 @@
+using AlgoJudge.Application.ContentGeneration;
 using AlgoJudge.ContentTool.Configuration;
+using AlgoJudge.ContentTool.Generation;
 using AlgoJudge.ContentTool.Importing;
 using AlgoJudge.ContentTool.Packages;
 using AlgoJudge.ContentTool.Publishing;
 using AlgoJudge.Infrastructure.Data;
+using AlgoJudge.Infrastructure.Grading;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 
 namespace AlgoJudge.ContentTool;
@@ -35,6 +39,15 @@ public static class ContentToolApplication
         try
         {
             var configuration = BuildConfiguration();
+            if (command.Name is "generate" or "validate-generated")
+            {
+                return await GenerateTestsAsync(
+                    configuration,
+                    command.Name,
+                    command.Target!,
+                    cancellationSource.Token);
+            }
+
             if (command.Name is "validate" or "import")
             {
                 var options = configuration
@@ -70,6 +83,11 @@ public static class ContentToolApplication
             Console.Error.WriteLine("Package validation failed:");
             foreach (var error in exception.Errors)
                 Console.Error.WriteLine($"- {error}");
+            return 2;
+        }
+        catch (TestGenerationException exception)
+        {
+            Console.Error.WriteLine($"Test generation failed: {exception.Message}");
             return 2;
         }
         catch (ContentImportConflictException exception)
@@ -145,6 +163,48 @@ public static class ContentToolApplication
         return 0;
     }
 
+    private static async Task<int> GenerateTestsAsync(
+        IConfiguration configuration,
+        string commandName,
+        string problemDirectory,
+        CancellationToken cancellationToken)
+    {
+        var options = configuration
+            .GetSection(ContentImportOptions.SectionName)
+            .Get<ContentImportOptions>() ?? new ContentImportOptions();
+        var manifestReader = new GeneratorManifestReader(options.MaxJudgeTestCaseCount);
+        var manifest = await manifestReader.ReadAsync(problemDirectory, cancellationToken);
+        var loader = new DotNetGenerationComponentLoader();
+        var generator = loader.Load<ITestCaseGenerator>(problemDirectory, manifest.Generator);
+        var validator = loader.Load<IInputValidator>(problemDirectory, manifest.InputValidator);
+        var sandbox = new DockerSandboxService(
+            configuration,
+            NullLogger<DockerSandboxService>.Instance);
+        var referenceRunner = new Cpp17ReferenceSolutionRunner(sandbox);
+        var service = new TestGenerationService(options);
+
+        var result = commandName == "generate"
+            ? await service.GenerateAsync(
+                problemDirectory,
+                manifest,
+                generator,
+                validator,
+                referenceRunner,
+                cancellationToken)
+            : await service.ValidateGeneratedAsync(
+                problemDirectory,
+                manifest,
+                generator,
+                validator,
+                referenceRunner,
+                cancellationToken);
+
+        var action = commandName == "generate" ? "Generated" : "Validated";
+        Console.WriteLine(
+            $"{action} {result.TestCaseCount} test case(s); suite SHA-256 {result.SuiteSha256}.");
+        return 0;
+    }
+
     private static async Task<int> ChangePublicationAsync(
         IConfiguration configuration,
         string commandName,
@@ -213,11 +273,17 @@ public static class ContentToolApplication
         if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
             return true;
 
-        if (args[0] is not ("validate" or "import" or "publish" or "unpublish") ||
+        if (args[0] is not (
+                "validate" or
+                "import" or
+                "publish" or
+                "unpublish" or
+                "generate" or
+                "validate-generated") ||
             args.Length < 2)
             return false;
 
-        if (args[0] is "publish" or "unpublish")
+        if (args[0] is "publish" or "unpublish" or "generate" or "validate-generated")
         {
             if (args.Length != 2)
                 return false;
@@ -247,6 +313,8 @@ public static class ContentToolApplication
         Console.WriteLine("AlgoJudge ContentTool");
         Console.WriteLine("  validate <package.zip>");
         Console.WriteLine("  import <package.zip> [--replace]");
+        Console.WriteLine("  generate <problem-directory>");
+        Console.WriteLine("  validate-generated <problem-directory>");
         Console.WriteLine("  publish <slug>");
         Console.WriteLine("  unpublish <slug>");
     }

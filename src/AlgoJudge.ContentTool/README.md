@@ -5,6 +5,8 @@ problem packages. It is intentionally separate from the public API.
 
 Implemented commands:
 
+- `generate <problem-directory>`
+- `validate-generated <problem-directory>`
 - `validate <package-path>`
 - `import <package-path>`
 - `import <package-path> --replace`
@@ -33,3 +35,50 @@ Bootstrap the checked-in development-only Two Sum fixture with:
 Database import reads `ConnectionStrings__DefaultConnection` from the process
 environment. The wrapper loads it from the repository `.env` file. Validation
 does not require a database or `.env` file.
+
+## Offline generated tests
+
+`generate` loads the trusted .NET generator and input validator declared in
+`generator/manifest.json`, derives deterministic per-case seeds, validates every
+input, and uses the pinned C++17 Docker sandbox to compile and run the reference
+solution. It writes complete pairs to `tests/` only after every case succeeds.
+It refuses to overwrite a non-empty manually-authored `tests/` directory.
+
+`validate-generated` repeats generation and reference execution and verifies
+the exact file contents plus the hashes in `generator/generated-tests.json`.
+Neither command accesses PostgreSQL. Generator code runs in the ContentTool
+process and must therefore be trusted maintainer code; reference C++ runs in the
+same hardened sandbox used by the judge.
+
+Generator assemblies reference `AlgoJudge.Application` and implement the public
+`ITestCaseGenerator` and `IInputValidator` contracts. A manifest has this shape:
+
+```json
+{
+  "schemaVersion": 1,
+  "generator": {
+    "type": "dotnet",
+    "assembly": "generator/ProblemGenerator.dll",
+    "entry": "Problems.TwoSumGenerator"
+  },
+  "inputValidator": {
+    "type": "dotnet",
+    "assembly": "generator/ProblemGenerator.dll",
+    "entry": "Problems.TwoSumInputValidator"
+  },
+  "groups": [
+    { "name": "edge", "seed": 101, "count": 10 },
+    { "name": "random", "seed": 202, "count": 100 },
+    { "name": "stress", "seed": 303, "count": 10 }
+  ],
+  "referenceSolution": {
+    "type": "cpp17",
+    "path": "reference/solution.cpp"
+  }
+}
+```
+
+The total group count cannot exceed the configured private-case limit (500 by
+default). `scripts/build-problem-package.ps1` includes only schema-v1 package
+members, so generator binaries, source, manifests, and the reference solution
+do not enter the import ZIP.
