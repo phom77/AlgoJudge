@@ -1,3 +1,4 @@
+using AlgoJudge.Application.FunctionExecution;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Infrastructure.Data;
 using AlgoJudge.Infrastructure.Grading;
@@ -55,6 +56,7 @@ builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 builder.Services.AddScoped<IJudgeTestCaseRepository, JudgeTestCaseRepository>();
 builder.Services.AddScoped<IGraderService, GraderService>();
 builder.Services.AddScoped<IDockerSandbox, DockerSandboxService>();
+builder.Services.AddSingleton<IFunctionHarnessBuilder, Cpp17FunctionHarnessBuilder>();
 builder.Services.AddSingleton(queueOptions);
 builder.Services.AddSingleton(workerIdentity);
 builder.Services.AddSingleton<WorkerHealthState>();

@@ -27,7 +27,11 @@ public sealed partial class ProblemPackageReader
         StringComparer.Ordinal);
 
     private static readonly HashSet<string> AllowedDirectories = new(
-        ["samples/", "tests/"],
+        ["samples/", "tests/", "function/"],
+        StringComparer.Ordinal);
+
+    private static readonly HashSet<string> FunctionFiles = new(
+        ["function/signature.json", "function/adapter-template.cpp"],
         StringComparer.Ordinal);
 
     private readonly ContentImportOptions _options;
@@ -143,6 +147,14 @@ public sealed partial class ProblemPackageReader
             errors,
             cancellationToken);
 
+        var function = await ReadFunctionAsync(
+            entries,
+            metadata,
+            samples,
+            judgeTestCases,
+            errors,
+            cancellationToken);
+
         ThrowIfInvalid(errors);
 
         return new ProblemPackage(
@@ -150,7 +162,8 @@ public sealed partial class ProblemPackageReader
             statement!,
             constraints!,
             samples,
-            judgeTestCases);
+            judgeTestCases,
+            function);
     }
 
     private Dictionary<string, ZipArchiveEntry> ValidateEntries(
@@ -199,6 +212,7 @@ public sealed partial class ProblemPackageReader
             }
 
             if (!RequiredRootFiles.Contains(canonicalName) &&
+                !FunctionFiles.Contains(canonicalName) &&
                 !ContentEntryNamePattern().IsMatch(canonicalName))
             {
                 errors.Add($"Unexpected archive entry: {canonicalName}.");
@@ -326,6 +340,18 @@ public sealed partial class ProblemPackageReader
             using var document = JsonDocument.Parse(manifestJson);
             ValidateDuplicateProperties(document.RootElement, "$", errors);
 
+            if (document.RootElement.TryGetProperty("schemaVersion", out var schemaVersion) &&
+                schemaVersion.TryGetInt32(out var schemaVersionValue))
+            {
+                var hasExecutionMode = document.RootElement.TryGetProperty(
+                    "executionMode",
+                    out _);
+                if (schemaVersionValue == 1 && hasExecutionMode)
+                    errors.Add("problem.json schema version 1 cannot declare executionMode.");
+                if (schemaVersionValue == 2 && !hasExecutionMode)
+                    errors.Add("problem.json schema version 2 requires executionMode.");
+            }
+
             return JsonSerializer.Deserialize<ProblemPackageMetadata>(
                 manifestJson,
                 ManifestJsonOptions);
@@ -374,8 +400,11 @@ public sealed partial class ProblemPackageReader
         if (metadata is null)
             return;
 
-        if (metadata.SchemaVersion != 1)
-            errors.Add("problem.json schemaVersion must be 1.");
+        if (metadata.SchemaVersion is not (1 or 2))
+            errors.Add("problem.json schemaVersion must be 1 or 2.");
+
+        if (!Enum.IsDefined(metadata.ExecutionMode))
+            errors.Add("Problem executionMode is invalid.");
 
         if (string.IsNullOrWhiteSpace(metadata.Slug) ||
             metadata.Slug.Length > 160 ||
@@ -490,6 +519,91 @@ public sealed partial class ProblemPackageReader
             errors.Add("The package must contain at least one complete public sample.");
 
         return samples;
+    }
+
+    private async Task<ProblemPackageFunction?> ReadFunctionAsync(
+        IReadOnlyDictionary<string, ZipArchiveEntry> entries,
+        ProblemPackageMetadata? metadata,
+        IReadOnlyCollection<ProblemPackageSample> samples,
+        IReadOnlyCollection<ProblemPackageJudgeTestCase> judgeTestCases,
+        ICollection<string> errors,
+        CancellationToken cancellationToken)
+    {
+        var hasFunctionEntries = entries.Keys.Any(name =>
+            name.StartsWith("function/", StringComparison.Ordinal) &&
+            !name.EndsWith("/", StringComparison.Ordinal));
+        if (metadata is null)
+            return null;
+
+        if (metadata.SchemaVersion == 1)
+        {
+            if (hasFunctionEntries)
+                errors.Add("Schema-version-1 packages cannot contain function files.");
+            return null;
+        }
+
+        if (metadata.ExecutionMode == ProblemExecutionMode.StdinStdout)
+        {
+            if (hasFunctionEntries)
+                errors.Add("StdinStdout problems cannot contain function files.");
+            return null;
+        }
+
+        if (metadata.ExecutionMode != ProblemExecutionMode.Function)
+            return null;
+
+        var signatureJson = await ReadRequiredEntryAsync(
+            entries,
+            "function/signature.json",
+            errors,
+            cancellationToken);
+        var adapterTemplate = await ReadRequiredEntryAsync(
+            entries,
+            "function/adapter-template.cpp",
+            errors,
+            cancellationToken);
+        if (signatureJson is not null &&
+            Encoding.UTF8.GetByteCount(signatureJson) > _options.MaxFunctionSignatureBytes)
+        {
+            errors.Add(
+                "function/signature.json exceeds the configured function-signature limit.");
+        }
+        if (adapterTemplate is not null &&
+            Encoding.UTF8.GetByteCount(adapterTemplate) > _options.MaxFunctionAdapterBytes)
+        {
+            errors.Add(
+                "function/adapter-template.cpp exceeds the configured function-adapter limit.");
+        }
+        var errorCountBeforeContractValidation = errors.Count;
+        var signature = FunctionPackageValidator.ParseSignature(signatureJson, errors);
+        FunctionPackageValidator.ValidateAdapterTemplate(adapterTemplate, errors);
+
+        if (signature is not null && errors.Count == errorCountBeforeContractValidation)
+        {
+            foreach (var sample in samples)
+            {
+                FunctionPackageValidator.ValidateCase(
+                    signature,
+                    sample.Input,
+                    sample.ExpectedOutput,
+                    $"Sample {sample.Ordinal}",
+                    errors);
+            }
+
+            foreach (var testCase in judgeTestCases)
+            {
+                FunctionPackageValidator.ValidateCase(
+                    signature,
+                    testCase.Input,
+                    testCase.ExpectedOutput,
+                    $"Judge test case {testCase.Ordinal}",
+                    errors);
+            }
+        }
+
+        return signature is null || signatureJson is null || adapterTemplate is null
+            ? null
+            : new ProblemPackageFunction(signature, signatureJson, adapterTemplate);
     }
 
     private async Task<IReadOnlyCollection<ProblemPackageJudgeTestCase>> ReadJudgeTestCasesAsync(

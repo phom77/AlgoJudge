@@ -13,6 +13,15 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
                 table.HasCheckConstraint("CK_Problem_TimeLimitMs", "\"TimeLimitMs\" > 0");
                 table.HasCheckConstraint("CK_Problem_MemoryLimitKb", "\"MemoryLimitKb\" > 0");
                 table.HasCheckConstraint("CK_Problem_JudgeVersion", "\"JudgeVersion\" > 0");
+                table.HasCheckConstraint(
+                    "CK_Problem_ExecutionMode",
+                    "\"ExecutionMode\" IN (0, 1)");
+                table.HasCheckConstraint(
+                    "CK_Problem_FunctionConfiguration",
+                    "(\"ExecutionMode\" = 0 AND \"FunctionSignatureJson\" IS NULL AND " +
+                    "\"FunctionAdapterTemplate\" IS NULL) OR " +
+                    "(\"ExecutionMode\" = 1 AND \"FunctionSignatureJson\" IS NOT NULL AND " +
+                    "\"FunctionAdapterTemplate\" IS NOT NULL)");
             });
 
             builder.HasKey(p => p.Id);
@@ -33,6 +42,12 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
 
             builder.Property(p => p.Status)
                    .HasDefaultValue(Domain.Enums.ProblemStatus.Draft);
+
+            builder.Property(p => p.ExecutionMode)
+                   .HasDefaultValue(Domain.Enums.ProblemExecutionMode.StdinStdout);
+
+            builder.Property(p => p.FunctionSignatureJson)
+                   .HasColumnType("jsonb");
 
             builder.Property(p => p.JudgeVersion)
                    .HasDefaultValue(1);

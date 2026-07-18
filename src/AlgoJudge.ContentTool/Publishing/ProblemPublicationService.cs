@@ -1,3 +1,4 @@
+using AlgoJudge.ContentTool.Packages;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
 using AlgoJudge.Infrastructure.Data;
@@ -115,6 +116,49 @@ public sealed class ProblemPublicationService
         if (problem.Samples.Count == 0) errors.Add("at least one public sample is required");
         if (problem.JudgeTestCases.Count == 0)
             errors.Add("at least one private judge case is required");
+        if (problem.ExecutionMode == ProblemExecutionMode.Function)
+        {
+            var validationErrors = new List<string>();
+            var signature = FunctionPackageValidator.ParseSignature(
+                problem.FunctionSignatureJson,
+                validationErrors);
+            FunctionPackageValidator.ValidateAdapterTemplate(
+                problem.FunctionAdapterTemplate,
+                validationErrors);
+            if (signature is not null && validationErrors.Count == 0)
+            {
+                foreach (var sample in problem.Samples)
+                {
+                    FunctionPackageValidator.ValidateCase(
+                        signature,
+                        sample.Input,
+                        sample.ExpectedOutput,
+                        $"Sample {sample.Ordinal}",
+                        validationErrors);
+                }
+
+                foreach (var testCase in problem.JudgeTestCases)
+                {
+                    FunctionPackageValidator.ValidateCase(
+                        signature,
+                        testCase.Input,
+                        testCase.ExpectedOutput,
+                        $"Judge test case {testCase.Ordinal}",
+                        validationErrors);
+                }
+            }
+
+            if (validationErrors.Count > 0)
+                errors.Add("the function configuration is invalid");
+        }
+        if (problem.ExecutionMode == ProblemExecutionMode.StdinStdout &&
+            (problem.FunctionSignatureJson is not null ||
+             problem.FunctionAdapterTemplate is not null))
+        {
+            errors.Add("stdin/stdout problems cannot contain function configuration");
+        }
+        if (!Enum.IsDefined(problem.ExecutionMode))
+            errors.Add("the execution mode is invalid");
 
         if (errors.Count > 0)
         {

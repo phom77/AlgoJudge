@@ -7,6 +7,8 @@ public sealed class ContentImportOptions
     public long MaxArchiveBytes { get; set; } = 20 * 1024 * 1024;
     public long MaxTotalUncompressedBytes { get; set; } = 100 * 1024 * 1024;
     public long MaxEntryBytes { get; set; } = 8 * 1024 * 1024;
+    public int MaxFunctionSignatureBytes { get; set; } = 64 * 1024;
+    public int MaxFunctionAdapterBytes { get; set; } = 256 * 1024;
     public int MaxFileCount { get; set; } = 1_100;
     public int MaxSampleCount { get; set; } = 20;
     public int MaxJudgeTestCaseCount { get; set; } = 500;
@@ -19,7 +21,9 @@ public sealed class ContentImportOptions
     {
         if (MaxArchiveBytes <= 0 ||
             MaxTotalUncompressedBytes <= 0 ||
-            MaxEntryBytes <= 0)
+            MaxEntryBytes <= 0 ||
+            MaxFunctionSignatureBytes <= 0 ||
+            MaxFunctionAdapterBytes <= 0)
         {
             throw new InvalidOperationException("Content size limits must be positive.");
         }

@@ -1,3 +1,4 @@
+using AlgoJudge.Application.FunctionExecution;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Infrastructure.Data;
 using AlgoJudge.Infrastructure.Grading;
@@ -52,6 +53,7 @@ internal sealed class EndToEndWorkerHost : IAsyncDisposable
         services.AddScoped<ISubmissionRepository, SubmissionRepository>();
         services.AddScoped<IJudgeTestCaseRepository, JudgeTestCaseRepository>();
         services.AddScoped<IGraderService, GraderService>();
+        services.AddSingleton<IFunctionHarnessBuilder, Cpp17FunctionHarnessBuilder>();
         if (sandbox is null)
             services.AddScoped<IDockerSandbox, DockerSandboxService>();
         else

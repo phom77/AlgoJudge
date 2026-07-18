@@ -1,3 +1,4 @@
+using AlgoJudge.Application.FunctionExecution;
 using AlgoJudge.Application.Models.Common;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Application.Models.SubmissionQueue;
@@ -60,7 +61,10 @@ internal static class JudgeTestHarness
         IDockerSandbox sandbox,
         ILogger<GraderService> logger,
         int timeLimitMs = 1_000,
-        int memoryLimitKb = 64 * 1024)
+        int memoryLimitKb = 64 * 1024,
+        ProblemExecutionMode executionMode = ProblemExecutionMode.StdinStdout,
+        string? functionSignatureJson = null,
+        string? functionAdapterTemplate = null)
     {
         var submissionId = Guid.NewGuid();
         var claimToken = Guid.NewGuid();
@@ -87,7 +91,10 @@ internal static class JudgeTestHarness
             Difficulty = DifficultyLevel.Easy,
             Status = ProblemStatus.Published,
             TimeLimitMs = timeLimitMs,
-            MemoryLimitKb = memoryLimitKb
+            MemoryLimitKb = memoryLimitKb,
+            ExecutionMode = executionMode,
+            FunctionSignatureJson = functionSignatureJson,
+            FunctionAdapterTemplate = functionAdapterTemplate
         };
         var testCase = new JudgeTestCase
         {
@@ -109,6 +116,7 @@ internal static class JudgeTestHarness
             new StubProblemRepository(problem),
             new StubJudgeTestCaseRepository(testCase),
             sandbox,
+            new Cpp17FunctionHarnessBuilder(),
             logger);
 
         await grader.GradeAsync(claim);

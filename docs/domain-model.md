@@ -41,6 +41,9 @@ Represents a curated programming exercise.
 | `difficulty` | `Easy`, `Medium`, or `Hard`. |
 | `timeLimitMs` | Runtime limit used by the judge. |
 | `memoryLimitKb` | Memory limit used by the judge. |
+| `executionMode` | `StdinStdout` or `Function`; legacy packages default to `StdinStdout`. |
+| `functionSignatureJson` | Internal validated signature for Function problems; otherwise null. |
+| `functionAdapterTemplate` | Private C++17 harness template for Function problems; otherwise null and never public. |
 | `status` | `Draft`, `Published`, or `Archived`. |
 | `judgeVersion` | Positive version of the current private judge data. |
 | `publishedAt` | UTC timestamp when applicable. |
@@ -136,5 +139,8 @@ fencing token, while an explicitly abandoned retryable attempt returns to
 - `Accepted` means every testcase passed under the configured limits.
 - A problem cannot be Published without valid samples and at least one hidden
   testcase.
+- A Function problem cannot be Published without a valid signature, adapter,
+  and JSON sample/test data matching the signature.
+- A StdinStdout problem cannot retain function configuration.
 - Hidden testcase content is never part of public DTOs or logs.
 - Solved status is derived from submissions, not stored as an editable flag.
