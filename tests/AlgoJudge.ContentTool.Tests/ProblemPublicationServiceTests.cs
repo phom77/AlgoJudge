@@ -131,6 +131,31 @@ public class ProblemPublicationServiceTests
         Assert.Equal(ProblemStatus.Published, result.Status);
     }
 
+    [Fact]
+    public async Task PublishAcceptsGenericFunctionHarnessWithoutLegacyAdapter()
+    {
+        await using var context = CreateContext();
+        var problem = CreateCompleteProblem();
+        problem.ExecutionMode = ProblemExecutionMode.Function;
+        problem.FunctionSignatureJson =
+            "{\"className\":\"Solution\",\"methodName\":\"solve\"," +
+            "\"returnType\":\"Int32\",\"parameters\":[{" +
+            "\"name\":\"value\",\"type\":\"Int32\"}]}";
+        problem.Samples.Single().Input = "{\"value\":1}";
+        problem.Samples.Single().ExpectedOutput = "1";
+        problem.JudgeTestCases.Single().Input = "{\"value\":2}";
+        problem.JudgeTestCases.Single().ExpectedOutput = "2";
+        context.Problems.Add(problem);
+        await context.SaveChangesAsync();
+        var service = new ProblemPublicationService(context);
+
+        var result = await service.PublishAsync("two-sum");
+
+        Assert.True(result.Changed);
+        Assert.Equal(ProblemStatus.Published, result.Status);
+        Assert.Null(problem.FunctionAdapterTemplate);
+    }
+
     private static AppDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()

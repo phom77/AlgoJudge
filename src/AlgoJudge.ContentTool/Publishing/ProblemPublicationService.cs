@@ -122,9 +122,14 @@ public sealed class ProblemPublicationService
             var signature = FunctionPackageValidator.ParseSignature(
                 problem.FunctionSignatureJson,
                 validationErrors);
-            FunctionPackageValidator.ValidateAdapterTemplate(
-                problem.FunctionAdapterTemplate,
-                validationErrors);
+            if (signature is null && validationErrors.Count == 0)
+                validationErrors.Add("a function signature is required");
+            if (problem.FunctionAdapterTemplate is not null)
+            {
+                FunctionPackageValidator.ValidateAdapterTemplate(
+                    problem.FunctionAdapterTemplate,
+                    validationErrors);
+            }
             if (signature is not null && validationErrors.Count == 0)
             {
                 foreach (var sample in problem.Samples)

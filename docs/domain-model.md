@@ -43,7 +43,7 @@ Represents a curated programming exercise.
 | `memoryLimitKb` | Memory limit used by the judge. |
 | `executionMode` | `StdinStdout` or `Function`; legacy packages default to `StdinStdout`. |
 | `functionSignatureJson` | Internal validated signature for Function problems; otherwise null. |
-| `functionAdapterTemplate` | Private C++17 harness template for Function problems; otherwise null and never public. |
+| `functionAdapterTemplate` | Optional private legacy C++17 adapter for Function problems. Null selects the platform generic harness; always null for StdinStdout and never public. |
 | `status` | `Draft`, `Published`, or `Archived`. |
 | `judgeVersion` | Positive version of the current private judge data. |
 | `publishedAt` | UTC timestamp when applicable. |

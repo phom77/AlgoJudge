@@ -1,15 +1,22 @@
 using AlgoJudge.Application.ContentGeneration;
+using AlgoJudge.Application.FunctionExecution;
 using AlgoJudge.Application.Interfaces;
 
 namespace AlgoJudge.ContentTool.Generation;
 
-public sealed class Cpp17ReferenceSolutionRunner : IReferenceSolutionRunner
+public sealed class Cpp17ReferenceSolutionRunner :
+    IReferenceSolutionRunner,
+    IFunctionReferenceSolutionRunner
 {
     private readonly IDockerSandbox _sandbox;
+    private readonly IFunctionHarnessBuilder _functionHarnessBuilder;
 
-    public Cpp17ReferenceSolutionRunner(IDockerSandbox sandbox)
+    public Cpp17ReferenceSolutionRunner(
+        IDockerSandbox sandbox,
+        IFunctionHarnessBuilder functionHarnessBuilder)
     {
         _sandbox = sandbox;
+        _functionHarnessBuilder = functionHarnessBuilder;
     }
 
     public async Task<IReadOnlyList<string>> RunAsync(
@@ -17,6 +24,32 @@ public sealed class Cpp17ReferenceSolutionRunner : IReferenceSolutionRunner
         IReadOnlyList<string> inputs,
         ReferenceSolutionLimits limits,
         CancellationToken cancellationToken = default)
+    {
+        return await RunCoreAsync(
+            sourceCode,
+            inputs,
+            limits,
+            cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<string>> RunFunctionAsync(
+        string sourceCode,
+        FunctionSignature signature,
+        IReadOnlyList<string> inputs,
+        ReferenceSolutionLimits limits,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sourceCode);
+        ArgumentNullException.ThrowIfNull(signature);
+        var harness = _functionHarnessBuilder.Build(sourceCode, signature);
+        return await RunCoreAsync(harness, inputs, limits, cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<string>> RunCoreAsync(
+        string sourceCode,
+        IReadOnlyList<string> inputs,
+        ReferenceSolutionLimits limits,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(sourceCode);
         ArgumentNullException.ThrowIfNull(inputs);

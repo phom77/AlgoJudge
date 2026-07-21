@@ -20,8 +20,7 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
                     "CK_Problem_FunctionConfiguration",
                     "(\"ExecutionMode\" = 0 AND \"FunctionSignatureJson\" IS NULL AND " +
                     "\"FunctionAdapterTemplate\" IS NULL) OR " +
-                    "(\"ExecutionMode\" = 1 AND \"FunctionSignatureJson\" IS NOT NULL AND " +
-                    "\"FunctionAdapterTemplate\" IS NOT NULL)");
+                    "(\"ExecutionMode\" = 1 AND \"FunctionSignatureJson\" IS NOT NULL)");
             });
 
             builder.HasKey(p => p.Id);

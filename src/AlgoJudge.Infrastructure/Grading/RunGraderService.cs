@@ -78,13 +78,20 @@ public sealed class RunGraderService : IRunGraderService
     private string BuildSource(Problem problem, string source) => problem.ExecutionMode switch
     {
         ProblemExecutionMode.StdinStdout => source,
-        ProblemExecutionMode.Function => _functionHarnessBuilder.Build(source,
-            FunctionSignatureJsonSerializer.Deserialize(problem.FunctionSignatureJson ??
-                throw new InvalidOperationException($"Function signature is missing for problem {problem.Id}.")),
-            problem.FunctionAdapterTemplate ?? throw new InvalidOperationException(
-                $"Function adapter is missing for problem {problem.Id}.")),
+        ProblemExecutionMode.Function => BuildFunctionSource(problem, source),
         _ => throw new InvalidOperationException($"Unsupported execution mode for problem {problem.Id}.")
     };
+
+    private string BuildFunctionSource(Problem problem, string source)
+    {
+        var signature = FunctionSignatureJsonSerializer.Deserialize(
+            problem.FunctionSignatureJson ?? throw new InvalidOperationException(
+                $"Function signature is missing for problem {problem.Id}."));
+
+        return problem.FunctionAdapterTemplate is null
+            ? _functionHarnessBuilder.Build(source, signature)
+            : _functionHarnessBuilder.BuildLegacy(source, signature, problem.FunctionAdapterTemplate);
+    }
 
     private async Task FinalizeAsync(RunClaim claim, RunStatus status, string? stdout, string? stderr,
         int timeMs, int memoryKb, CancellationToken cancellationToken)
