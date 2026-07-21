@@ -1,6 +1,7 @@
 # ADR-0011: Support versioned problem execution modes
 
-Status: Accepted
+Status: Superseded
+Superseded by: [ADR-0014](0014-use-source-based-problem-authoring.md)
 Date: 2026-07-18
 
 ## Context

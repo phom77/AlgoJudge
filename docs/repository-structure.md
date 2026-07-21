@@ -28,11 +28,17 @@ AlgoJudge.Infrastructure
 
 - API owns HTTP concerns and authentication middleware.
 - Worker owns polling/queue consumption and process lifetime.
+- A future ContentWorker owns content-generation queue polling, authoring
+  snapshot orchestration, and sandbox lifetime. It is separately deployable
+  from API and grading Worker and is not implemented in the documentation
+  branch that defines its contract.
 - Application owns use cases and ports/interfaces.
 - Domain owns business concepts and invariants.
 - Infrastructure owns EF Core, PostgreSQL repositories, queue implementations,
   and sandbox adapters.
-- ContentTool is an internal executable and must not become a public admin API.
+- ContentTool is a transitional internal executable and must not become a
+  public admin API. It may orchestrate the same sandboxed generation engine as
+  ContentWorker but must not execute authoring source in its own process.
 
 ## External services
 

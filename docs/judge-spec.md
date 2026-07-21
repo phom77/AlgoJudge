@@ -26,14 +26,16 @@ semantics.
 - `StdinStdout`: the submitted source is a complete C++17 program. Test input
   is passed to stdin and program stdout is compared with expected output.
 - `Function`: the submitted source defines the class and method declared by the
-  problem signature. The judge builds a complete source file from the private
-  adapter template, user source, class name, and method name. Test input and
+  problem signature. For source-authored problems the platform builds a
+  complete source file with its generic C++17 harness. Legacy schema-version-2
+  content continues to use its private adapter template. Test input and
   expected output are normalized JSON matching the signature.
 
-Function adapters are trusted private problem content, but the combined source
-still compiles and executes under the same sandbox boundaries as any other
-submission. Adapter source, signature internals beyond the public method
-contract, and hidden arguments/output must not appear in logs or diagnostics.
+The generated harness and legacy Function adapters are trusted private
+platform content, but combined source still compiles and executes under the
+same sandbox boundaries as any other submission. Harness/adapter source,
+signature internals beyond the public method contract, and hidden
+arguments/output must not appear in logs or diagnostics.
 
 ## 3. Judge algorithm
 
@@ -57,6 +59,30 @@ executed in stable ordinal order. Missing versions are operational failures,
 not empty Accepted suites. Generator code and reference solutions never run in
 the worker. Submission retries and reclaimed leases use the original pinned
 version.
+
+## 3.1 Offline content generation
+
+Content generation has a separate trust and process boundary from submission
+judging. The API and grading worker never compile or execute generator,
+validator, reference, or wrong-solution source. A separately deployable content
+worker, or the transitional CLI using the same adapters, orchestrates pinned
+content-generation sandboxes.
+
+Generator and validator work is separate from C++17 reference work, and
+compilation is separate from execution for each toolchain. All stages use
+non-root containers with no network, dropped capabilities, no new privileges,
+read-only runtime filesystems, bounded scratch mounts and explicit CPU, time,
+memory, PID, file, and stdout/stderr limits. Containers receive no database
+credentials, Docker socket, application source, host devices, or home
+directory.
+
+Generation uses an immutable authoring snapshot. It validates every argument,
+uses the generic Function harness for the reference method, repeats generation
+and reference execution from identical seeds, and rejects byte-level
+non-determinism. Optional wrong solutions run under the same C++17 sandbox.
+Only a complete, hashed candidate can become a positive immutable system-suite
+version. Generated source, hidden values, and raw diagnostics are excluded from
+normal logs and public contracts.
 
 For a custom run, the same compile and sandbox stages execute exactly once with
 the user's bounded input. The worker does not load hidden testcases or compare

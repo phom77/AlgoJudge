@@ -1,6 +1,7 @@
 # ADR-0010: Generate system tests offline
 
-Status: Accepted
+Status: Superseded
+Superseded by: [ADR-0014](0014-use-source-based-problem-authoring.md)
 Date: 2026-07-18
 
 ## Context

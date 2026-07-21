@@ -20,8 +20,14 @@ package contract and safety rules.
 
 Package schema version 1 remains compatible and imports as `StdinStdout`.
 Schema version 2 explicitly supports `StdinStdout` and `Function`; Function
-packages add a validated signature and private C++17 adapter template. See
-`docs/problem-package-format.md` and ADR-0011 for the complete contract.
+packages add a validated signature and private C++17 adapter template. This is
+the legacy package contract and remains supported. See
+`docs/problem-package-format.md` for its complete format.
+
+The approved target authoring contract is source-based and sandboxed. It does
+not require maintainers to build a generator DLL or author a per-problem
+adapter. It is specified in `docs/problem-authoring.md` and ADR-0014 but is not
+implemented by the current commands.
 
 From the repository root, the PowerShell wrapper imports by default:
 
@@ -41,7 +47,7 @@ Database import reads `ConnectionStrings__DefaultConnection` from the process
 environment. The wrapper loads it from the repository `.env` file. Validation
 does not require a database or `.env` file.
 
-## Offline generated tests
+## Legacy offline generated tests
 
 `generate` loads the trusted .NET generator and input validator declared in
 `generator/manifest.json`, derives deterministic per-case seeds, validates every
