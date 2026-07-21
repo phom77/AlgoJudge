@@ -143,8 +143,9 @@ fencing token, while an explicitly abandoned retryable attempt returns to
   was created; retries never switch versions.
 - A problem cannot be Published without valid samples and at least one hidden
   testcase.
-- A Function problem cannot be Published without a valid signature, adapter,
-  and JSON sample/test data matching the signature.
+- A Function problem cannot be Published without a valid signature, a private
+  harness (platform-generated for source-authored content or imported for
+  legacy content), and JSON sample/test data matching the signature.
 - A StdinStdout problem cannot retain function configuration.
 - Hidden testcase content is never part of public DTOs or logs.
 - Solved status is derived from submissions, not stored as an editable flag.

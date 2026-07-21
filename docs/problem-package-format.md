@@ -181,11 +181,12 @@ For local development only, package, import, and publish the checked-in fixture
 with `./scripts/seed-dev-content.ps1`. Its judge cases are public development
 data and must never be reused as production hidden tests.
 
-## Offline authoring extensions
+## Legacy offline authoring extensions
 
-A private authoring directory may also contain `generator/` and `reference/`
-content. These directories are not schema-version-1 package entries and are
-excluded by `scripts/build-problem-package.ps1`:
+The current ContentTool accepts a private authoring directory containing
+`generator/` and `reference/` content. This is the legacy authoring path. These
+directories are not schema-version-1 package entries and are excluded by
+`scripts/build-problem-package.ps1`:
 
 ```text
 problem-authoring/
@@ -217,3 +218,27 @@ README. Generation is deterministic by declared group seed, validates every
 input before execution, runs the reference solution offline in the pinned
 C++17 sandbox, and refuses to replace manually-authored tests. Production
 hidden tests and authoring inputs remain in a private content repository.
+
+## Source-based authoring transition
+
+The approved replacement is the source-based contract in
+[`problem-authoring.md`](problem-authoring.md) and
+[ADR-0014](adr/0014-use-source-based-problem-authoring.md). It lets a maintainer
+store generator and validator source, a Function signature, a reference
+class/method, and optional wrong solutions without supplying a project, DLL,
+full stdin/stdout executable, or adapter.
+
+That definition is not a ZIP member and does not create package schema version
+3 in this documentation branch. The later persistence/API work will version
+its storage contract. During migration, tooling may materialize generated
+`.in`/`.out` pairs and a platform-generated private adapter into an otherwise
+valid schema-version-2 package.
+
+Compatibility rules are:
+
+- schema-version-1 and schema-version-2 packages remain valid;
+- existing private schema-version-2 adapters remain accepted and executable;
+- imported and published suite versions are never rewritten;
+- the DLL/manifest workflow remains available as a legacy CLI input until a
+  separately approved removal; and
+- the future Admin API accepts source-based definitions, not DLL uploads.
