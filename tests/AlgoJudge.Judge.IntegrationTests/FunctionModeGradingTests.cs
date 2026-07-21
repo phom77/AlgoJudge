@@ -56,6 +56,34 @@ public sealed class FunctionModeGradingTests
         Assert.Equal("{\"value\":2}", sandbox.ReceivedInput);
     }
 
+    [Fact]
+    public async Task FunctionModeWithoutLegacyAdapterBuildsGenericHarness()
+    {
+        const string userSource =
+            "class Solution { public: int solve(int value) { return value * 2; } };";
+        var sandbox = new CapturingSandbox("4");
+
+        var outcome = await JudgeTestHarness.GradeWithSandboxAsync(
+            userSource,
+            "{\"value\":2}",
+            "4",
+            sandbox,
+            NullLogger<GraderService>.Instance,
+            executionMode: ProblemExecutionMode.Function,
+            functionSignatureJson: Signature);
+
+        Assert.Equal(SubmissionStatus.Accepted, outcome.Status);
+        Assert.Contains(userSource, sandbox.CompiledSource, StringComparison.Ordinal);
+        Assert.Contains(
+            "as_int32(root.required(\"value\"))",
+            sandbox.CompiledSource,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "solution.solve(argument_0)",
+            sandbox.CompiledSource,
+            StringComparison.Ordinal);
+    }
+
     [DockerJudgeFact]
     public async Task ValidFunctionSolutionIsAcceptedInSandbox()
     {
@@ -69,8 +97,7 @@ public sealed class FunctionModeGradingTests
             JudgeTestHarness.CreateSandbox(),
             NullLogger<GraderService>.Instance,
             executionMode: ProblemExecutionMode.Function,
-            functionSignatureJson: Signature,
-            functionAdapterTemplate: ExecutableAdapter);
+            functionSignatureJson: Signature);
 
         Assert.Equal(SubmissionStatus.Accepted, outcome.Status);
     }
@@ -87,11 +114,115 @@ public sealed class FunctionModeGradingTests
             JudgeTestHarness.CreateSandbox(),
             NullLogger<GraderService>.Instance,
             executionMode: ProblemExecutionMode.Function,
-            functionSignatureJson: Signature,
-            functionAdapterTemplate: ExecutableAdapter);
+            functionSignatureJson: Signature);
 
         Assert.Equal(SubmissionStatus.CompileError, outcome.Status);
     }
+
+    [DockerJudgeFact]
+    public async Task GenericHarnessParsesAndSerializesEverySupportedValueType()
+    {
+        var cases = new[]
+        {
+            new FunctionCase(
+                "Int32", "Int32",
+                "class Solution { public: int solve(int value) { return value; } };",
+                "{\"value\":-2147483648}", "-2147483648"),
+            new FunctionCase(
+                "Int64", "Int64",
+                "class Solution { public: long long solve(long long value) { return value; } };",
+                "{\"value\":9223372036854775807}", "9223372036854775807"),
+            new FunctionCase(
+                "Double", "Double",
+                "class Solution { public: double solve(double value) { return value / 2; } };",
+                "{\"value\":3.0}", "1.5"),
+            new FunctionCase(
+                "Boolean", "Boolean",
+                "class Solution { public: bool solve(bool value) { return !value; } };",
+                "{\"value\":true}", "false"),
+            new FunctionCase(
+                "String", "String",
+                "class Solution { public: string solve(string value) { return value + \"\\n\\\"\"; } };",
+                "{\"value\":\"xin chào\"}", "\"xin chào\\n\\\"\""),
+            new FunctionCase(
+                "Int32Array", "Int32Array",
+                "class Solution { public: vector<int> solve(vector<int>& value) { reverse(value.begin(), value.end()); return value; } };",
+                "{\"value\":[1,2,3]}", "[3,2,1]"),
+            new FunctionCase(
+                "Int64Array", "Int64Array",
+                "class Solution { public: vector<long long> solve(vector<long long>& value) { return value; } };",
+                "{\"value\":[-9223372036854775808,9223372036854775807]}",
+                "[-9223372036854775808,9223372036854775807]"),
+            new FunctionCase(
+                "DoubleArray", "DoubleArray",
+                "class Solution { public: vector<double> solve(vector<double>& value) { return value; } };",
+                "{\"value\":[1.5,-2.25]}", "[1.5,-2.25]"),
+            new FunctionCase(
+                "BooleanArray", "BooleanArray",
+                "class Solution { public: vector<bool> solve(vector<bool>& value) { for (size_t i = 0; i < value.size(); ++i) value[i] = !value[i]; return value; } };",
+                "{\"value\":[true,false]}", "[false,true]"),
+            new FunctionCase(
+                "StringArray", "StringArray",
+                "class Solution { public: vector<string> solve(vector<string>& value) { return value; } };",
+                "{\"value\":[\"a\\nb\",\"\uD83D\uDE00\"]}", "[\"a\\nb\",\"😀\"]")
+        };
+
+        foreach (var functionCase in cases)
+        {
+            var outcome = await JudgeTestHarness.GradeWithSandboxAsync(
+                functionCase.Source,
+                functionCase.Input,
+                functionCase.ExpectedOutput,
+                JudgeTestHarness.CreateSandbox(),
+                NullLogger<GraderService>.Instance,
+                executionMode: ProblemExecutionMode.Function,
+                functionSignatureJson: CreateSignature(
+                    functionCase.ReturnType,
+                    functionCase.ParameterType));
+
+            Assert.Equal(SubmissionStatus.Accepted, outcome.Status);
+        }
+    }
+
+    [DockerJudgeFact]
+    public async Task GenericHarnessMapsInvalidJsonAndSolutionExceptionToRuntimeError()
+    {
+        const string source =
+            "class Solution { public: int solve(int) { throw runtime_error(\"failure\"); } };";
+        var sandbox = JudgeTestHarness.CreateSandbox();
+
+        var invalidJson = await JudgeTestHarness.GradeWithSandboxAsync(
+            source,
+            "{\"unknown\":1}",
+            "0",
+            sandbox,
+            NullLogger<GraderService>.Instance,
+            executionMode: ProblemExecutionMode.Function,
+            functionSignatureJson: Signature);
+        var solutionException = await JudgeTestHarness.GradeWithSandboxAsync(
+            source,
+            "{\"value\":1}",
+            "0",
+            sandbox,
+            NullLogger<GraderService>.Instance,
+            executionMode: ProblemExecutionMode.Function,
+            functionSignatureJson: Signature);
+
+        Assert.Equal(SubmissionStatus.RuntimeError, invalidJson.Status);
+        Assert.Equal(SubmissionStatus.RuntimeError, solutionException.Status);
+    }
+
+    private static string CreateSignature(string returnType, string parameterType) =>
+        $$"""
+        {"className":"Solution","methodName":"solve","returnType":"{{returnType}}","parameters":[{"name":"value","type":"{{parameterType}}"}]}
+        """;
+
+    private sealed record FunctionCase(
+        string ReturnType,
+        string ParameterType,
+        string Source,
+        string Input,
+        string ExpectedOutput);
 
     private sealed class CapturingSandbox(string output) : IDockerSandbox
     {

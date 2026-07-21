@@ -26,8 +26,9 @@ the legacy package contract and remains supported. See
 
 The approved target authoring contract is source-based and sandboxed. It does
 not require maintainers to build a generator DLL or author a per-problem
-adapter. It is specified in `docs/problem-authoring.md` and ADR-0014 but is not
-implemented by the current commands.
+adapter. The generic C++17 Function harness and shared reference-runner path
+are implemented, while source generator compilation and authoring persistence
+remain future work. See `docs/problem-authoring.md` and ADR-0014.
 
 From the repository root, the PowerShell wrapper imports by default:
 

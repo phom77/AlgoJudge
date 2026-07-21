@@ -37,6 +37,32 @@ same sandbox boundaries as any other submission. Harness/adapter source,
 signature internals beyond the public method contract, and hidden
 arguments/output must not appear in logs or diagnostics.
 
+The persisted compatibility rule is explicit: a Function problem with a
+legacy adapter uses that adapter; a Function problem with no adapter uses the
+generic harness generated from its required signature. StdinStdout problems
+cannot retain either a signature or adapter. Existing adapters are not
+rewritten.
+
+The generic C++17 mapping is:
+
+| Signature type | C++17 type |
+|---|---|
+| `Int32` | `int` |
+| `Int64` | `long long` |
+| `Double` | `double` |
+| `Boolean` | `bool` |
+| `String` | `std::string` |
+| `*Array` | `std::vector<T>` using the corresponding scalar mapping |
+
+The harness strictly parses one JSON object, requires exactly the declared
+parameter names, invokes the method in signature order, and emits one compact
+JSON value. It supports JSON escapes and Unicode surrogate pairs, rejects
+out-of-range integers and non-finite doubles, and escapes returned strings.
+Malformed arguments, a thrown solution exception, or an unserializable result
+exit abnormally and therefore map to Runtime Error. The same generic builder
+is exposed to offline reference execution so learner and oracle methods use
+identical parsing and serialization.
+
 ## 3. Judge algorithm
 
 1. A worker atomically claims a Pending submission and selects the exact

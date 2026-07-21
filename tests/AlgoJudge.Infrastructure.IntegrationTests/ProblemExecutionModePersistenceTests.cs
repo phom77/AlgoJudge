@@ -39,6 +39,29 @@ public sealed class ProblemExecutionModePersistenceTests
         await Assert.ThrowsAsync<DbUpdateException>(() => invalidContext.SaveChangesAsync());
     }
 
+    [PostgreSqlFact]
+    public async Task PostgreSqlAllowsFunctionProblemToUseGenericHarness()
+    {
+        await using var database = await PostgreSqlTestDatabase.CreateAsync();
+        await using (var context = database.CreateContext())
+        {
+            context.Problems.Add(CreateProblem(
+                "generic-function",
+                ProblemExecutionMode.Function,
+                "{\"className\":\"Solution\"}",
+                adapter: null));
+            await context.SaveChangesAsync();
+        }
+
+        await using var verificationContext = database.CreateContext();
+        var persisted = await verificationContext.Problems
+            .AsNoTracking()
+            .SingleAsync(problem => problem.Slug == "generic-function");
+        Assert.Equal(ProblemExecutionMode.Function, persisted.ExecutionMode);
+        Assert.NotNull(persisted.FunctionSignatureJson);
+        Assert.Null(persisted.FunctionAdapterTemplate);
+    }
+
     private static Problem CreateProblem(
         string slug,
         ProblemExecutionMode mode,

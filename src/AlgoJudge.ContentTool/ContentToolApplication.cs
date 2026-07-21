@@ -181,7 +181,9 @@ public static class ContentToolApplication
         var sandbox = new DockerSandboxService(
             configuration,
             NullLogger<DockerSandboxService>.Instance);
-        var referenceRunner = new Cpp17ReferenceSolutionRunner(sandbox);
+        var referenceRunner = new Cpp17ReferenceSolutionRunner(
+            sandbox,
+            new Cpp17FunctionHarnessBuilder());
         var service = new TestGenerationService(options);
 
         var result = commandName == "generate"

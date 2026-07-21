@@ -196,16 +196,24 @@ namespace AlgoJudge.Infrastructure.Grading
             problem.ExecutionMode switch
             {
                 ProblemExecutionMode.StdinStdout => submittedSource,
-                ProblemExecutionMode.Function => _functionHarnessBuilder.Build(
-                    submittedSource,
-                    FunctionSignatureJsonSerializer.Deserialize(
-                        problem.FunctionSignatureJson ?? throw new InvalidOperationException(
-                            $"Function signature is missing for problem {problem.Id}.")),
-                    problem.FunctionAdapterTemplate ?? throw new InvalidOperationException(
-                        $"Function adapter is missing for problem {problem.Id}.")),
+                ProblemExecutionMode.Function => BuildFunctionSource(problem, submittedSource),
                 _ => throw new InvalidOperationException(
                     $"Execution mode is invalid for problem {problem.Id}.")
             };
+
+        private string BuildFunctionSource(Problem problem, string submittedSource)
+        {
+            var signature = FunctionSignatureJsonSerializer.Deserialize(
+                problem.FunctionSignatureJson ?? throw new InvalidOperationException(
+                    $"Function signature is missing for problem {problem.Id}."));
+
+            return problem.FunctionAdapterTemplate is null
+                ? _functionHarnessBuilder.Build(submittedSource, signature)
+                : _functionHarnessBuilder.BuildLegacy(
+                    submittedSource,
+                    signature,
+                    problem.FunctionAdapterTemplate);
+        }
 
         private async Task FinalizeOrThrowAsync(
             SubmissionClaim claim,
