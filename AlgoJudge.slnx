@@ -2,7 +2,8 @@
   <Folder Name="/src/">
     <Project Path="src/AlgoJudge.API/AlgoJudge.API.csproj" />
     <Project Path="src/AlgoJudge.Application/AlgoJudge.Application.csproj" />
-    <Project Path="src/AlgoJudge.ContentTool/AlgoJudge.ContentTool.csproj" />
+  <Project Path="src/AlgoJudge.ContentTool/AlgoJudge.ContentTool.csproj" />
+  <Project Path="src/AlgoJudge.ContentWorker/AlgoJudge.ContentWorker.csproj" />
     <Project Path="src/AlgoJudge.Domain/AlgoJudge.Domain.csproj" />
     <Project Path="src/AlgoJudge.Infrastructure/AlgoJudge.Infrastructure.csproj" />
     <Project Path="src/AlgoJudge.ProblemGeneratorSdk/AlgoJudge.ProblemGeneratorSdk.csproj" />

@@ -37,13 +37,13 @@ public sealed class ApiExceptionHandler(
                 "The requested resource was not found.",
                 ApiErrorContract.NotFoundType,
                 exception.Message),
-            ConflictException or DbUpdateException
+            ConflictException or DbUpdateConcurrencyException or DbUpdateException
+            {
+                InnerException: PostgresException
                 {
-                    InnerException: PostgresException
-                    {
-                        SqlState: PostgresErrorCodes.UniqueViolation
-                    }
-                } => (
+                    SqlState: PostgresErrorCodes.UniqueViolation
+                }
+            } => (
                 StatusCodes.Status409Conflict,
                 "The request conflicts with the current state.",
                 ApiErrorContract.ConflictType,

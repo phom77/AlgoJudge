@@ -28,10 +28,9 @@ AlgoJudge.Infrastructure
 
 - API owns HTTP concerns and authentication middleware.
 - Worker owns polling/queue consumption and process lifetime.
-- A future ContentWorker owns content-generation queue polling, authoring
-  snapshot orchestration, and sandbox lifetime. It is separately deployable
-  from API and grading Worker and is not implemented in the documentation
-  branch that defines its contract.
+- ContentWorker owns content-generation queue polling, authoring snapshot
+  orchestration, and sandbox lifetime. It is separately deployable from API and
+  the grading Worker.
 - Application owns use cases and ports/interfaces.
 - Domain owns business concepts and invariants.
 - ProblemGeneratorSdk is the small, dependency-free public authoring SDK

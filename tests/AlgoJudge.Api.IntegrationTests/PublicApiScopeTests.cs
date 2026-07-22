@@ -74,6 +74,7 @@ public class PublicApiScopeTests
             .GetExportedTypes()
             .Where(type =>
                 type.Namespace?.Contains(".Contracts.", StringComparison.Ordinal) == true &&
+                type.Namespace?.Contains(".Contracts.Admin", StringComparison.Ordinal) != true &&
                 type.Name.EndsWith("Response", StringComparison.Ordinal))
             .SelectMany(type => type.GetProperties().Select(property =>
                 $"{type.Name}.{property.Name}"))
@@ -82,6 +83,23 @@ public class PublicApiScopeTests
         Assert.DoesNotContain(responseProperties, property =>
             forbiddenNames.Any(forbidden =>
                 property.Contains(forbidden, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    [Fact]
+    public void InternalAuthoringResponsesExcludeCandidatePayloadsAndFencingData()
+    {
+        var properties = typeof(AlgoJudge.Application.Contracts.Admin.GeneratedSuiteReviewResponse).Assembly
+            .GetExportedTypes()
+            .Where(type => type.Namespace?.Contains(".Contracts.Admin", StringComparison.Ordinal) == true &&
+                type.Name.EndsWith("Response", StringComparison.Ordinal))
+            .SelectMany(type => type.GetProperties().Select(property => property.Name))
+            .ToArray();
+
+        Assert.DoesNotContain(properties, name => name.Contains("Input", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(properties, name => name.Contains("ExpectedOutput", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(properties, name => name.Contains("ClaimToken", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(properties, name => name.Contains("WorkerId", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(properties, name => name.Contains("Lease", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

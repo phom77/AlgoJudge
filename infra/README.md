@@ -21,5 +21,7 @@ The source-authoring pipeline also uses
 `infra/docker/content-generator-dotnet.Dockerfile`. Its .NET 10 SDK base is
 pinned by digest and is used only to compile and execute generator/validator
 source under ContentTool orchestration. Build it with
-`./scripts/build-content-generator-image.ps1`; it is not an API or grading
-worker dependency.
+`./scripts/build-content-generator-image.ps1`. ContentTool and the separately
+deployable ContentWorker orchestrate this image; it is not an API or grading
+worker dependency. Sandbox containers receive neither database credentials nor
+the Docker socket.

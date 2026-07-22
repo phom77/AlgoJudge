@@ -22,6 +22,61 @@ namespace AlgoJudge.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("AlgoJudge.Domain.Entities.AuthoringTestCase", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ExpectedOutput")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Group")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Input")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("KilledWrongSolutionsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("RevisionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Seed")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RevisionId", "Name")
+                        .IsUnique();
+
+                    b.HasIndex("RevisionId", "Ordinal")
+                        .IsUnique();
+
+                    b.ToTable("AuthoringTestCases", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_AuthoringTestCase_Group", "\"Group\" IN ('handwritten', 'edge', 'random', 'adversarial', 'stress')");
+
+                            t.HasCheckConstraint("CK_AuthoringTestCase_Ordinal", "\"Ordinal\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("AlgoJudge.Domain.Entities.CodeRun", b =>
                 {
                     b.Property<Guid>("Id")
@@ -104,6 +159,86 @@ namespace AlgoJudge.Infrastructure.Migrations
                             t.HasCheckConstraint("CK_CodeRun_AttemptCount", "\"AttemptCount\" >= 0");
 
                             t.HasCheckConstraint("CK_CodeRun_RunningClaim", "\"Status\" <> 2 OR (\"WorkerId\" IS NOT NULL AND \"ClaimToken\" IS NOT NULL AND \"LeaseExpiresAt\" IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("AlgoJudge.Domain.Entities.ContentGenerationJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("ClaimToken")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("DefinitionSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .IsFixedLength();
+
+                    b.Property<string>("DefinitionSnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ErrorCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LeaseExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MemoryLimitKb")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("RevisionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TimeLimitMs")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("WorkerId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeaseExpiresAt");
+
+                    b.HasIndex("RevisionId")
+                        .IsUnique()
+                        .HasFilter("\"Status\" IN (0, 1)");
+
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.ToTable("ContentGenerationJobs", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ContentGenerationJob_Attempts", "\"AttemptCount\" >= 0");
+
+                            t.HasCheckConstraint("CK_ContentGenerationJob_Claim", "(\"Status\" = 1 AND \"WorkerId\" IS NOT NULL AND \"ClaimToken\" IS NOT NULL AND \"LeaseExpiresAt\" IS NOT NULL) OR (\"Status\" <> 1 AND \"WorkerId\" IS NULL AND \"ClaimToken\" IS NULL AND \"LeaseExpiresAt\" IS NULL)");
+
+                            t.HasCheckConstraint("CK_ContentGenerationJob_Status", "\"Status\" IN (0, 1, 2, 3)");
                         });
                 });
 
@@ -234,6 +369,118 @@ namespace AlgoJudge.Infrastructure.Migrations
                             t.HasCheckConstraint("CK_Problem_MemoryLimitKb", "\"MemoryLimitKb\" > 0");
 
                             t.HasCheckConstraint("CK_Problem_TimeLimitMs", "\"TimeLimitMs\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("AlgoJudge.Domain.Entities.ProblemAuthoringRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("CandidateCaseCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CandidateStatisticsJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("CandidateSuiteSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .IsFixedLength();
+
+                    b.Property<string>("CandidateToolchain")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConstraintsMarkdown")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("DefinitionJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("DefinitionSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .IsFixedLength();
+
+                    b.Property<int>("Difficulty")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MemoryLimitKb")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ProblemId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("RevisionNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SamplesJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("StatementMarkdown")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TimeLimitMs")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProblemId", "RevisionNumber")
+                        .IsUnique();
+
+                    b.HasIndex("OwnerUserId", "Status", "UpdatedAt");
+
+                    b.ToTable("ProblemAuthoringRevisions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_AuthoringRevision_Candidate", "(\"Status\" IN (0, 1) AND \"CandidateSuiteSha256\" IS NULL AND \"CandidateCaseCount\" IS NULL) OR (\"Status\" IN (2, 3) AND \"CandidateSuiteSha256\" IS NOT NULL AND \"CandidateCaseCount\" > 0)");
+
+                            t.HasCheckConstraint("CK_AuthoringRevision_MemoryLimit", "\"MemoryLimitKb\" > 0");
+
+                            t.HasCheckConstraint("CK_AuthoringRevision_Number", "\"RevisionNumber\" > 0");
+
+                            t.HasCheckConstraint("CK_AuthoringRevision_Status", "\"Status\" IN (0, 1, 2, 3)");
+
+                            t.HasCheckConstraint("CK_AuthoringRevision_TimeLimit", "\"TimeLimitMs\" > 0");
                         });
                 });
 
@@ -481,6 +728,17 @@ namespace AlgoJudge.Infrastructure.Migrations
                     b.ToTable("Users", (string)null);
                 });
 
+            modelBuilder.Entity("AlgoJudge.Domain.Entities.AuthoringTestCase", b =>
+                {
+                    b.HasOne("AlgoJudge.Domain.Entities.ProblemAuthoringRevision", "Revision")
+                        .WithMany("CandidateTestCases")
+                        .HasForeignKey("RevisionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Revision");
+                });
+
             modelBuilder.Entity("AlgoJudge.Domain.Entities.CodeRun", b =>
                 {
                     b.HasOne("AlgoJudge.Domain.Entities.Problem", "Problem")
@@ -500,6 +758,17 @@ namespace AlgoJudge.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("AlgoJudge.Domain.Entities.ContentGenerationJob", b =>
+                {
+                    b.HasOne("AlgoJudge.Domain.Entities.ProblemAuthoringRevision", "Revision")
+                        .WithMany("GenerationJobs")
+                        .HasForeignKey("RevisionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Revision");
+                });
+
             modelBuilder.Entity("AlgoJudge.Domain.Entities.JudgeTestCase", b =>
                 {
                     b.HasOne("AlgoJudge.Domain.Entities.Problem", "Problem")
@@ -507,6 +776,25 @@ namespace AlgoJudge.Infrastructure.Migrations
                         .HasForeignKey("ProblemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Problem");
+                });
+
+            modelBuilder.Entity("AlgoJudge.Domain.Entities.ProblemAuthoringRevision", b =>
+                {
+                    b.HasOne("AlgoJudge.Domain.Entities.User", "OwnerUser")
+                        .WithMany("AuthoringRevisions")
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AlgoJudge.Domain.Entities.Problem", "Problem")
+                        .WithMany("AuthoringRevisions")
+                        .HasForeignKey("ProblemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("OwnerUser");
 
                     b.Navigation("Problem");
                 });
@@ -573,6 +861,8 @@ namespace AlgoJudge.Infrastructure.Migrations
 
             modelBuilder.Entity("AlgoJudge.Domain.Entities.Problem", b =>
                 {
+                    b.Navigation("AuthoringRevisions");
+
                     b.Navigation("CodeRuns");
 
                     b.Navigation("JudgeTestCases");
@@ -584,6 +874,13 @@ namespace AlgoJudge.Infrastructure.Migrations
                     b.Navigation("Tags");
                 });
 
+            modelBuilder.Entity("AlgoJudge.Domain.Entities.ProblemAuthoringRevision", b =>
+                {
+                    b.Navigation("CandidateTestCases");
+
+                    b.Navigation("GenerationJobs");
+                });
+
             modelBuilder.Entity("AlgoJudge.Domain.Entities.Tag", b =>
                 {
                     b.Navigation("Problems");
@@ -591,6 +888,8 @@ namespace AlgoJudge.Infrastructure.Migrations
 
             modelBuilder.Entity("AlgoJudge.Domain.Entities.User", b =>
                 {
+                    b.Navigation("AuthoringRevisions");
+
                     b.Navigation("CodeRuns");
 
                     b.Navigation("Submissions");

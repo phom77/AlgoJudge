@@ -61,6 +61,7 @@
 | FR-35 | Maintainers can review a generated suite before publishing it. | An authoring revision follows Draft, Generating, Ready, and Published; failures safely return to Draft. Only an explicit publish of a Ready candidate assigns a new positive immutable suite version. |
 | FR-36 | Published suite versions remain immutable. | Editing a Ready or Published definition creates or returns to a Draft revision, never changes an existing suite, and never changes the suite version pinned by an existing submission. |
 | FR-37 | Legacy content remains usable during authoring migration. | Package schema versions 1 and 2, their imported tests, and existing schema-version-2 private adapters continue to import and judge without conversion. |
+| FR-38 | Internal maintainers can manage source-authored revisions through a protected backend workflow. | Configured maintainers can edit only owned revisions, enqueue generation, inspect safe status and aggregate review statistics, and explicitly publish a Ready candidate. Internal responses never expose candidate input/output. |
 
 ## 3. Required verdicts
 

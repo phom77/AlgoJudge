@@ -2,8 +2,8 @@
 
 This document defines the approved target contract for internal problem
 authoring. The generator SDK and transitional ContentTool workflow implement
-version 1. Persistence, the content-generation worker, and maintainer UI remain
-later branches.
+version 1. PostgreSQL persistence, the content-generation worker, and internal
+maintainer API are implemented. The maintainer UI remains a later branch.
 
 Problem authoring remains an internal maintainer operation. It does not create
 a public author role or a public testcase-authoring API.
@@ -244,7 +244,7 @@ Generator, validator, reference, and wrong-solution source are untrusted input
 even though only maintainers may supply them. API and grading-worker processes
 must never compile or execute authoring source.
 
-A separately deployable content worker will claim generation jobs using the
+A separately deployable content worker claims generation jobs using the
 same lease, retry, and fencing principles as other PostgreSQL queues. Its
 orchestrator may access the sandbox runtime, but generated containers receive
 no database credentials, signing keys, Docker socket, application source, or

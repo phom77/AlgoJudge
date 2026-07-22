@@ -10,7 +10,24 @@ erDiagram
     PROBLEM ||--o{ JUDGE_TEST_CASE : judges_with
     PROBLEM ||--o{ PROBLEM_TAG : classified_by
     TAG ||--o{ PROBLEM_TAG : classifies
+    USER ||--o{ PROBLEM_AUTHORING_REVISION : owns
+    PROBLEM ||--o{ PROBLEM_AUTHORING_REVISION : revises
+    PROBLEM_AUTHORING_REVISION ||--o{ CONTENT_GENERATION_JOB : generates
+    PROBLEM_AUTHORING_REVISION ||--o{ AUTHORING_TEST_CASE : reviews
 ```
+
+### ProblemAuthoringRevision
+
+Stores one owner-scoped editable metadata and `ProblemAuthoringDefinition`
+snapshot. Its lifecycle is Draft, Generating, Ready, or Published. Ready
+candidate input/output remains in the private `AuthoringTestCases` table and is
+never queried by public catalogue endpoints.
+
+### ContentGenerationJob
+
+Stores the immutable definition snapshot plus PostgreSQL queue state. Running
+claims have a worker ID, unique claim token, renewable lease, and bounded
+attempt count. Only the current claim may complete or fail a job.
 
 ### User
 

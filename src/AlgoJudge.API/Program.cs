@@ -66,10 +66,15 @@ rateLimitingOptions.Validate();
 var databaseOptions = builder.Configuration
     .GetSection(DatabaseOptions.SectionName)
     .Get<DatabaseOptions>() ?? new DatabaseOptions();
+var maintainerAccessOptions = builder.Configuration
+    .GetSection(MaintainerAccessOptions.SectionName)
+    .Get<MaintainerAccessOptions>() ?? new MaintainerAccessOptions();
+_ = maintainerAccessOptions.ParseUserIds();
 
 builder.Services.AddSingleton(jwtOptions);
 builder.Services.AddSingleton(rateLimitingOptions);
 builder.Services.AddSingleton(databaseOptions);
+builder.Services.AddSingleton(maintainerAccessOptions);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -139,7 +144,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+    options.AddPolicy("Maintainer", policy =>
+        policy.RequireAuthenticatedUser().AddRequirements(new MaintainerRequirement())));
+builder.Services.AddSingleton<IAuthorizationHandler, MaintainerAuthorizationHandler>();
 DataProtectionConfiguration.AddConfiguredDataProtection(builder);
 builder.Services.AddAntiforgery(options =>
 {
@@ -168,7 +176,10 @@ builder.Services.AddControllers()
         };
     })
     .AddJsonOptions(options =>
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+    {
+        options.JsonSerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow;
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false));
+    });
 
 builder.Services.AddOpenApi("v1", options =>
 {
@@ -301,6 +312,8 @@ builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IProblemRepository, ProblemRepository>();
 builder.Services.AddScoped<IProblemService, ProblemService>();
+builder.Services.AddScoped<IProblemAuthoringRepository, ProblemAuthoringRepository>();
+builder.Services.AddScoped<IProblemAuthoringService, ProblemAuthoringService>();
 builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 builder.Services.AddScoped<ISubmissionService, SubmissionService>();
 builder.Services.AddScoped<IRunRepository, RunRepository>();
@@ -331,16 +344,16 @@ app.UseAuthorization();
 app.MapOpenApi("/openapi/{documentName}.json")
     .DisableRateLimiting();
 app.MapHealthChecks("/health/live", new HealthCheckOptions
-    {
-        Predicate = registration => registration.Tags.Contains("live"),
-        ResponseWriter = HealthCheckResponseWriter.WriteAsync
-    })
+{
+    Predicate = registration => registration.Tags.Contains("live"),
+    ResponseWriter = HealthCheckResponseWriter.WriteAsync
+})
     .DisableRateLimiting();
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
-    {
-        Predicate = registration => registration.Tags.Contains("ready"),
-        ResponseWriter = HealthCheckResponseWriter.WriteAsync
-    })
+{
+    Predicate = registration => registration.Tags.Contains("ready"),
+    ResponseWriter = HealthCheckResponseWriter.WriteAsync
+})
     .DisableRateLimiting();
 app.MapControllers();
 
