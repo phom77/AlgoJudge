@@ -229,10 +229,11 @@ class/method, and optional wrong solutions without supplying a project, DLL,
 full stdin/stdout executable, or adapter.
 
 That definition is not a ZIP member and does not create package schema version
-3 in this documentation branch. The later persistence/API work will version
-its storage contract. During migration, tooling may materialize generated
-`.in`/`.out` pairs and a platform-generated private adapter into an otherwise
-valid schema-version-2 package.
+3. ContentTool recognizes a root `authoring.json`, generates complete
+`.in`/`.out` pairs through the sandboxed source pipeline, and records version-2
+generation provenance. The later persistence/API work will version its storage
+contract. During migration, tooling may materialize a platform-generated
+private adapter into an otherwise valid schema-version-2 package.
 
 Compatibility rules are:
 
@@ -242,3 +243,19 @@ Compatibility rules are:
 - the DLL/manifest workflow remains available as a legacy CLI input until a
   separately approved removal; and
 - the future Admin API accepts source-based definitions, not DLL uploads.
+
+For a source-authored directory, build both pinned images and run the same
+commands used by the legacy workflow:
+
+```powershell
+./scripts/build-content-generator-image.ps1
+./scripts/build-judge-image.ps1
+dotnet run --project src/AlgoJudge.ContentTool -- generate path/to/problem-authoring
+dotnet run --project src/AlgoJudge.ContentTool -- validate-generated path/to/problem-authoring
+```
+
+When `authoring.json` is present, it takes precedence over the legacy
+`generator/manifest.json` path. Generator and validator C# source run only in
+the .NET content-generation sandbox. Reference and wrong C++17 methods run only
+through the generic harness in the judge sandbox. The complete pipeline is
+repeated for deterministic validation before package creation.

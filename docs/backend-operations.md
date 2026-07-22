@@ -98,6 +98,19 @@ The worker remains a separate host process because it needs the local Docker
 Engine to launch the hardened judge sandbox. The API and PostgreSQL can run in
 Compose without granting Docker socket access to the API container.
 
+ContentTool source generation requires two separately pinned images:
+
+```powershell
+./scripts/build-content-generator-image.ps1
+./scripts/build-judge-image.ps1
+```
+
+The .NET image compiles and runs generator/validator source with no network,
+non-root execution, dropped capabilities, a read-only root filesystem, bounded
+scratch storage, memory, PIDs, time, and output. Reference and wrong solutions
+use the existing C++17 judge image. Neither container receives database
+credentials, the Docker socket, the repository, or a host home directory.
+
 ## Backend acceptance
 
 Run `./scripts/test-backend-e2e.ps1` before treating the backend workflow as

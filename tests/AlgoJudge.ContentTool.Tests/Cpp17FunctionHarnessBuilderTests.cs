@@ -129,4 +129,29 @@ public sealed class Cpp17FunctionHarnessBuilderTests
 
         Assert.Contains("Duplicate", exception.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void BuildLegacyTemplateCreatesAllCompatibilityPlaceholders()
+    {
+        var signature = new FunctionSignature
+        {
+            ClassName = "Solution",
+            MethodName = "solve",
+            ReturnType = FunctionValueType.Int32,
+            Parameters =
+            [
+                new FunctionParameter { Name = "value", Type = FunctionValueType.Int32 }
+            ]
+        };
+        var builder = new Cpp17FunctionHarnessBuilder();
+
+        var template = builder.BuildLegacyTemplate(signature);
+        var harness = builder.BuildLegacy(
+            "class Solution { public: int solve(int value) { return value; } };",
+            signature,
+            template);
+
+        Assert.DoesNotContain("{{", harness, StringComparison.Ordinal);
+        Assert.Contains("solution.solve(argument_0)", harness, StringComparison.Ordinal);
+    }
 }

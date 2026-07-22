@@ -101,8 +101,8 @@ internal sealed class GeneratedTestSuiteStore
         {
             var json = await File.ReadAllTextAsync(path, cancellationToken);
             var manifest = JsonSerializer.Deserialize<GeneratedSuiteManifest>(json, JsonOptions);
-            if (manifest is null || manifest.SchemaVersion != 1)
-                throw new TestGenerationException("Generated suite manifest schemaVersion must be 1.");
+            if (manifest is null || manifest.SchemaVersion is not (1 or 2))
+                throw new TestGenerationException("Generated suite manifest schemaVersion must be 1 or 2.");
             return manifest;
         }
         catch (JsonException)

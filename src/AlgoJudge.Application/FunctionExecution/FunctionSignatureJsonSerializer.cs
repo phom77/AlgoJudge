@@ -26,4 +26,10 @@ public static class FunctionSignatureJsonSerializer
             throw new InvalidOperationException("Function signature JSON is invalid.", exception);
         }
     }
+
+    public static string Serialize(FunctionSignature signature)
+    {
+        ArgumentNullException.ThrowIfNull(signature);
+        return JsonSerializer.Serialize(signature, JsonOptions);
+    }
 }

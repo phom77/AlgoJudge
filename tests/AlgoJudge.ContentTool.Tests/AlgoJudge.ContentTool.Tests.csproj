@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AlgoJudge.ContentTool\AlgoJudge.ContentTool.csproj" />
+    <ProjectReference Include="..\..\src\AlgoJudge.ProblemGeneratorSdk\AlgoJudge.ProblemGeneratorSdk.csproj" />
   </ItemGroup>
 
 </Project>
