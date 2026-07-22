@@ -63,6 +63,22 @@ public class ProblemCatalogModelTests
             constraint => constraint.Name == "CK_Problem_FunctionConfiguration");
     }
 
+    [Fact]
+    public void AuthoringCandidatesAndPublishedJudgeTestsUseSeparateTables()
+    {
+        using var context = CreateContext();
+        var revision = context.Model.FindEntityType(typeof(ProblemAuthoringRevision))!;
+        var candidate = context.Model.FindEntityType(typeof(AuthoringTestCase))!;
+        var job = context.Model.FindEntityType(typeof(ContentGenerationJob))!;
+
+        Assert.Equal("ProblemAuthoringRevisions", revision.GetTableName());
+        Assert.Equal("AuthoringTestCases", candidate.GetTableName());
+        Assert.Equal("ContentGenerationJobs", job.GetTableName());
+        Assert.NotEqual(candidate.GetTableName(), context.Model.FindEntityType(typeof(JudgeTestCase))!.GetTableName());
+        Assert.Equal("jsonb", revision.FindProperty(nameof(ProblemAuthoringRevision.DefinitionJson))!.GetColumnType());
+        Assert.Contains(job.GetIndexes(), index => index.IsUnique && index.GetFilter() == "\"Status\" IN (0, 1)");
+    }
+
     private static AppDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()

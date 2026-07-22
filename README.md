@@ -6,7 +6,7 @@ scoring or Teacher role.
 
 ## Repository layout
 
-- `src` — .NET API, worker, application, domain, infrastructure, and content CLI
+- `src` — .NET API, grading/content workers, application, domain, infrastructure, and content CLI
 - `web` — browser application scaffold
 - `tests` — backend test-suite boundaries
 - `content` — local problem-package entry point
@@ -24,6 +24,7 @@ rules and dependency direction.
 - [Problem Catalogue API](docs/problem-catalog-api.md)
 - [Authentication and Submission API](docs/auth-submission-api.md)
 - [Problem package format](docs/problem-package-format.md)
+- [Internal problem authoring API](docs/problem-authoring-api.md)
 - [Judge specification](docs/judge-spec.md)
 - [Backend operations baseline](docs/backend-operations.md)
 - [Delivery roadmap](docs/roadmap.md)
@@ -46,6 +47,8 @@ rules and dependency direction.
    Two Sum fixture.
 6. Run `./scripts/run-api.ps1`.
 7. Run `./scripts/run-worker.ps1` in another terminal.
+8. For problem authoring, configure a maintainer user UUID and run
+   `./scripts/run-content-worker.ps1` in a third terminal.
 
 Run `./scripts/test-backend-e2e.ps1` to exercise the complete backend acceptance
 flow against an ephemeral PostgreSQL database and the pinned Docker judge image.

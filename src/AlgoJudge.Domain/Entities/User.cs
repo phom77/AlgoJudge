@@ -10,5 +10,7 @@ namespace AlgoJudge.Domain.Entities
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public ICollection<Submission> Submissions { get; set; } = new List<Submission>();
         public ICollection<CodeRun> CodeRuns { get; set; } = new List<CodeRun>();
+        public ICollection<ProblemAuthoringRevision> AuthoringRevisions { get; set; } =
+            new List<ProblemAuthoringRevision>();
     }
 }

@@ -111,6 +111,12 @@ scratch storage, memory, PIDs, time, and output. Reference and wrong solutions
 use the existing C++17 judge image. Neither container receives database
 credentials, the Docker socket, the repository, or a host home directory.
 
+The deployable `AlgoJudge.ContentWorker` uses the same sandbox adapters and
+claims jobs from PostgreSQL. Start it with `./scripts/run-content-worker.ps1`.
+Configure internal access through `MaintainerAccess__UserIds__0` and subsequent
+array indexes; an empty list denies all authoring access. Queue polling, lease,
+heartbeat, retries, and identity are configured under `ContentQueue`.
+
 ## Backend acceptance
 
 Run `./scripts/test-backend-e2e.ps1` before treating the backend workflow as

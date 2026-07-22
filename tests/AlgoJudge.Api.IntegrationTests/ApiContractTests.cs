@@ -62,6 +62,8 @@ public class ApiContractTests
         Assert.True(paths.TryGetProperty("/api/auth/register", out _));
         Assert.True(paths.TryGetProperty("/api/problems", out _));
         Assert.True(paths.TryGetProperty("/api/submissions", out _));
+        Assert.DoesNotContain(paths.EnumerateObject(), path =>
+            path.Name.StartsWith("/api/internal/admin", StringComparison.Ordinal));
 
         var schemas = openApi.RootElement
             .GetProperty("components")
@@ -167,6 +169,19 @@ public class ApiContractTests
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("authentication", problem.GetProperty("code").GetString());
         Assert.False(string.IsNullOrWhiteSpace(problem.GetProperty("traceId").GetString()));
+    }
+
+    [Fact]
+    public async Task InternalAuthoringEndpointRequiresAuthenticationAndStaysOutOfPublicOpenApi()
+    {
+        await using var factory = new AlgoJudgeApiFactory(UnusedConnectionString);
+        using var client = CreateClient(factory);
+
+        var response = await client.GetAsync($"/api/internal/admin/problem-drafts/{Guid.NewGuid()}");
+        var openApi = await client.GetStringAsync("/openapi/v1.json");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.DoesNotContain("/api/internal/admin", openApi, StringComparison.Ordinal);
     }
 
     private static HttpClient CreateClient(AlgoJudgeApiFactory factory)

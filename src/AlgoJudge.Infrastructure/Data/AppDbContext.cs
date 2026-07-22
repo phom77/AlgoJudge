@@ -20,6 +20,9 @@ namespace AlgoJudge.Infrastructure.Data
         public DbSet<Tag> Tags { get; set; }
         public DbSet<ProblemTag> ProblemTags { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<ProblemAuthoringRevision> ProblemAuthoringRevisions { get; set; }
+        public DbSet<ContentGenerationJob> ContentGenerationJobs { get; set; }
+        public DbSet<AuthoringTestCase> AuthoringTestCases { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
