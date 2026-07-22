@@ -33,27 +33,25 @@ public sealed class Cpp17FunctionHarnessBuilder : IFunctionHarnessBuilder
         ValidateSignature(signature);
 
         var harness = new StringBuilder(sourceCode.Length + Cpp17FunctionHarnessRuntime.Source.Length + 1024);
-        harness.AppendLine("#include <algorithm>");
-        harness.AppendLine("#include <array>");
-        harness.AppendLine("#include <cerrno>");
-        harness.AppendLine("#include <charconv>");
-        harness.AppendLine("#include <cmath>");
-        harness.AppendLine("#include <cstdint>");
-        harness.AppendLine("#include <cstdlib>");
-        harness.AppendLine("#include <iomanip>");
-        harness.AppendLine("#include <iostream>");
-        harness.AppendLine("#include <iterator>");
-        harness.AppendLine("#include <limits>");
-        harness.AppendLine("#include <sstream>");
-        harness.AppendLine("#include <stdexcept>");
-        harness.AppendLine("#include <string>");
-        harness.AppendLine("#include <string_view>");
-        harness.AppendLine("#include <utility>");
-        harness.AppendLine("#include <vector>");
-        harness.AppendLine("using namespace std;");
+        AppendHeaders(harness);
         harness.AppendLine(sourceCode);
         harness.AppendLine(Cpp17FunctionHarnessRuntime.Source);
-        AppendEntryPoint(harness, signature);
+        AppendEntryPoint(harness, signature, signature.ClassName, signature.MethodName);
+        return harness.ToString();
+    }
+
+    public string BuildLegacyTemplate(FunctionSignature signature)
+    {
+        ValidateSignature(signature);
+        var harness = new StringBuilder(Cpp17FunctionHarnessRuntime.Source.Length + 1024);
+        AppendHeaders(harness);
+        harness.AppendLine(FunctionHarnessPlaceholders.UserSource);
+        harness.AppendLine(Cpp17FunctionHarnessRuntime.Source);
+        AppendEntryPoint(
+            harness,
+            signature,
+            FunctionHarnessPlaceholders.ClassName,
+            FunctionHarnessPlaceholders.MethodName);
         return harness.ToString();
     }
 
@@ -76,7 +74,11 @@ public sealed class Cpp17FunctionHarnessBuilder : IFunctionHarnessBuilder
             .Replace(FunctionHarnessPlaceholders.UserSource, sourceCode, StringComparison.Ordinal);
     }
 
-    private static void AppendEntryPoint(StringBuilder harness, FunctionSignature signature)
+    private static void AppendEntryPoint(
+        StringBuilder harness,
+        FunctionSignature signature,
+        string className,
+        string methodName)
     {
         harness.AppendLine("int main() {");
         harness.AppendLine("    try {");
@@ -98,10 +100,10 @@ public sealed class Cpp17FunctionHarnessBuilder : IFunctionHarnessBuilder
         }
 
         harness.Append("        ")
-            .Append(signature.ClassName)
+            .Append(className)
             .AppendLine(" solution;");
         harness.Append("        auto result = solution.")
-            .Append(signature.MethodName)
+            .Append(methodName)
             .Append('(');
         for (var index = 0; index < signature.Parameters.Count; index++)
         {
@@ -118,6 +120,28 @@ public sealed class Cpp17FunctionHarnessBuilder : IFunctionHarnessBuilder
         harness.AppendLine("        return 1;");
         harness.AppendLine("    }");
         harness.AppendLine("}");
+    }
+
+    private static void AppendHeaders(StringBuilder harness)
+    {
+        harness.AppendLine("#include <algorithm>");
+        harness.AppendLine("#include <array>");
+        harness.AppendLine("#include <cerrno>");
+        harness.AppendLine("#include <charconv>");
+        harness.AppendLine("#include <cmath>");
+        harness.AppendLine("#include <cstdint>");
+        harness.AppendLine("#include <cstdlib>");
+        harness.AppendLine("#include <iomanip>");
+        harness.AppendLine("#include <iostream>");
+        harness.AppendLine("#include <iterator>");
+        harness.AppendLine("#include <limits>");
+        harness.AppendLine("#include <sstream>");
+        harness.AppendLine("#include <stdexcept>");
+        harness.AppendLine("#include <string>");
+        harness.AppendLine("#include <string_view>");
+        harness.AppendLine("#include <utility>");
+        harness.AppendLine("#include <vector>");
+        harness.AppendLine("using namespace std;");
     }
 
     private static string GetReader(FunctionValueType type) => type switch

@@ -5,6 +5,7 @@ using AlgoJudge.ContentTool.Importing;
 using AlgoJudge.ContentTool.Packages;
 using AlgoJudge.ContentTool.Publishing;
 using AlgoJudge.Infrastructure.Data;
+using AlgoJudge.Infrastructure.ContentGeneration;
 using AlgoJudge.Infrastructure.Grading;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -173,6 +174,17 @@ public static class ContentToolApplication
         var options = configuration
             .GetSection(ContentImportOptions.SectionName)
             .Get<ContentImportOptions>() ?? new ContentImportOptions();
+        var root = GeneratorManifestReader.ResolveProblemDirectory(problemDirectory);
+        if (File.Exists(Path.Combine(root, ProblemAuthoringDefinitionReader.RelativeDefinitionPath)))
+        {
+            return await GenerateSourceAuthoredTestsAsync(
+                configuration,
+                options,
+                commandName,
+                root,
+                cancellationToken);
+        }
+
         var manifestReader = new GeneratorManifestReader(options.MaxJudgeTestCaseCount);
         var manifest = await manifestReader.ReadAsync(problemDirectory, cancellationToken);
         var loader = new DotNetGenerationComponentLoader();
@@ -205,6 +217,51 @@ public static class ContentToolApplication
         var action = commandName == "generate" ? "Generated" : "Validated";
         Console.WriteLine(
             $"{action} {result.TestCaseCount} test case(s); suite SHA-256 {result.SuiteSha256}.");
+        return 0;
+    }
+
+    private static async Task<int> GenerateSourceAuthoredTestsAsync(
+        IConfiguration configuration,
+        ContentImportOptions options,
+        string commandName,
+        string problemDirectory,
+        CancellationToken cancellationToken)
+    {
+        var reader = new ProblemAuthoringDefinitionReader(options);
+        var document = await reader.ReadAsync(problemDirectory, cancellationToken);
+        var cpp17Sandbox = new DockerSandboxService(
+            configuration,
+            NullLogger<DockerSandboxService>.Instance);
+        var harnessBuilder = new Cpp17FunctionHarnessBuilder();
+        var referenceRunner = new Cpp17ReferenceSolutionRunner(cpp17Sandbox, harnessBuilder);
+        var wrongSolutionRunner = new Cpp17WrongSolutionRunner(cpp17Sandbox, harnessBuilder);
+        var sourceSandbox = new DotNetSourceGenerationSandbox(
+            configuration,
+            NullLogger<DotNetSourceGenerationSandbox>.Instance);
+        var cpp17Image = configuration["Sandbox:DockerImage"] ??
+            throw new InvalidOperationException("Sandbox:DockerImage is required.");
+        var service = new SourceAuthoringGenerationService(
+            options,
+            sourceSandbox,
+            referenceRunner,
+            wrongSolutionRunner,
+            harnessBuilder,
+            cpp17Image);
+
+        var result = commandName == "generate"
+            ? await service.GenerateAsync(
+                problemDirectory,
+                document,
+                cancellationToken)
+            : await service.ValidateGeneratedAsync(
+                problemDirectory,
+                document,
+                cancellationToken);
+        var action = commandName == "generate" ? "Generated" : "Validated";
+        Console.WriteLine(
+            $"{action} {result.TestCaseCount} source-authored test case(s); " +
+            $"suite SHA-256 {result.SuiteSha256}; " +
+            $"surviving wrong solutions {result.SurvivingWrongSolutionCount}.");
         return 0;
     }
 

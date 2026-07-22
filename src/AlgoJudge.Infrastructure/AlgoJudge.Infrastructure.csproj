@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\AlgoJudge.Application\AlgoJudge.Application.csproj" />
     <ProjectReference Include="..\AlgoJudge.Domain\AlgoJudge.Domain.csproj" />
+    <ProjectReference Include="..\AlgoJudge.ProblemGeneratorSdk\AlgoJudge.ProblemGeneratorSdk.csproj" />
   </ItemGroup>
 
 </Project>

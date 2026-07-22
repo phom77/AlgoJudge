@@ -24,11 +24,12 @@ packages add a validated signature and private C++17 adapter template. This is
 the legacy package contract and remains supported. See
 `docs/problem-package-format.md` for its complete format.
 
-The approved target authoring contract is source-based and sandboxed. It does
-not require maintainers to build a generator DLL or author a per-problem
-adapter. The generic C++17 Function harness and shared reference-runner path
-are implemented, while source generator compilation and authoring persistence
-remain future work. See `docs/problem-authoring.md` and ADR-0014.
+The source-based authoring contract is implemented by the transitional CLI. A
+private directory with `authoring.json` can contain generator and validator C#
+source, a Function signature, handwritten cases, a C++17 reference method, and
+optional wrong methods. Maintainers do not build a generator DLL or author a
+per-problem adapter. Authoring persistence and the content worker remain future
+work. See `docs/problem-authoring.md` and ADR-0014.
 
 From the repository root, the PowerShell wrapper imports by default:
 
@@ -94,3 +95,23 @@ The total group count cannot exceed the configured private-case limit (500 by
 default). `scripts/build-problem-package.ps1` includes only schema-v1 package
 members, so generator binaries, source, manifests, and the reference solution
 do not enter the import ZIP.
+
+## Source-based generated tests
+
+Build the pinned .NET generation and C++17 judge images, then use the existing
+commands:
+
+```powershell
+./scripts/build-content-generator-image.ps1
+./scripts/build-judge-image.ps1
+dotnet run --project src/AlgoJudge.ContentTool -- generate path/to/problem-authoring
+dotnet run --project src/AlgoJudge.ContentTool -- validate-generated path/to/problem-authoring
+```
+
+When root `authoring.json` exists, ContentTool uses source-based generation
+instead of `generator/manifest.json`. It runs generator and validator source
+twice in the isolated .NET image, validates signature-shaped JSON, runs the
+reference method twice through the generic C++17 harness, and rejects any
+nondeterminism. Optional wrong solutions are executed against every case; the
+version-2 generated manifest records which cases kill each wrong solution and
+which wrong solutions survive for maintainer review.

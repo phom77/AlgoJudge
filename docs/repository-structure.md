@@ -34,6 +34,9 @@ AlgoJudge.Infrastructure
   branch that defines its contract.
 - Application owns use cases and ports/interfaces.
 - Domain owns business concepts and invariants.
+- ProblemGeneratorSdk is the small, dependency-free public authoring SDK
+  mounted into the content-generation compiler sandbox. It cannot reference
+  Application, Domain, Infrastructure, or deployable hosts.
 - Infrastructure owns EF Core, PostgreSQL repositories, queue implementations,
   and sandbox adapters.
 - ContentTool is a transitional internal executable and must not become a

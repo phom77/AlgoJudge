@@ -6,6 +6,8 @@ public interface IFunctionHarnessBuilder
         string sourceCode,
         FunctionSignature signature);
 
+    string BuildLegacyTemplate(FunctionSignature signature);
+
     string BuildLegacy(
         string sourceCode,
         FunctionSignature signature,

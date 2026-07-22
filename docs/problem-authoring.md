@@ -1,9 +1,9 @@
 # Problem Authoring Contract
 
 This document defines the approved target contract for internal problem
-authoring. It is an architecture contract for the later generator SDK,
-content-generation worker, and maintainer UI; the current ContentTool does not
-yet implement this contract.
+authoring. The generator SDK and transitional ContentTool workflow implement
+version 1. Persistence, the content-generation worker, and maintainer UI remain
+later branches.
 
 Problem authoring remains an internal maintainer operation. It does not create
 a public author role or a public testcase-authoring API.
@@ -162,6 +162,18 @@ Groups are named and ordered. Version 1 supports the semantic labels
 reporting and review, not judge scoring or verdicts. The total count and all
 serialized values remain subject to configured package and suite limits.
 
+The version-1 SDK is the standalone `AlgoJudge.ProblemGeneratorSdk` assembly.
+It provides:
+
+- `ctx.Int`, `ctx.Long`, and `ctx.Boolean`;
+- random, sorted, and all-equal integer arrays;
+- bounded random strings and permutations; and
+- tree, DAG, and connected-graph helpers.
+
+Graph helpers return a vertex count and edge collection. Authors explicitly
+transform that structure into the declared Function arguments, so helpers do
+not expand the version-1 signature type whitelist.
+
 ## 4. Reference and wrong-solution sources
 
 The reference solution is a C++17 class/method implementation matching the
@@ -246,8 +258,23 @@ stdout/stderr limits. Source mounts are read-only. Only a bounded framed result
 protocol crosses back to the content worker.
 
 The CLI may orchestrate this same engine before the content worker and Admin
-API exist. It must use the same sandbox adapters and must not fall back to
-executing generator source in the ContentTool process.
+API exist. ContentTool does this for a private directory containing
+`authoring.json`: `generate` compiles and runs source in the pinned .NET
+generation image, while `validate-generated` repeats the complete pipeline and
+compares provenance and files. It never falls back to executing generator
+source in the ContentTool process.
+
+Build the required image before using this workflow:
+
+```powershell
+./scripts/build-content-generator-image.ps1
+./scripts/build-judge-image.ps1
+```
+
+The generated `.in`/`.out` pairs remain under `tests/`. Version-2 provenance is
+written to `generator/generated-tests.json` and includes definition, source,
+toolchain, case, output, and wrong-solution hashes. The package builder still
+excludes `authoring.json`, source, and provenance from the private import ZIP.
 
 ## 8. Compatibility
 

@@ -5,6 +5,7 @@
     <Project Path="src/AlgoJudge.ContentTool/AlgoJudge.ContentTool.csproj" />
     <Project Path="src/AlgoJudge.Domain/AlgoJudge.Domain.csproj" />
     <Project Path="src/AlgoJudge.Infrastructure/AlgoJudge.Infrastructure.csproj" />
+    <Project Path="src/AlgoJudge.ProblemGeneratorSdk/AlgoJudge.ProblemGeneratorSdk.csproj" />
     <Project Path="src/AlgoJudge.Worker/AlgoJudge.Worker.csproj" />
   </Folder>
   <Folder Name="/tests/">
