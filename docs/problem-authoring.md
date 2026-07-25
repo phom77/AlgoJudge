@@ -103,6 +103,12 @@ snapshot never changes meaning when defaults are upgraded.
 An editor preset produces ordinary editable generator source. Preset identity
 is UI provenance only and never changes generation semantics.
 
+The initial Two Sum preset requests 84 generated cases across edge, random,
+adversarial, and stress groups, in addition to the maintainer's handwritten
+cases. It constructs exactly one valid pair per generated input and validates
+that invariant. The preset count is an editable starting point, not a platform
+quality target or suite limit.
+
 ## 2. Function signature
 
 Version 1 reuses the language-neutral signature shape and value-type whitelist

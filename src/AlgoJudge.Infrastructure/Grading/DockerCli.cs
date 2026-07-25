@@ -9,6 +9,7 @@ namespace AlgoJudge.Infrastructure.Grading;
 internal sealed class DockerCli
 {
     private const int ControlOutputLimitBytes = 16 * 1024;
+    private static readonly UTF8Encoding Utf8NoBom = new(false);
 
     private readonly TimeSpan _controlTimeout;
     private readonly ILogger _logger;
@@ -131,18 +132,18 @@ internal sealed class DockerCli
         int stderrLimitBytes,
         CancellationToken cancellationToken)
     {
-        using var process = new Process
+        var startInfo = new ProcessStartInfo
         {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = "docker",
-                RedirectStandardInput = stdin is not null,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            }
+            FileName = "docker",
+            RedirectStandardInput = stdin is not null,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
         };
+        if (stdin is not null)
+            startInfo.StandardInputEncoding = Utf8NoBom;
+        using var process = new Process { StartInfo = startInfo };
 
         foreach (var argument in arguments)
             process.StartInfo.ArgumentList.Add(argument);

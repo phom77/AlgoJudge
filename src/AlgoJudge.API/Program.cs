@@ -262,6 +262,56 @@ builder.Services.AddOpenApi("v1", options =>
     });
 });
 
+builder.Services.AddOpenApi("admin-v1", options =>
+{
+    options.ShouldInclude = description =>
+        string.Equals(description.GroupName, "admin-v1", StringComparison.Ordinal);
+    options.AddDocumentTransformer((document, _, _) =>
+    {
+        document.Info.Title = "AlgoJudge Maintainer API";
+        document.Info.Version = "admin-v1";
+        document.Info.Description =
+            "Internal same-origin contract for the problem authoring workspace.";
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??=
+            new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["CookieSession"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.ApiKey,
+            In = ParameterLocation.Cookie,
+            Name = AuthCookieManager.AccessCookieName,
+            Description = "Secure HttpOnly maintainer session cookie."
+        };
+        document.Components.SecuritySchemes["AntiforgeryHeader"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.ApiKey,
+            In = ParameterLocation.Header,
+            Name = AuthCookieManager.AntiforgeryHeaderName,
+            Description = "Same-origin antiforgery header required for unsafe authoring operations."
+        };
+        return Task.CompletedTask;
+    });
+    options.AddOperationTransformer((operation, context, _) =>
+    {
+        var requirement = new OpenApiSecurityRequirement
+        {
+            [new OpenApiSecuritySchemeReference("CookieSession", context.Document)] = []
+        };
+        var httpMethod = context.Description.HttpMethod ?? string.Empty;
+        if (!HttpMethods.IsGet(httpMethod) &&
+            !HttpMethods.IsHead(httpMethod) &&
+            !HttpMethods.IsOptions(httpMethod) &&
+            !HttpMethods.IsTrace(httpMethod))
+        {
+            requirement[
+                new OpenApiSecuritySchemeReference("AntiforgeryHeader", context.Document)] = [];
+        }
+
+        operation.Security = [requirement];
+        return Task.CompletedTask;
+    });
+});
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -336,8 +386,8 @@ app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseExceptionHandler();
 if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
-app.UseMiddleware<AntiforgeryValidationMiddleware>();
 app.UseAuthentication();
+app.UseMiddleware<AntiforgeryValidationMiddleware>();
 app.UseRateLimiter();
 app.UseAuthorization();
 

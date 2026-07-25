@@ -1,0 +1,1122 @@
+{
+  "components": {
+    "schemas": {
+      "AuthoringRevisionStatus": {
+        "type": "integer"
+      },
+      "ContentGenerationJobStatus": {
+        "type": "integer"
+      },
+      "ContentGenerationStatusResponse": {
+        "properties": {
+          "attemptCount": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "errorCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errorMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "finishedAt": {
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "jobId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "jobStatus": {
+            "$ref": "#/components/schemas/ContentGenerationJobStatus"
+          },
+          "revisionId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "revisionStatus": {
+            "$ref": "#/components/schemas/AuthoringRevisionStatus"
+          },
+          "startedAt": {
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "CreateProblemDraftRequest": {
+        "properties": {
+          "constraintsMarkdown": {
+            "type": "string"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/DifficultyLevel"
+          },
+          "memoryLimitKb": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/ProblemSampleRequest"
+            },
+            "type": "array"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "statementMarkdown": {
+            "type": "string"
+          },
+          "timeLimitMs": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "DifficultyLevel": {
+        "type": "integer"
+      },
+      "FunctionParameter": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/FunctionValueType"
+          }
+        },
+        "type": "object"
+      },
+      "FunctionSignature": {
+        "properties": {
+          "className": {
+            "type": "string"
+          },
+          "methodName": {
+            "type": "string"
+          },
+          "parameters": {
+            "items": {
+              "$ref": "#/components/schemas/FunctionParameter"
+            },
+            "type": "array"
+          },
+          "returnType": {
+            "$ref": "#/components/schemas/FunctionValueType"
+          }
+        },
+        "type": "object"
+      },
+      "FunctionSourceDefinition": {
+        "properties": {
+          "language": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "FunctionValueType": {
+        "type": "integer"
+      },
+      "GeneratedCaseReviewResponse": {
+        "properties": {
+          "group": {
+            "type": "string"
+          },
+          "killedWrongSolutions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ordinal": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "seed": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "GeneratedSuiteReviewResponse": {
+        "properties": {
+          "casePreview": {
+            "items": {
+              "$ref": "#/components/schemas/GeneratedCaseReviewResponse"
+            },
+            "type": "array"
+          },
+          "casesByGroup": {
+            "additionalProperties": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            },
+            "type": "object"
+          },
+          "isCasePreviewTruncated": {
+            "type": "boolean"
+          },
+          "killedCaseCountByWrongSolution": {
+            "additionalProperties": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            },
+            "type": "object"
+          },
+          "revisionId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "suiteSha256": {
+            "type": "string"
+          },
+          "survivingWrongSolutions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "testCaseCount": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "toolchain": {
+            "type": "string"
+          },
+          "wrongSolutionCount": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "GeneratorSourceDefinition": {
+        "properties": {
+          "language": {
+            "type": "string"
+          },
+          "sdkVersion": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "HandwrittenCaseDefinition": {
+        "properties": {
+          "arguments": {
+            "$ref": "#/components/schemas/JsonElement"
+          },
+          "group": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "JsonElement": {},
+      "ProblemAuthoringDefinition": {
+        "properties": {
+          "executionMode": {
+            "$ref": "#/components/schemas/ProblemExecutionMode"
+          },
+          "functionSignature": {
+            "$ref": "#/components/schemas/FunctionSignature"
+          },
+          "generator": {
+            "$ref": "#/components/schemas/GeneratorSourceDefinition"
+          },
+          "handwrittenCases": {
+            "items": {
+              "$ref": "#/components/schemas/HandwrittenCaseDefinition"
+            },
+            "type": "array"
+          },
+          "inputValidator": {
+            "$ref": "#/components/schemas/GeneratorSourceDefinition"
+          },
+          "referenceSolution": {
+            "$ref": "#/components/schemas/FunctionSourceDefinition"
+          },
+          "schemaVersion": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "wrongSolutions": {
+            "items": {
+              "$ref": "#/components/schemas/WrongSolutionDefinition"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "ProblemDraftResponse": {
+        "properties": {
+          "constraintsMarkdown": {
+            "type": "string"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/ProblemAuthoringDefinition"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/DifficultyLevel"
+          },
+          "memoryLimitKb": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "problemId": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "revisionId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "revisionNumber": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/ProblemSampleRequest"
+            },
+            "type": "array"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "statementMarkdown": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AuthoringRevisionStatus"
+          },
+          "timeLimitMs": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ProblemExecutionMode": {
+        "type": "integer"
+      },
+      "ProblemSampleRequest": {
+        "properties": {
+          "expectedOutput": {
+            "type": "string"
+          },
+          "explanation": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "input": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateAuthoringSourcesRequest": {
+        "properties": {
+          "generator": {
+            "$ref": "#/components/schemas/GeneratorSourceDefinition"
+          },
+          "inputValidator": {
+            "$ref": "#/components/schemas/GeneratorSourceDefinition"
+          },
+          "referenceSolution": {
+            "$ref": "#/components/schemas/FunctionSourceDefinition"
+          },
+          "wrongSolutions": {
+            "items": {
+              "$ref": "#/components/schemas/WrongSolutionDefinition"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateFunctionSignatureRequest": {
+        "properties": {
+          "signature": {
+            "$ref": "#/components/schemas/FunctionSignature"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateHandwrittenCasesRequest": {
+        "properties": {
+          "cases": {
+            "items": {
+              "$ref": "#/components/schemas/HandwrittenCaseDefinition"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateProblemDraftRequest": {
+        "properties": {
+          "constraintsMarkdown": {
+            "type": "string"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/DifficultyLevel"
+          },
+          "memoryLimitKb": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/ProblemSampleRequest"
+            },
+            "type": "array"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "statementMarkdown": {
+            "type": "string"
+          },
+          "timeLimitMs": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "WrongSolutionDefinition": {
+        "properties": {
+          "language": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "AntiforgeryHeader": {
+        "description": "Same-origin antiforgery header required for unsafe authoring operations.",
+        "in": "header",
+        "name": "X-XSRF-TOKEN",
+        "type": "apiKey"
+      },
+      "CookieSession": {
+        "description": "Secure HttpOnly maintainer session cookie.",
+        "in": "cookie",
+        "name": "__Host-algojudge-access",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "description": "Internal same-origin contract for the problem authoring workspace.",
+    "title": "AlgoJudge Maintainer API",
+    "version": "admin-v1"
+  },
+  "openapi": "3.1.1",
+  "paths": {
+    "/api/internal/admin/problem-drafts": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProblemDraftRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProblemDraftRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProblemDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AntiforgeryHeader": [],
+            "CookieSession": []
+          }
+        ],
+        "tags": [
+          "ProblemAuthoring"
+        ]
+      }
+    },
+    "/api/internal/admin/problem-drafts/problems/{problemId}/revisions": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "problemId",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AntiforgeryHeader": [],
+            "CookieSession": []
+          }
+        ],
+        "tags": [
+          "ProblemAuthoring"
+        ]
+      }
+    },
+    "/api/internal/admin/problem-drafts/{revisionId}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revisionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "tags": [
+          "ProblemAuthoring"
+        ]
+      }
+    },
+    "/api/internal/admin/problem-drafts/{revisionId}/generation": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revisionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentGenerationStatusResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentGenerationStatusResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentGenerationStatusResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "tags": [
+          "ProblemAuthoring"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revisionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentGenerationStatusResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentGenerationStatusResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentGenerationStatusResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AntiforgeryHeader": [],
+            "CookieSession": []
+          }
+        ],
+        "tags": [
+          "ProblemAuthoring"
+        ]
+      }
+    },
+    "/api/internal/admin/problem-drafts/{revisionId}/handwritten-cases": {
+      "put": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revisionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHandwrittenCasesRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHandwrittenCasesRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHandwrittenCasesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AntiforgeryHeader": [],
+            "CookieSession": []
+          }
+        ],
+        "tags": [
+          "ProblemAuthoring"
+        ]
+      }
+    },
+    "/api/internal/admin/problem-drafts/{revisionId}/metadata": {
+      "put": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revisionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProblemDraftRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProblemDraftRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProblemDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AntiforgeryHeader": [],
+            "CookieSession": []
+          }
+        ],
+        "tags": [
+          "ProblemAuthoring"
+        ]
+      }
+    },
+    "/api/internal/admin/problem-drafts/{revisionId}/publish": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revisionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AntiforgeryHeader": [],
+            "CookieSession": []
+          }
+        ],
+        "tags": [
+          "ProblemAuthoring"
+        ]
+      }
+    },
+    "/api/internal/admin/problem-drafts/{revisionId}/signature": {
+      "put": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revisionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFunctionSignatureRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFunctionSignatureRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFunctionSignatureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AntiforgeryHeader": [],
+            "CookieSession": []
+          }
+        ],
+        "tags": [
+          "ProblemAuthoring"
+        ]
+      }
+    },
+    "/api/internal/admin/problem-drafts/{revisionId}/sources": {
+      "put": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revisionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAuthoringSourcesRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAuthoringSourcesRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAuthoringSourcesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AntiforgeryHeader": [],
+            "CookieSession": []
+          }
+        ],
+        "tags": [
+          "ProblemAuthoring"
+        ]
+      }
+    },
+    "/api/internal/admin/problem-drafts/{revisionId}/suite-review": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revisionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneratedSuiteReviewResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneratedSuiteReviewResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneratedSuiteReviewResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "tags": [
+          "ProblemAuthoring"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "ProblemAuthoring"
+    }
+  ]
+}

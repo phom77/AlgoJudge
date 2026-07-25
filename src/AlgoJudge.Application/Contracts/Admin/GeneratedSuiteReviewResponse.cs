@@ -12,4 +12,6 @@ public sealed class GeneratedSuiteReviewResponse
         new Dictionary<string, int>();
     public IReadOnlyList<string> SurvivingWrongSolutions { get; init; } = [];
     public string Toolchain { get; init; } = string.Empty;
+    public IReadOnlyList<GeneratedCaseReviewResponse> CasePreview { get; init; } = [];
+    public bool IsCasePreviewTruncated { get; init; }
 }

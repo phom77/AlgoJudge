@@ -16,6 +16,7 @@ public sealed class DotNetSourceGenerationSandbox : ISourceGenerationSandbox
     private const string ContainerWorkspace = "/workspace";
     private const string ContainerArtifact = "/artifact";
     private const string SdkPath = "/sdk/AlgoJudge.ProblemGeneratorSdk.dll";
+    private const int ContainerFileDescriptorLimit = 1024;
 
     private static readonly UTF8Encoding Utf8NoBom = new(false);
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -129,7 +130,13 @@ public sealed class DotNetSourceGenerationSandbox : ISourceGenerationSandbox
                 "dotnet", $"{ContainerArtifact}/GeneratorHost.dll"
             ]);
             await _docker.CreateAsync(arguments, cancellationToken);
-            var input = JsonSerializer.Serialize(request, JsonOptions);
+            var input = JsonSerializer.Serialize(
+                new HostRequest(
+                    request.RootSeed,
+                    request.MaximumCaseCount,
+                    request.ParameterNames,
+                    request.HandwrittenCases),
+                JsonOptions);
             var result = await _docker.StartAsync(
                 containerName,
                 input,
@@ -181,7 +188,7 @@ public sealed class DotNetSourceGenerationSandbox : ISourceGenerationSandbox
         "--read-only",
         "--user", ContainerUser,
         "--ulimit", "core=0:0",
-        "--ulimit", "nofile=64:64"
+        "--ulimit", $"nofile={ContainerFileDescriptorLimit}:{ContainerFileDescriptorLimit}"
     ];
 
     private static async Task WriteSourcesAsync(
@@ -252,4 +259,10 @@ public sealed class DotNetSourceGenerationSandbox : ISourceGenerationSandbox
     }
 
     private sealed record HostResponse(IReadOnlyList<SourceGeneratedCase> Cases);
+
+    private sealed record HostRequest(
+        int RootSeed,
+        int MaximumCaseCount,
+        IReadOnlyList<string> ParameterNames,
+        IReadOnlyList<SourceHandwrittenCase> HandwrittenCases);
 }

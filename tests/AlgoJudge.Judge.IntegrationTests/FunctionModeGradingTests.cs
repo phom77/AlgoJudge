@@ -169,18 +169,22 @@ public sealed class FunctionModeGradingTests
 
         foreach (var functionCase in cases)
         {
+            var sandbox = new RecordingSandbox(JudgeTestHarness.CreateSandbox());
             var outcome = await JudgeTestHarness.GradeWithSandboxAsync(
                 functionCase.Source,
                 functionCase.Input,
                 functionCase.ExpectedOutput,
-                JudgeTestHarness.CreateSandbox(),
+                sandbox,
                 NullLogger<GraderService>.Instance,
                 executionMode: ProblemExecutionMode.Function,
                 functionSignatureJson: CreateSignature(
                     functionCase.ReturnType,
                     functionCase.ParameterType));
 
-            Assert.Equal(SubmissionStatus.Accepted, outcome.Status);
+            Assert.True(
+                outcome.Status == SubmissionStatus.Accepted,
+                $"{functionCase.ReturnType} case returned {outcome.Status}; " +
+                $"expected {functionCase.ExpectedOutput}, actual {sandbox.Output}.");
         }
     }
 
@@ -223,6 +227,29 @@ public sealed class FunctionModeGradingTests
         string Source,
         string Input,
         string ExpectedOutput);
+
+    private sealed class RecordingSandbox(IDockerSandbox inner) : IDockerSandbox
+    {
+        public string? Output { get; private set; }
+
+        public Task<SandboxCompileResult> CompileAsync(
+            string sourceCode,
+            string workDir,
+            CancellationToken ct = default) =>
+            inner.CompileAsync(sourceCode, workDir, ct);
+
+        public async Task<SandboxRunResult> RunAsync(
+            string workDir,
+            string input,
+            int timeLimitMs,
+            int memoryLimitKb,
+            CancellationToken ct = default)
+        {
+            var result = await inner.RunAsync(workDir, input, timeLimitMs, memoryLimitKb, ct);
+            Output = result.Output;
+            return result;
+        }
+    }
 
     private sealed class CapturingSandbox(string output) : IDockerSandbox
     {

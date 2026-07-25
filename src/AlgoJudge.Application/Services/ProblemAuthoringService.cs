@@ -15,6 +15,7 @@ namespace AlgoJudge.Application.Services;
 
 public sealed partial class ProblemAuthoringService : IProblemAuthoringService
 {
+    private const int MaximumCasePreviewCount = 100;
     private static readonly HashSet<string> Cpp17Keywords = new(
         [
             "alignas", "alignof", "and", "and_eq", "asm", "auto", "bitand", "bitor", "bool",
@@ -197,7 +198,7 @@ public sealed partial class ProblemAuthoringService : IProblemAuthoringService
             MemoryLimitKb = revision.MemoryLimitKb,
             CreatedAt = DateTime.UtcNow
         };
-        revision.GenerationJobs.Add(job);
+        await _repository.AddGenerationJobAsync(job, cancellationToken);
         revision.Status = AuthoringRevisionStatus.Generating;
         revision.ConcurrencyToken = Guid.NewGuid();
         revision.UpdatedAt = DateTime.UtcNow;
@@ -233,7 +234,21 @@ public sealed partial class ProblemAuthoringService : IProblemAuthoringService
             WrongSolutionCount = statistics.WrongSolutionCount,
             KilledCaseCountByWrongSolution = statistics.KilledCaseCountByWrongSolution,
             SurvivingWrongSolutions = statistics.SurvivingWrongSolutions,
-            Toolchain = revision.CandidateToolchain ?? string.Empty
+            Toolchain = revision.CandidateToolchain ?? string.Empty,
+            CasePreview = revision.CandidateTestCases
+                .OrderBy(item => item.Ordinal)
+                .Take(MaximumCasePreviewCount)
+                .Select(item => new GeneratedCaseReviewResponse
+                {
+                    Ordinal = item.Ordinal,
+                    Name = item.Name,
+                    Group = item.Group,
+                    Seed = item.Seed,
+                    KilledWrongSolutions = JsonSerializer.Deserialize<IReadOnlyList<string>>(
+                        item.KilledWrongSolutionsJson, JsonOptions) ?? []
+                })
+                .ToArray(),
+            IsCasePreviewTruncated = revision.CandidateTestCases.Count > MaximumCasePreviewCount
         };
     }
 

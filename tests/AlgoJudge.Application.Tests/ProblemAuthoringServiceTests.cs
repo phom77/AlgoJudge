@@ -59,6 +59,46 @@ public sealed class ProblemAuthoringServiceTests
             service.GetDraftAsync(Guid.NewGuid(), draft.RevisionId));
     }
 
+    [Fact]
+    public async Task SuiteReviewExposesOnlyBoundedCandidateMetadata()
+    {
+        var repository = new FakeRepository();
+        var service = new ProblemAuthoringService(repository, new FakeUnitOfWork());
+        var owner = Guid.NewGuid();
+        var draft = await service.CreateDraftAsync(owner, ValidCreateRequest());
+        repository.Revision!.Status = AuthoringRevisionStatus.Ready;
+        repository.Revision.CandidateSuiteSha256 = new string('a', 64);
+        repository.Revision.CandidateToolchain = "generator-sdk-v1";
+        repository.Revision.CandidateCaseCount = 101;
+        repository.Revision.CandidateStatisticsJson =
+            "{\"casesByGroup\":{\"random\":101},\"wrongSolutionCount\":1," +
+            "\"killedCaseCountByWrongSolution\":{\"off-by-one\":100}," +
+            "\"survivingWrongSolutions\":[]}";
+        for (var index = 1; index <= 101; index++)
+        {
+            repository.Revision.CandidateTestCases.Add(new AuthoringTestCase
+            {
+                Ordinal = index,
+                Name = $"random-{index}",
+                Group = "random",
+                Seed = index * 17,
+                Input = "private input",
+                ExpectedOutput = "private output",
+                KilledWrongSolutionsJson = "[\"off-by-one\"]"
+            });
+        }
+
+        var review = await service.GetSuiteReviewAsync(owner, draft.RevisionId);
+
+        Assert.Equal(100, review.CasePreview.Count);
+        Assert.True(review.IsCasePreviewTruncated);
+        Assert.Equal(17, review.CasePreview[0].Seed);
+        Assert.Equal(["off-by-one"], review.CasePreview[0].KilledWrongSolutions);
+        Assert.DoesNotContain(review.GetType().GetProperties(), property =>
+            property.Name.Contains("Input", StringComparison.OrdinalIgnoreCase) ||
+            property.Name.Contains("ExpectedOutput", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static CreateProblemDraftRequest ValidCreateRequest() => new()
     {
         Slug = "maximum-array",
@@ -88,6 +128,11 @@ public sealed class ProblemAuthoringServiceTests
         public Task<ProblemAuthoringRevision?> GetLatestOwnedRevisionAsync(int problemId, Guid ownerUserId, CancellationToken cancellationToken = default) => Task.FromResult<ProblemAuthoringRevision?>(Revision);
         public Task<ContentGenerationJob?> GetLatestJobAsync(Guid revisionId, CancellationToken cancellationToken = default)
         { return Task.FromResult(Job); }
+        public Task AddGenerationJobAsync(ContentGenerationJob job, CancellationToken cancellationToken = default)
+        {
+            Revision!.GenerationJobs.Add(job);
+            return Task.CompletedTask;
+        }
         public Task DeleteCandidateCasesAsync(Guid revisionId, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<bool> PublishAsync(Guid revisionId, Guid ownerUserId, CancellationToken cancellationToken = default) => Task.FromResult(false);
     }

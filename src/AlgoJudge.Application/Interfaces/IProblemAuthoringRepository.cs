@@ -18,6 +18,9 @@ public interface IProblemAuthoringRepository
     Task<ContentGenerationJob?> GetLatestJobAsync(
         Guid revisionId,
         CancellationToken cancellationToken = default);
+    Task AddGenerationJobAsync(
+        ContentGenerationJob job,
+        CancellationToken cancellationToken = default);
     Task DeleteCandidateCasesAsync(Guid revisionId, CancellationToken cancellationToken = default);
     Task<bool> PublishAsync(Guid revisionId, Guid ownerUserId, CancellationToken cancellationToken = default);
 }

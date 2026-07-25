@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { catchError, finalize, map, shareReplay, switchMap, throwError } from 'rxjs';
+import { catchError, finalize, map, of, shareReplay, switchMap, throwError } from 'rxjs';
 import type { Observable } from 'rxjs';
 
 import type { AuthUser, LoginCredentials, RegistrationDetails } from '../auth/auth.models';
@@ -27,22 +27,26 @@ export class AuthApiGateway {
   }
 
   login(credentials: LoginCredentials): Observable<AuthUser> {
-    return this.runUnsafe(() =>
-      this.api
-        .invoke(apiAuthLoginPost$Json, {
-          body: credentials,
-        })
-        .pipe(map(toAuthUser)),
+    return this.runUnsafe(
+      () =>
+        this.api
+          .invoke(apiAuthLoginPost$Json, {
+            body: credentials,
+          })
+          .pipe(map(toAuthUser)),
+      true,
     );
   }
 
   register(details: RegistrationDetails): Observable<AuthUser> {
-    return this.runUnsafe(() =>
-      this.api
-        .invoke(apiAuthRegisterPost$Json, {
-          body: details,
-        })
-        .pipe(map(toAuthUser)),
+    return this.runUnsafe(
+      () =>
+        this.api
+          .invoke(apiAuthRegisterPost$Json, {
+            body: details,
+          })
+          .pipe(map(toAuthUser)),
+      true,
     );
   }
 
@@ -64,12 +68,17 @@ export class AuthApiGateway {
   }
 
   revoke(): Observable<void> {
-    return this.runUnsafe(() => this.api.invoke(apiAuthRevokePost));
+    return this.runUnsafe(() => this.api.invoke(apiAuthRevokePost), true);
   }
 
-  private runUnsafe<T>(request: () => Observable<T>): Observable<T> {
+  private runUnsafe<T>(request: () => Observable<T>, invalidateOnSuccess = false): Observable<T> {
     return this.antiforgery.ensureToken().pipe(
       switchMap(request),
+      switchMap((value) => {
+        if (!invalidateOnSuccess) return of(value);
+        this.antiforgery.invalidate();
+        return this.antiforgery.ensureToken().pipe(map(() => value));
+      }),
       catchError((error: unknown) => this.rethrowProblem(error)),
     );
   }

@@ -12,7 +12,7 @@ import {
 import type { ElementRef, OnChanges } from '@angular/core';
 import type { editor } from 'monaco-editor';
 
-import { MONACO_LOADER } from './code-editor.loader';
+import { MONACO_LOADER } from '../../../shared/ui/code-editor/monaco-loader';
 
 @Component({
   selector: 'aj-code-editor',

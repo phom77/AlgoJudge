@@ -9,7 +9,7 @@ try {
     dotnet test `
         tests/AlgoJudge.Api.IntegrationTests/AlgoJudge.Api.IntegrationTests.csproj `
         --configuration Release `
-        --filter "FullyQualifiedName=AlgoJudge.Api.IntegrationTests.ApiContractTests.OpenApiV1MatchesApprovedSnapshot"
+        --filter "FullyQualifiedName~AlgoJudge.Api.IntegrationTests.ApiContractTests.OpenApi"
 
     if ($LASTEXITCODE -ne 0) {
         throw "OpenAPI snapshot generation failed with exit code $LASTEXITCODE."
@@ -20,4 +20,4 @@ finally {
     Pop-Location
 }
 
-Write-Host "Updated tests/AlgoJudge.Api.IntegrationTests/Snapshots/openapi-v1.json"
+Write-Host "Updated public and internal admin OpenAPI snapshots."

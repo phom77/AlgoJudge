@@ -4,14 +4,28 @@ import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 
 const workspaceRoot = resolve(import.meta.dirname, '..');
-const checkedInDirectory = resolve(workspaceRoot, 'src/app/core/api/generated');
 const temporaryRoot = mkdtempSync(join(tmpdir(), 'algojudge-api-client-'));
-const generatedDirectory = join(temporaryRoot, 'generated');
 
 try {
-  generateClient(generatedDirectory);
-
-  const differences = compareDirectories(checkedInDirectory, generatedDirectory);
+  const clients = [
+    {
+      config: 'ng-openapi-gen.json',
+      checkedIn: 'src/app/core/api/generated',
+      temporary: 'public-generated',
+    },
+    {
+      config: 'ng-openapi-admin-gen.json',
+      checkedIn: 'src/app/core/api/admin-generated',
+      temporary: 'admin-generated',
+    },
+  ];
+  const differences = clients.flatMap((client) => {
+    const generatedDirectory = join(temporaryRoot, client.temporary);
+    generateClient(client.config, generatedDirectory);
+    return compareDirectories(resolve(workspaceRoot, client.checkedIn), generatedDirectory).map(
+      (difference) => `${client.config}: ${difference}`,
+    );
+  });
   if (differences.length > 0) {
     console.error('The generated OpenAPI client is out of date:');
     for (const difference of differences) {
@@ -26,11 +40,11 @@ try {
   rmSync(temporaryRoot, { recursive: true, force: true });
 }
 
-function generateClient(outputDirectory) {
+function generateClient(config, outputDirectory) {
   const generator = resolve(workspaceRoot, 'node_modules/ng-openapi-gen/lib/index.js');
   const result = spawnSync(
     process.execPath,
-    [generator, '--config', 'ng-openapi-gen.json', '--output', outputDirectory, '--silent', 'true'],
+    [generator, '--config', config, '--output', outputDirectory, '--silent', 'true'],
     {
       cwd: workspaceRoot,
       encoding: 'utf8',

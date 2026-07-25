@@ -1,6 +1,10 @@
 using AlgoJudge.API.Security;
+using Microsoft.IdentityModel.Tokens;
 using System.Net;
 using System.Net.Http.Json;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 
 namespace AlgoJudge.Api.IntegrationTests;
@@ -70,6 +74,30 @@ public sealed class AuthCookieSecurityTests
         Assert.DoesNotContain("secure", requestTokenCookie, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task AuthenticatedUnsafeRequestAcceptsSessionBoundAntiforgeryToken()
+    {
+        const string unusedConnection =
+            "Host=127.0.0.1;Port=1;Database=unused;Username=unused;Password=unused";
+        await using var factory = new AlgoJudgeApiFactory(unusedConnection);
+        using var client = CreateClient(factory);
+        client.DefaultRequestHeaders.Add(
+            "Cookie",
+            $"{AuthCookieManager.AccessCookieName}={CreateAccessToken()}");
+        await ApiTestClientSecurity.EnableAntiforgeryAsync(client);
+
+        var response = await client.PostAsJsonAsync("/api/submissions", new
+        {
+            problemId = 0,
+            sourceCode = "",
+            language = "cpp17"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("validation", problem.GetProperty("code").GetString());
+    }
+
     [PostgreSqlFact]
     public async Task AuthenticationUsesHttpOnlyCookiesAndNeverReturnsTokens()
     {
@@ -108,6 +136,7 @@ public sealed class AuthCookieSecurityTests
         var session = await client.GetAsync("/api/auth/session");
         Assert.Equal(HttpStatusCode.OK, session.StatusCode);
 
+        await ApiTestClientSecurity.EnableAntiforgeryAsync(client);
         var refresh = await client.PostAsync("/api/auth/refresh", content: null);
         Assert.Equal(HttpStatusCode.OK, refresh.StatusCode);
         AssertSensitiveCookie(
@@ -158,6 +187,25 @@ public sealed class AuthCookieSecurityTests
         Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("samesite=strict", cookie, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(expectedPath, cookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string CreateAccessToken()
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+            "integration-test-secret-key-at-least-32-characters"));
+        var token = new JwtSecurityToken(
+            issuer: "AlgoJudge.IntegrationTests",
+            audience: "AlgoJudge.IntegrationTests.Client",
+            claims:
+            [
+                new Claim(JwtRegisteredClaimNames.Sub, Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.UniqueName, "csrf_test"),
+                new Claim(JwtRegisteredClaimNames.Email, "csrf_test@example.test"),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            ],
+            expires: DateTime.UtcNow.AddMinutes(5),
+            signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
     private static HttpClient CreateClient(AlgoJudgeApiFactory factory)
