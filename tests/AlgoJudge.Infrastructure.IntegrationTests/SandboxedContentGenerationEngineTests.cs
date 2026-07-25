@@ -71,12 +71,34 @@ public sealed class SandboxedContentGenerationEngineTests
         Assert.DoesNotContain("survives", exception.SafeMessage, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task EngineUsesOneThousandCasesAsItsDefaultCapacity()
+    {
+        var source = new FakeSourceSandbox();
+        var engine = new SandboxedContentGenerationEngine(
+            source,
+            new FakeReferenceRunner(),
+            new FakeWrongRunner(),
+            DefaultCapacityConfiguration());
+
+        await engine.GenerateAsync(Claim(DefinitionJson()));
+
+        Assert.Equal(1_000, source.LastRequest?.MaximumCaseCount);
+    }
+
     private static IConfiguration Configuration() => new ConfigurationBuilder().AddInMemoryCollection(
         new Dictionary<string, string?>
         {
             ["Sandbox:DockerImage"] = "algojudge/judge-cpp17:14.3.0-v1",
             ["DotNetGenerationSandbox:DockerImage"] = "algojudge/generator:10-v1",
             ["ContentGeneration:MaximumCaseCount"] = "500"
+        }).Build();
+
+    private static IConfiguration DefaultCapacityConfiguration() => new ConfigurationBuilder().AddInMemoryCollection(
+        new Dictionary<string, string?>
+        {
+            ["Sandbox:DockerImage"] = "algojudge/judge-cpp17:14.3.0-v1",
+            ["DotNetGenerationSandbox:DockerImage"] = "algojudge/generator:10-v1"
         }).Build();
 
     private static ContentGenerationClaim Claim(string json, string? hashSource = null) =>
@@ -108,8 +130,13 @@ public sealed class SandboxedContentGenerationEngineTests
     private sealed class FakeSourceSandbox : ISourceGenerationSandbox
     {
         public int Calls { get; private set; }
+        public SourceGenerationRequest? LastRequest { get; private set; }
         public Task<SourceGenerationResult> GenerateAsync(SourceGenerationRequest request, CancellationToken cancellationToken = default)
-        { Calls++; return Task.FromResult(new SourceGenerationResult([new SourceGeneratedCase(1, "single", "handwritten", 0, "{}")], "generator-v1")); }
+        {
+            Calls++;
+            LastRequest = request;
+            return Task.FromResult(new SourceGenerationResult([new SourceGeneratedCase(1, "single", "handwritten", 0, "{}")], "generator-v1"));
+        }
     }
     private sealed class FakeReferenceRunner : IFunctionReferenceSolutionRunner
     {

@@ -59,6 +59,21 @@ public sealed class ProblemGeneratorSdkTests
         Assert.Throws<InvalidOperationException>(() => plan.Execute(1, 1));
     }
 
+    [Fact]
+    public void PlanSupportsOneThousandCaseSuitesWithinTheNewDefaultCapacity()
+    {
+        var plan = new TestPlan();
+        plan.Handwritten("minimum", TestGenerator.CreateArguments(0));
+        plan.Random("scaled-random", 999, context =>
+            TestGenerator.CreateArguments(context.Int(-100, 100)));
+
+        var cases = plan.Execute(42, 1_000);
+
+        Assert.Equal(1_000, cases.Count);
+        Assert.Equal("handwritten", cases[0].Group);
+        Assert.Equal("random", cases[^1].Group);
+    }
+
     private sealed class RepresentativeGenerator : ProblemGenerator
     {
         public override void Build(TestPlan plan)

@@ -9,9 +9,9 @@ public sealed class ContentImportOptions
     public long MaxEntryBytes { get; set; } = 8 * 1024 * 1024;
     public int MaxFunctionSignatureBytes { get; set; } = 64 * 1024;
     public int MaxFunctionAdapterBytes { get; set; } = 256 * 1024;
-    public int MaxFileCount { get; set; } = 1_100;
+    public int MaxFileCount { get; set; } = 2_100;
     public int MaxSampleCount { get; set; } = 20;
-    public int MaxJudgeTestCaseCount { get; set; } = 500;
+    public int MaxJudgeTestCaseCount { get; set; } = 1_000;
     public int MinTimeLimitMs { get; set; } = 100;
     public int MaxTimeLimitMs { get; set; } = 10_000;
     public int MinMemoryLimitKb { get; set; } = 16 * 1024;

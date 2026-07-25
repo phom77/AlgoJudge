@@ -9,6 +9,15 @@ namespace AlgoJudge.ContentTool.Tests;
 public class ProblemPackageReaderTests
 {
     [Fact]
+    public void DefaultLimitsAllowAThousandPrivateCasePairs()
+    {
+        var options = new ContentImportOptions();
+
+        Assert.Equal(1_000, options.MaxJudgeTestCaseCount);
+        Assert.True(options.MaxFileCount >= 2_065);
+    }
+
+    [Fact]
     public async Task ValidPackageIsParsedWithoutDatabaseAccess()
     {
         using var archive = TestArchive.Create(ValidEntries());

@@ -91,7 +91,7 @@ Generator assemblies reference `AlgoJudge.Application` and implement the public
 }
 ```
 
-The total group count cannot exceed the configured private-case limit (500 by
+The total group count cannot exceed the configured private-case limit (1,000 by
 default). `scripts/build-problem-package.ps1` includes only schema-v1 package
 members, so generator binaries, source, manifests, and the reference solution
 do not enter the import ZIP.

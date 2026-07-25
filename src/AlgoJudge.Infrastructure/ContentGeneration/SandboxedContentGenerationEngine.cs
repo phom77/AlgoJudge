@@ -33,7 +33,7 @@ public sealed class SandboxedContentGenerationEngine : IContentGenerationEngine
     {
         _sourceSandbox = sourceSandbox; _referenceRunner = referenceRunner; _wrongRunner = wrongRunner;
         _cppImage = DockerSandboxOptions.FromConfiguration(configuration).Image;
-        _maximumCases = configuration.GetValue("ContentGeneration:MaximumCaseCount", 500);
+        _maximumCases = configuration.GetValue("ContentGeneration:MaximumCaseCount", 1000);
         if (_maximumCases is < 1 or > 5000) throw new InvalidOperationException("ContentGeneration:MaximumCaseCount must be between 1 and 5000.");
     }
 

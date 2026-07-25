@@ -28,7 +28,7 @@ test('authors, publishes, and judges both Accepted and Wrong Answer solutions', 
 
   await page.getByRole('button', { name: 'Generate suite' }).click();
   await expect(page.getByText('Safe testcase metadata preview')).toBeVisible({ timeout: 8_000 });
-  await expect(page.locator('main')).toContainText('85');
+  await expect(page.locator('main')).toContainText('1000');
   await expect(page.locator('main')).toContainText('adversarial');
   await expect(page.locator('main')).not.toContainText('{"values"');
   await page.getByRole('button', { name: 'Publish problem' }).click();
