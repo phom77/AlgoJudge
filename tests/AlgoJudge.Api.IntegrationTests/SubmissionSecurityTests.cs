@@ -98,6 +98,7 @@ public class SubmissionSecurityTests
             Status = ProblemStatus.Published,
             PublishedAt = DateTime.UtcNow
         };
+        problem.SystemTestSuites.Add(new PublishedSystemTestSuite { Version = 1 });
         problem.JudgeTestCases.Add(new JudgeTestCase
         {
             Input = HiddenInputSentinel,

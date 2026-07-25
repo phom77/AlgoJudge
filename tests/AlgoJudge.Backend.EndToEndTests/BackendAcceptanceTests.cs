@@ -511,6 +511,7 @@ public sealed class BackendAcceptanceTests
             Explanation = "Two doubled is four.",
             Ordinal = 1
         });
+        problem.SystemTestSuites.Add(new PublishedSystemTestSuite { Version = 1 });
         problem.JudgeTestCases.Add(new JudgeTestCase
         {
             Input = HiddenInputSentinel + "\n",
@@ -547,6 +548,11 @@ public sealed class BackendAcceptanceTests
             ExpectedOutput = "4",
             Explanation = "Two doubled is four.",
             Ordinal = 1
+        });
+        problem.SystemTestSuites.Add(new PublishedSystemTestSuite
+        {
+            Version = 1,
+            OutputCheckerKind = OutputCheckerKind.JsonExact
         });
         problem.JudgeTestCases.Add(new JudgeTestCase
         {

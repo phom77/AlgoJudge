@@ -1,4 +1,5 @@
 using AlgoJudge.Domain.Enums;
+using AlgoJudge.Domain.Execution;
 
 namespace AlgoJudge.ContentTool.Packages;
 
@@ -12,6 +13,7 @@ public sealed class ProblemPackageMetadata
     public int MemoryLimitKb { get; init; }
     public ProblemExecutionMode ExecutionMode { get; init; } =
         ProblemExecutionMode.StdinStdout;
+    public OutputCheckerConfiguration? OutputChecker { get; init; }
     public IReadOnlyCollection<ProblemPackageTag> Tags { get; init; } =
         Array.Empty<ProblemPackageTag>();
 }

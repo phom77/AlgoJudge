@@ -5,6 +5,7 @@ using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Application.FunctionExecution;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
+using AlgoJudge.Domain.Execution;
 using AlgoJudge.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -82,6 +83,13 @@ public sealed class ProblemAuthoringRepository : IProblemAuthoringRepository
                 Input = item.Input,
                 ExpectedOutput = item.ExpectedOutput
             }), cancellationToken);
+        _context.SystemTestSuites.Add(new PublishedSystemTestSuite
+        {
+            ProblemId = revision.ProblemId,
+            Version = version,
+            OutputCheckerKind = OutputCheckerConfiguration.JsonExact.Kind,
+            CreatedAt = DateTime.UtcNow
+        });
 
         await _context.ProblemSamples.Where(item => item.ProblemId == revision.ProblemId).ExecuteDeleteAsync(cancellationToken);
         var samples = JsonSerializer.Deserialize<IReadOnlyList<ProblemSampleRequest>>(revision.SamplesJson, JsonOptions) ?? [];

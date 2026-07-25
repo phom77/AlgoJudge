@@ -99,6 +99,21 @@ Public samples and judge test cases use separate entities and tables. This is a
 deliberate confidentiality boundary: a public catalogue query never needs to
 load `JudgeTestCase`. All judge test data must be treated as confidential.
 
+### SystemTestSuite
+
+Represents immutable judge configuration shared by every hidden testcase in one
+positive suite version.
+
+| Field | Notes |
+|---|---|
+| `problemId`, `version` | Composite identity. `version` is the value pinned by a submission. |
+| `outputCheckerKind` | `TokenExact`, `JsonExact`, or `FloatingPoint`. |
+| `absoluteTolerance`, `relativeTolerance` | Required finite non-negative values only for `FloatingPoint`; at least one is positive. |
+
+`JudgeTestCase(problemId, systemTestSuiteVersion)` has a foreign key to this
+record. A new suite version owns both its hidden pairs and its checker, so an
+older pinned submission cannot observe a changed comparison policy.
+
 ### Submission
 
 Represents one immutable code attempt.

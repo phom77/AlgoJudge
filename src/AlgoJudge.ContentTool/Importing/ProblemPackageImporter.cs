@@ -1,6 +1,7 @@
 using AlgoJudge.ContentTool.Packages;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
+using AlgoJudge.Domain.Execution;
 using AlgoJudge.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -111,6 +112,19 @@ public sealed class ProblemPackageImporter
         problem.ExecutionMode = package.Metadata.ExecutionMode;
         problem.FunctionSignatureJson = package.Function?.SignatureJson;
         problem.FunctionAdapterTemplate = package.Function?.AdapterTemplate;
+
+        var outputChecker = package.Metadata.OutputChecker ??
+            OutputCheckerConfiguration.TokenExact;
+        outputChecker.Validate();
+        _context.SystemTestSuites.Add(new PublishedSystemTestSuite
+        {
+            Problem = problem,
+            Version = problem.JudgeVersion,
+            OutputCheckerKind = outputChecker.Kind,
+            AbsoluteTolerance = outputChecker.AbsoluteTolerance,
+            RelativeTolerance = outputChecker.RelativeTolerance,
+            CreatedAt = now
+        });
 
         foreach (var sample in package.Samples)
         {

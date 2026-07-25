@@ -23,6 +23,16 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
                 .HasForeignKey(testCase => testCase.ProblemId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            builder.HasOne(testCase => testCase.SystemTestSuite)
+                .WithMany(suite => suite.TestCases)
+                .HasForeignKey(testCase => new
+                {
+                    testCase.ProblemId,
+                    testCase.SystemTestSuiteVersion
+                })
+                .HasPrincipalKey(suite => new { suite.ProblemId, suite.Version })
+                .OnDelete(DeleteBehavior.Cascade);
+
             builder.Property(testCase => testCase.SystemTestSuiteVersion).HasDefaultValue(1);
 
             builder.HasIndex(testCase => new

@@ -1,6 +1,7 @@
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
+using AlgoJudge.Domain.Execution;
 using AlgoJudge.Infrastructure.Grading;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -74,6 +75,26 @@ public sealed class SystemSuiteGradingTests
 
         Assert.Equal(SubmissionStatus.RuntimeError, outcome.Status);
         Assert.Empty(sandbox.Inputs);
+    }
+
+    [Fact]
+    public async Task SubmissionUsesThePinnedSuiteOutputChecker()
+    {
+        var sandbox = new SequencedSandbox([" [ 1, 2 ] \n"]);
+        var outcome = await JudgeTestHarness.GradeWithSandboxAsync(
+            "int main() {}", "unused", "unused", sandbox,
+            NullLogger<GraderService>.Instance,
+            systemTestCases:
+            [
+                new JudgeTestCase
+                {
+                    Id = 1, ProblemId = 1, SystemTestSuiteVersion = 1,
+                    Ordinal = 1, Input = "input", ExpectedOutput = "[1,2]"
+                }
+            ],
+            outputChecker: OutputCheckerConfiguration.JsonExact);
+
+        Assert.Equal(SubmissionStatus.Accepted, outcome.Status);
     }
 
     private sealed class SequencedSandbox(IReadOnlyList<string> outputs) : IDockerSandbox

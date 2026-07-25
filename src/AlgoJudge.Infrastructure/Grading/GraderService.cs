@@ -13,6 +13,7 @@ namespace AlgoJudge.Infrastructure.Grading
         private readonly IProblemRepository _problemRepository;
         private readonly ITestSuiteProvider _testSuiteProvider;
         private readonly IDockerSandbox _sandbox;
+        private readonly IOutputChecker _outputChecker;
         private readonly IFunctionHarnessBuilder _functionHarnessBuilder;
         private readonly ILogger<GraderService> _logger;
 
@@ -21,6 +22,7 @@ namespace AlgoJudge.Infrastructure.Grading
             IProblemRepository problemRepository,
             ITestSuiteProvider testSuiteProvider,
             IDockerSandbox sandbox,
+            IOutputChecker outputChecker,
             IFunctionHarnessBuilder functionHarnessBuilder,
             ILogger<GraderService> logger)
         {
@@ -28,6 +30,7 @@ namespace AlgoJudge.Infrastructure.Grading
             _problemRepository = problemRepository;
             _testSuiteProvider = testSuiteProvider;
             _sandbox = sandbox;
+            _outputChecker = outputChecker;
             _functionHarnessBuilder = functionHarnessBuilder;
             _logger = logger;
         }
@@ -152,9 +155,10 @@ namespace AlgoJudge.Infrastructure.Grading
                         break;
                     }
 
-                    var actualOutput = runResult.Output.Trim();
-                    var expectedOutput = testCase.ExpectedOutput.Trim();
-                    if (actualOutput != expectedOutput)
+                    if (!_outputChecker.IsMatch(
+                        suite.OutputChecker,
+                        testCase.ExpectedOutput,
+                        runResult.Output))
                     {
                         finalStatus = SubmissionStatus.WrongAnswer;
                         break;

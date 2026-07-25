@@ -55,6 +55,7 @@ builder.Services.AddScoped<IProblemRepository, ProblemRepository>();
 builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 builder.Services.AddScoped<ITestSuiteProvider, PostgreSqlSystemTestSuiteProvider>();
 builder.Services.AddScoped<IGraderService, GraderService>();
+builder.Services.AddSingleton<IOutputChecker, OutputChecker>();
 builder.Services.AddScoped<IRunRepository, RunRepository>();
 builder.Services.AddScoped<IRunGraderService, RunGraderService>();
 builder.Services.AddScoped<IDockerSandbox, DockerSandboxService>();

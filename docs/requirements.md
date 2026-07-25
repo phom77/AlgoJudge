@@ -15,7 +15,8 @@
 - **Authoring revision:** an internal, versioned definition from which a
   maintainer generates and reviews one candidate system suite.
 - **System suite:** an immutable, positive-versioned collection of hidden
-  testcase input/output pairs and its generation provenance.
+  testcase input/output pairs, output-checker configuration, and generation
+  provenance.
 
 ## 2. Functional requirements
 
@@ -88,7 +89,8 @@
 - A testcase archive has limits for compressed size, uncompressed size, file
   count, and individual file size.
 - Schema-version-1 problem packages import as StdinStdout. Schema version 2
-  explicitly declares StdinStdout or Function.
+  explicitly declares StdinStdout or Function. Schema version 3 declares an
+  immutable output checker for the imported suite.
 - Function packages require a validated signature, private adapter template,
   and JSON sample/hidden-test values matching the declared parameter and return
   types.

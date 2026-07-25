@@ -5,6 +5,7 @@ using AlgoJudge.Application.Models.SubmissionQueue;
 using AlgoJudge.Application.Models.Execution;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
+using AlgoJudge.Domain.Execution;
 using AlgoJudge.Infrastructure.Grading;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -67,7 +68,8 @@ internal static class JudgeTestHarness
         string? functionSignatureJson = null,
         string? functionAdapterTemplate = null,
         int systemTestSuiteVersion = 1,
-        IReadOnlyList<JudgeTestCase>? systemTestCases = null)
+        IReadOnlyList<JudgeTestCase>? systemTestCases = null,
+        OutputCheckerConfiguration? outputChecker = null)
     {
         var submissionId = Guid.NewGuid();
         var claimToken = Guid.NewGuid();
@@ -119,8 +121,11 @@ internal static class JudgeTestHarness
         var grader = new GraderService(
             submissionRepository,
             new StubProblemRepository(problem),
-            new StubTestSuiteProvider(systemTestCases ?? [testCase]),
+            new StubTestSuiteProvider(
+                systemTestCases ?? [testCase],
+                outputChecker ?? OutputCheckerConfiguration.TokenExact),
             sandbox,
+            new OutputChecker(),
             new Cpp17FunctionHarnessBuilder(),
             logger);
 
@@ -234,10 +239,14 @@ internal static class JudgeTestHarness
     private sealed class StubTestSuiteProvider : ITestSuiteProvider
     {
         private readonly IReadOnlyList<JudgeTestCase> _testCases;
+        private readonly OutputCheckerConfiguration _outputChecker;
 
-        public StubTestSuiteProvider(IReadOnlyList<JudgeTestCase> testCases)
+        public StubTestSuiteProvider(
+            IReadOnlyList<JudgeTestCase> testCases,
+            OutputCheckerConfiguration outputChecker)
         {
             _testCases = testCases;
+            _outputChecker = outputChecker;
         }
 
         public Task<SystemTestSuite?> GetSystemSuiteAsync(
@@ -253,7 +262,11 @@ internal static class JudgeTestHarness
                 .ToArray();
             return Task.FromResult<SystemTestSuite?>(selected.Length == 0
                 ? null
-                : new SystemTestSuite(problemId, version, selected));
+                : new SystemTestSuite(
+                    problemId,
+                    version,
+                    selected,
+                    _outputChecker));
         }
     }
 }

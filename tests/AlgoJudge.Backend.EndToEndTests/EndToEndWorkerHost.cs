@@ -53,6 +53,7 @@ internal sealed class EndToEndWorkerHost : IAsyncDisposable
         services.AddScoped<ISubmissionRepository, SubmissionRepository>();
         services.AddScoped<ITestSuiteProvider, PostgreSqlSystemTestSuiteProvider>();
         services.AddScoped<IGraderService, GraderService>();
+        services.AddSingleton<IOutputChecker, OutputChecker>();
         services.AddScoped<IRunRepository, RunRepository>();
         services.AddScoped<IRunGraderService, RunGraderService>();
         services.AddSingleton<IFunctionHarnessBuilder, Cpp17FunctionHarnessBuilder>();

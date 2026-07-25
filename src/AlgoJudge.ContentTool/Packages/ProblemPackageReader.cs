@@ -350,6 +350,13 @@ public sealed partial class ProblemPackageReader
                     errors.Add("problem.json schema version 1 cannot declare executionMode.");
                 if (schemaVersionValue == 2 && !hasExecutionMode)
                     errors.Add("problem.json schema version 2 requires executionMode.");
+                if (schemaVersionValue == 3 && !hasExecutionMode)
+                    errors.Add("problem.json schema version 3 requires executionMode.");
+                var hasOutputChecker = document.RootElement.TryGetProperty("outputChecker", out _);
+                if (schemaVersionValue is 1 or 2 && hasOutputChecker)
+                    errors.Add($"problem.json schema version {schemaVersionValue} cannot declare outputChecker.");
+                if (schemaVersionValue == 3 && !hasOutputChecker)
+                    errors.Add("problem.json schema version 3 requires outputChecker.");
             }
 
             return JsonSerializer.Deserialize<ProblemPackageMetadata>(
@@ -400,8 +407,27 @@ public sealed partial class ProblemPackageReader
         if (metadata is null)
             return;
 
-        if (metadata.SchemaVersion is not (1 or 2))
-            errors.Add("problem.json schemaVersion must be 1 or 2.");
+        if (metadata.SchemaVersion is not (1 or 2 or 3))
+            errors.Add("problem.json schemaVersion must be 1, 2, or 3.");
+
+        if (metadata.SchemaVersion == 3)
+        {
+            if (metadata.OutputChecker is null)
+            {
+                errors.Add("problem.json outputChecker is required for schema version 3.");
+            }
+            else
+            {
+                try
+                {
+                    metadata.OutputChecker.Validate();
+                }
+                catch (ArgumentException)
+                {
+                    errors.Add("problem.json outputChecker is invalid.");
+                }
+            }
+        }
 
         if (!Enum.IsDefined(metadata.ExecutionMode))
             errors.Add("Problem executionMode is invalid.");

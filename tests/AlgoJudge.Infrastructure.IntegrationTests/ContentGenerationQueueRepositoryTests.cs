@@ -49,11 +49,13 @@ public sealed class ContentGenerationQueueRepositoryTests
         var problem = await verify.Problems.SingleAsync(item => item.Id == problemId);
         var revision = await verify.ProblemAuthoringRevisions.SingleAsync(item => item.Id == revisionId);
         var test = await verify.JudgeTestCases.SingleAsync(item => item.ProblemId == problemId);
+        var suite = await verify.SystemTestSuites.SingleAsync(item => item.ProblemId == problemId);
         Assert.Equal(ProblemStatus.Published, problem.Status);
         Assert.Equal(1, problem.JudgeVersion);
         Assert.Equal(AuthoringRevisionStatus.Published, revision.Status);
         Assert.Equal("{\"values\":[1]}", test.Input);
         Assert.Equal("1", test.ExpectedOutput);
+        Assert.Equal(OutputCheckerKind.JsonExact, suite.OutputCheckerKind);
     }
 
     [PostgreSqlFact]

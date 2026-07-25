@@ -1,5 +1,6 @@
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
+using AlgoJudge.Domain.Execution;
 using AlgoJudge.Infrastructure.Grading;
 
 namespace AlgoJudge.Infrastructure.IntegrationTests;
@@ -20,6 +21,18 @@ public sealed class SystemTestSuiteProviderTests
                 Difficulty = DifficultyLevel.Easy, Status = ProblemStatus.Published,
                 JudgeVersion = 2, PublishedAt = DateTime.UtcNow
             };
+            problem.SystemTestSuites.Add(new PublishedSystemTestSuite
+            {
+                Version = 1,
+                OutputCheckerKind = OutputCheckerKind.TokenExact
+            });
+            problem.SystemTestSuites.Add(new PublishedSystemTestSuite
+            {
+                Version = 2,
+                OutputCheckerKind = OutputCheckerKind.FloatingPoint,
+                AbsoluteTolerance = 0.001,
+                RelativeTolerance = 0.01
+            });
             problem.JudgeTestCases.Add(new JudgeTestCase { SystemTestSuiteVersion = 1, Ordinal = 1, Input = "old", ExpectedOutput = "old" });
             problem.JudgeTestCases.Add(new JudgeTestCase { SystemTestSuiteVersion = 2, Ordinal = 2, Input = "second", ExpectedOutput = "2" });
             problem.JudgeTestCases.Add(new JudgeTestCase { SystemTestSuiteVersion = 2, Ordinal = 1, Input = "first", ExpectedOutput = "1" });
@@ -36,5 +49,8 @@ public sealed class SystemTestSuiteProviderTests
         Assert.Equal(2, suite.Version);
         Assert.Equal(["first", "second"], suite.TestCases.Select(testCase => testCase.Input));
         Assert.DoesNotContain(suite.TestCases, testCase => testCase.Input == "old");
+        Assert.Equal(
+            new OutputCheckerConfiguration(OutputCheckerKind.FloatingPoint, 0.001, 0.01),
+            suite.OutputChecker);
     }
 }
