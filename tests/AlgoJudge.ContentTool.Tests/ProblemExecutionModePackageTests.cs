@@ -2,6 +2,7 @@ using AlgoJudge.Application.FunctionExecution;
 using AlgoJudge.ContentTool.Configuration;
 using AlgoJudge.ContentTool.Packages;
 using AlgoJudge.Domain.Enums;
+using AlgoJudge.Domain.Execution;
 using System.IO.Compression;
 using System.Text;
 
@@ -103,6 +104,67 @@ public sealed class ProblemExecutionModePackageTests
         Assert.Contains(
             "Schema-version-1 packages cannot contain function files.",
             exception.Errors);
+    }
+
+    [Fact]
+    public async Task SchemaVersionThreeReadsOutputCheckerConfiguration()
+    {
+        var entries = ValidVersionOneEntries()
+            .Select(entry => entry.Key == "problem.json"
+                ? KeyValuePair.Create(entry.Key, """
+                    {
+                      "schemaVersion": 3,
+                      "executionMode": "StdinStdout",
+                      "outputChecker": {
+                        "kind": "FloatingPoint",
+                        "absoluteTolerance": 0.001,
+                        "relativeTolerance": 0.01
+                      },
+                      "slug": "two-sum",
+                      "title": "Two Sum",
+                      "difficulty": "Easy",
+                      "timeLimitMs": 1000,
+                      "memoryLimitKb": 262144,
+                      "tags": []
+                    }
+                    """)
+                : entry)
+            .ToArray();
+        using var archive = TestArchive.Create(entries);
+
+        var package = await new ProblemPackageReader(new ContentImportOptions()).ReadAsync(archive.Path);
+
+        Assert.Equal(
+            new OutputCheckerConfiguration(OutputCheckerKind.FloatingPoint, 0.001, 0.01),
+            package.Metadata.OutputChecker);
+    }
+
+    [Fact]
+    public async Task SchemaVersionThreeRejectsInvalidOutputCheckerConfiguration()
+    {
+        var entries = ValidVersionOneEntries()
+            .Select(entry => entry.Key == "problem.json"
+                ? KeyValuePair.Create(entry.Key, """
+                    {
+                      "schemaVersion": 3,
+                      "executionMode": "StdinStdout",
+                      "outputChecker": { "kind": "JsonExact", "absoluteTolerance": 0.1 },
+                      "slug": "two-sum",
+                      "title": "Two Sum",
+                      "difficulty": "Easy",
+                      "timeLimitMs": 1000,
+                      "memoryLimitKb": 262144,
+                      "tags": []
+                    }
+                    """)
+                : entry)
+            .ToArray();
+        using var archive = TestArchive.Create(entries);
+
+        var exception = await Assert.ThrowsAsync<PackageValidationException>(() =>
+            new ProblemPackageReader(new ContentImportOptions()).ReadAsync(archive.Path));
+
+        Assert.Contains("problem.json outputChecker is invalid.", exception.Errors);
     }
 
     [Fact]

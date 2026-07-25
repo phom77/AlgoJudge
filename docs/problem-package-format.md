@@ -106,6 +106,29 @@ For example:
 {"nums":[2,7,11,15],"target":9}
 ```
 
+## Schema version 3
+
+Schema version 3 retains the version-2 layout and requires `executionMode` and
+an `outputChecker` for the imported immutable suite. The checker is private
+judge configuration; it is never included in public problem responses.
+
+```json
+{
+  "schemaVersion": 3,
+  "executionMode": "StdinStdout",
+  "outputChecker": {
+    "kind": "FloatingPoint",
+    "absoluteTolerance": 0.000001,
+    "relativeTolerance": 0.000001
+  }
+}
+```
+
+`kind` is one of `TokenExact`, `JsonExact`, or `FloatingPoint`. The first two
+forbid tolerance properties. `FloatingPoint` requires both tolerance properties
+to be finite non-negative numbers, with at least one positive. Schema versions
+1 and 2 cannot declare `outputChecker` and import with `TokenExact`.
+
 The adapter is trusted private content executed only inside the C++17 sandbox.
 It reads the normalized JSON testcase from stdin, invokes the solution, and
 writes one JSON result. It must contain each of these placeholders exactly once
@@ -121,7 +144,8 @@ public API.
 ## Entry rules
 
 - The three root files are required and their names are case-sensitive.
-- Schema version 2 requires `executionMode`.
+- Schema versions 2 and 3 require `executionMode`; version 3 also requires
+  `outputChecker`.
 - `Function` requires both fixed function files; `StdinStdout` forbids them.
 - Sample and test names use a positive numeric ordinal of 2-4 digits.
 - Every `.in` file has exactly one matching `.out` file.

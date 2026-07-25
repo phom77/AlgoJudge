@@ -2,6 +2,7 @@ using AlgoJudge.Application.FunctionExecution;
 using AlgoJudge.ContentTool.Importing;
 using AlgoJudge.ContentTool.Packages;
 using AlgoJudge.Domain.Enums;
+using AlgoJudge.Domain.Execution;
 using AlgoJudge.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -33,6 +34,8 @@ public class ProblemPackageImporterTests
         Assert.Equal(2, problem.JudgeTestCases.Count);
         Assert.All(problem.JudgeTestCases, testCase =>
             Assert.Equal(problem.JudgeVersion, testCase.SystemTestSuiteVersion));
+        var suite = await database.Context.SystemTestSuites.SingleAsync();
+        Assert.Equal(OutputCheckerConfiguration.TokenExact.Kind, suite.OutputCheckerKind);
         Assert.Equal(
             new[] { "array", "hash-table" },
             problem.Tags.Select(problemTag => problemTag.Tag.Slug).OrderBy(slug => slug));
@@ -131,22 +134,42 @@ public class ProblemPackageImporterTests
         Assert.Equal(function.AdapterTemplate, problem.FunctionAdapterTemplate);
     }
 
+    [Fact]
+    public async Task ImportPersistsTheConfiguredSuiteOutputChecker()
+    {
+        await using var database = TestDatabase.Create();
+        var outputChecker = new OutputCheckerConfiguration(
+            OutputCheckerKind.FloatingPoint,
+            AbsoluteTolerance: 0.001,
+            RelativeTolerance: 0.01);
+        var package = CreatePackage(outputChecker: outputChecker);
+
+        await new ProblemPackageImporter(database.Context).ImportAsync(package, replace: false);
+
+        var suite = await database.Context.SystemTestSuites.SingleAsync();
+        Assert.Equal(outputChecker.Kind, suite.OutputCheckerKind);
+        Assert.Equal(outputChecker.AbsoluteTolerance, suite.AbsoluteTolerance);
+        Assert.Equal(outputChecker.RelativeTolerance, suite.RelativeTolerance);
+    }
+
     private static ProblemPackage CreatePackage(
         string title = "Two Sum",
         IReadOnlyCollection<ProblemPackageJudgeTestCase>? judgeTestCases = null,
         ProblemExecutionMode executionMode = ProblemExecutionMode.StdinStdout,
-        ProblemPackageFunction? function = null)
+        ProblemPackageFunction? function = null,
+        OutputCheckerConfiguration? outputChecker = null)
     {
         return new ProblemPackage(
             new ProblemPackageMetadata
             {
-                SchemaVersion = 1,
+                SchemaVersion = outputChecker is null ? 1 : 3,
                 Slug = "two-sum",
                 Title = title,
                 Difficulty = DifficultyLevel.Easy,
                 TimeLimitMs = 1_000,
                 MemoryLimitKb = 262_144,
                 ExecutionMode = executionMode,
+                OutputChecker = outputChecker,
                 Tags =
                 [
                     new ProblemPackageTag { Slug = "array", Name = "Array" },

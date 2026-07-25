@@ -1,6 +1,7 @@
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Application.Models.Execution;
 using AlgoJudge.Infrastructure.Data;
+using AlgoJudge.Domain.Execution;
 using Microsoft.EntityFrameworkCore;
 
 namespace AlgoJudge.Infrastructure.Grading;
@@ -19,16 +20,21 @@ public sealed class PostgreSqlSystemTestSuiteProvider : ITestSuiteProvider
         if (problemId <= 0) throw new ArgumentOutOfRangeException(nameof(problemId));
         if (version <= 0) throw new ArgumentOutOfRangeException(nameof(version));
 
-        var testCases = await _context.JudgeTestCases
+        var suite = await _context.SystemTestSuites
             .AsNoTracking()
-            .Where(testCase =>
-                testCase.ProblemId == problemId &&
-                testCase.SystemTestSuiteVersion == version)
-            .OrderBy(testCase => testCase.Ordinal)
-            .ToListAsync(cancellationToken);
+            .Include(item => item.TestCases)
+            .SingleOrDefaultAsync(item => item.ProblemId == problemId && item.Version == version,
+                cancellationToken);
 
-        return testCases.Count == 0
+        return suite is null || suite.TestCases.Count == 0
             ? null
-            : new SystemTestSuite(problemId, version, testCases);
+            : new SystemTestSuite(
+                problemId,
+                version,
+                suite.TestCases.OrderBy(item => item.Ordinal).ToArray(),
+                new OutputCheckerConfiguration(
+                    suite.OutputCheckerKind,
+                    suite.AbsoluteTolerance,
+                    suite.RelativeTolerance));
     }
 }

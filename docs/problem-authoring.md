@@ -214,6 +214,11 @@ For one immutable snapshot of a definition, the engine:
 9. hashes all inputs, outputs, source identities, toolchain identities, seeds,
    ordering, and comparator configuration into an immutable suite candidate.
 
+Version-1 source-authored Function definitions always produce a `JsonExact`
+suite checker. The generic Function harness emits one JSON value, so this
+accepts semantically identical JSON whitespace and property ordering without
+executing maintainer-defined checker code in the grading worker.
+
 No database publication occurs unless all required steps succeed. Partial
 outputs are disposable job artifacts and cannot be judged as a suite.
 
@@ -284,7 +289,7 @@ excludes `authoring.json`, source, and provenance from the private import ZIP.
 
 ## 8. Compatibility
 
-- Package schema versions 1 and 2 remain valid import formats.
+- Package schema versions 1, 2, and 3 remain valid import formats.
 - Existing schema-version-2 Function packages keep their private adapter
   templates and continue to judge with them.
 - Existing published suites and submissions pinned to them are unchanged.

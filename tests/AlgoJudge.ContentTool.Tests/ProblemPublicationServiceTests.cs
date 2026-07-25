@@ -184,7 +184,8 @@ public class ProblemPublicationServiceTests
             JudgeTestCases =
             [
                 new JudgeTestCase { Ordinal = 1, Input = "private", ExpectedOutput = "0 1" }
-            ]
+            ],
+            SystemTestSuites = [new PublishedSystemTestSuite { Version = 1 }]
         };
     }
 

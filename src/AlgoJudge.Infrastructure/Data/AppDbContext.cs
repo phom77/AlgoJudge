@@ -17,6 +17,7 @@ namespace AlgoJudge.Infrastructure.Data
         public DbSet<CodeRun> CodeRuns { get; set; }
         public DbSet<ProblemSample> ProblemSamples { get; set; }
         public DbSet<JudgeTestCase> JudgeTestCases { get; set; }
+        public DbSet<PublishedSystemTestSuite> SystemTestSuites { get; set; }
         public DbSet<Tag> Tags { get; set; }
         public DbSet<ProblemTag> ProblemTags { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }

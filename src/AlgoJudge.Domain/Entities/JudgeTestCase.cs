@@ -9,5 +9,6 @@ namespace AlgoJudge.Domain.Entities
         public string ExpectedOutput { get; set; } = string.Empty;
         public int Ordinal { get; set; }
         public Problem Problem { get; set; } = null!;
+        public PublishedSystemTestSuite SystemTestSuite { get; set; } = null!;
     }
 }

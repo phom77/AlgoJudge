@@ -81,10 +81,11 @@ identical parsing and serialization.
 9. It deletes the work directory and all temporary artifacts.
 
 System suites are selected by problem ID plus positive suite version and are
-executed in stable ordinal order. Missing versions are operational failures,
-not empty Accepted suites. Generator code and reference solutions never run in
-the worker. Submission retries and reclaimed leases use the original pinned
-version. Testcase input and content-generation protocol requests are written to
+executed in stable ordinal order. The same immutable suite record selects its
+output checker. Missing versions are operational failures, not empty Accepted
+suites. Generator code and reference solutions never run in the worker.
+Submission retries and reclaimed leases use the original pinned version.
+Testcase input and content-generation protocol requests are written to
 container stdin as UTF-8 without a byte-order mark on every supported host OS.
 
 ## 3.1 Offline content generation
@@ -120,16 +121,21 @@ alternates queue priority and executes only one claim at a time.
 
 ## 4. Output comparison
 
-For MVP, output comparison is token-based:
+Every immutable system-suite version selects one platform-owned checker. A
+checker receives only bounded expected and contestant output after normal
+sandbox verdict handling; it never receives or executes author-provided code.
 
-- split expected and actual output on Unicode whitespace;
-- compare the resulting token sequences exactly;
-- treat trailing spaces and trailing newlines as insignificant;
-- preserve case and numeric text exactly.
+| Checker | Behaviour |
+|---|---|
+| `TokenExact` | Split expected and actual output on Unicode whitespace and compare token sequences exactly. Case and numeric text are preserved. |
+| `JsonExact` | Parse one JSON value from each output and compare its JSON structure. Whitespace and object-property order do not affect equality; malformed output is Wrong Answer. |
+| `FloatingPoint` | Split on Unicode whitespace. Each corresponding token must be a finite invariant-culture floating-point value and satisfy either the configured absolute or relative tolerance. |
 
-Problems that need a floating-point tolerance are out of scope until an
-explicit per-problem comparator is designed. The comparator used for a problem
-must be recorded with its test suite version.
+Only `FloatingPoint` stores tolerances. Both values are finite and non-negative,
+and at least one is positive. A suite checker is persisted with its version;
+publishing a later suite is the only way to change comparison semantics for new
+submissions. Source-authored Function suites use `JsonExact`; legacy suites and
+schema-version-1/2 packages use `TokenExact` for compatibility.
 
 ## 5. Resource enforcement
 
