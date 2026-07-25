@@ -23,37 +23,28 @@ function loadMonaco(document: Document): Promise<MonacoModule> {
     loadMonacoStyles(document),
     import('monaco-editor/esm/vs/editor/editor.api'),
     import('monaco-editor/esm/vs/basic-languages/cpp/cpp.contribution'),
+    import('monaco-editor/esm/vs/basic-languages/csharp/csharp.contribution'),
   ]).then(([, monaco]) => monaco as MonacoModule);
   return monacoPromise;
 }
 
 function loadMonacoStyles(document: Document): Promise<void> {
   monacoStylesPromise ??= new Promise<void>((resolve, reject) => {
-    const existingStylesheet = document.querySelector<HTMLLinkElement>(
-      'link[data-algojudge-monaco-styles]',
-    );
-
-    if (existingStylesheet?.sheet) {
+    const existing = document.querySelector<HTMLLinkElement>('link[data-algojudge-monaco-styles]');
+    if (existing?.sheet) {
       resolve();
       return;
     }
-
-    const stylesheet = existingStylesheet ?? document.createElement('link');
+    const stylesheet = existing ?? document.createElement('link');
     stylesheet.rel = 'stylesheet';
     stylesheet.href = new URL('assets/monaco/0.53.0/monaco-editor.css', document.baseURI).href;
     stylesheet.dataset['algojudgeMonacoStyles'] = '';
     stylesheet.addEventListener('load', () => resolve(), { once: true });
-    stylesheet.addEventListener(
-      'error',
-      () => reject(new Error('Unable to load the Monaco editor stylesheet.')),
-      { once: true },
-    );
-
-    if (!existingStylesheet) {
-      document.head.append(stylesheet);
-    }
+    stylesheet.addEventListener('error', () => reject(new Error('Unable to load Monaco styles.')), {
+      once: true,
+    });
+    if (!existing) document.head.append(stylesheet);
   });
-
   return monacoStylesPromise;
 }
 

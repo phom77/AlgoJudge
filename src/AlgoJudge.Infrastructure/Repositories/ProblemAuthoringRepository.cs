@@ -43,6 +43,11 @@ public sealed class ProblemAuthoringRepository : IProblemAuthoringRepository
         _context.ContentGenerationJobs.AsNoTracking().Where(item => item.RevisionId == revisionId)
             .OrderByDescending(item => item.CreatedAt).FirstOrDefaultAsync(cancellationToken);
 
+    public Task AddGenerationJobAsync(
+        ContentGenerationJob job,
+        CancellationToken cancellationToken = default) =>
+        _context.ContentGenerationJobs.AddAsync(job, cancellationToken).AsTask();
+
     public async Task DeleteCandidateCasesAsync(Guid revisionId, CancellationToken cancellationToken = default)
     {
         var candidates = await _context.AuthoringTestCases

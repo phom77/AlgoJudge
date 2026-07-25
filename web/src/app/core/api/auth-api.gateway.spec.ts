@@ -33,7 +33,8 @@ describe('AuthApiGateway', () => {
 
     const user = await firstValueFrom(gateway.login({ userName: 'ada', password: 'secret1' }));
 
-    expect(ensureToken).toHaveBeenCalledTimes(1);
+    expect(ensureToken).toHaveBeenCalledTimes(2);
+    expect(invalidate).toHaveBeenCalledTimes(1);
     expect(user).toEqual({
       userName: 'ada',
       email: 'ada@example.com',

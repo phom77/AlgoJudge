@@ -6,6 +6,8 @@ namespace AlgoJudge.Api.IntegrationTests;
 
 public class ApiContractTests
 {
+    private const string AdminSnapshotRelativePath =
+        "tests/AlgoJudge.Api.IntegrationTests/Snapshots/openapi-admin-v1.json";
     private const string UnusedConnectionString =
         "Host=127.0.0.1;Port=1;Database=unused;Username=unused;Password=unused";
 
@@ -43,6 +45,42 @@ public class ApiContractTests
             "Review the generated contract and, only if intentional, run " +
             "./scripts/update-openapi-snapshot.ps1." + Environment.NewLine +
             OpenApiSnapshot.DescribeDifference(expected, actual));
+    }
+
+    [Fact]
+    public async Task OpenApiAdminV1MatchesApprovedSnapshotAndExcludesHiddenPayloads()
+    {
+        await using var factory = new AlgoJudgeApiFactory(UnusedConnectionString);
+        using var client = CreateClient(factory);
+        var openApiJson = await client.GetStringAsync("/openapi/admin-v1.json");
+        var actual = OpenApiSnapshot.Canonicalize(openApiJson);
+        var snapshotPath = OpenApiSnapshot.GetSnapshotPath(AdminSnapshotRelativePath);
+
+        if (Environment.GetEnvironmentVariable(OpenApiSnapshot.UpdateEnvironmentVariable) == "1")
+        {
+            Assert.False(
+                string.Equals(Environment.GetEnvironmentVariable("CI"), "true",
+                    StringComparison.OrdinalIgnoreCase),
+                "OpenAPI snapshots cannot be updated in CI.");
+            await OpenApiSnapshot.WriteAsync(snapshotPath, actual);
+            return;
+        }
+
+        Assert.True(File.Exists(snapshotPath),
+            $"Admin OpenAPI snapshot is missing at '{snapshotPath}'.");
+        var expected = (await File.ReadAllTextAsync(snapshotPath))
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
+        Assert.Equal(expected, actual);
+
+        using var openApi = JsonDocument.Parse(openApiJson);
+        var paths = openApi.RootElement.GetProperty("paths");
+        Assert.NotEmpty(paths.EnumerateObject());
+        Assert.All(paths.EnumerateObject(), path =>
+            Assert.StartsWith("/api/internal/admin/problem-drafts", path.Name,
+                StringComparison.Ordinal));
+        Assert.DoesNotContain("JudgeTestCase", openApiJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("AuthoringTestCase", openApiJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("claimToken", openApiJson, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

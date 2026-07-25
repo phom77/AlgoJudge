@@ -9,6 +9,35 @@ namespace AlgoJudge.Infrastructure.IntegrationTests;
 public sealed class ContentGenerationQueueRepositoryTests
 {
     [PostgreSqlFact]
+    public async Task AddGenerationJobPersistsJobWithPreassignedGuid()
+    {
+        await using var database = await PostgreSqlTestDatabase.CreateAsync();
+        var revisionId = await SeedDraftRevisionAsync(database);
+        var jobId = Guid.NewGuid();
+
+        await using (var context = database.CreateContext())
+        {
+            var repository = new ProblemAuthoringRepository(context);
+            await repository.AddGenerationJobAsync(new ContentGenerationJob
+            {
+                Id = jobId,
+                RevisionId = revisionId,
+                Status = ContentGenerationJobStatus.Pending,
+                DefinitionSnapshotJson = "{}",
+                DefinitionSha256 = new string('a', 64),
+                TimeLimitMs = 1000,
+                MemoryLimitKb = 262144
+            });
+            await context.SaveChangesAsync();
+        }
+
+        await using var verify = database.CreateContext();
+        var persisted = await verify.ContentGenerationJobs.SingleAsync(item => item.Id == jobId);
+        Assert.Equal(revisionId, persisted.RevisionId);
+        Assert.Equal(ContentGenerationJobStatus.Pending, persisted.Status);
+    }
+
+    [PostgreSqlFact]
     public async Task PublishCopiesReadyCandidateToNextImmutableSystemSuite()
     {
         await using var database = await PostgreSqlTestDatabase.CreateAsync();
@@ -65,6 +94,52 @@ public sealed class ContentGenerationQueueRepositoryTests
         var revision = new ProblemAuthoringRevision { Id = Guid.NewGuid(), Problem = problem, OwnerUser = user, RevisionNumber = 1, Status = AuthoringRevisionStatus.Generating, Title = "Draft", Slug = problem.Slug, StatementMarkdown = "Statement", ConstraintsMarkdown = "Constraints", Difficulty = DifficultyLevel.Easy, TimeLimitMs = 1000, MemoryLimitKb = 262144, SamplesJson = "[]", DefinitionJson = "{}", DefinitionSha256 = new string('a', 64) };
         revision.GenerationJobs.Add(new ContentGenerationJob { Id = Guid.NewGuid(), Revision = revision, Status = ContentGenerationJobStatus.Pending, DefinitionSnapshotJson = "{}", DefinitionSha256 = new string('a', 64), TimeLimitMs = 1000, MemoryLimitKb = 262144 });
         context.Add(revision); await context.SaveChangesAsync(); return revision.Id;
+    }
+
+    private static async Task<Guid> SeedDraftRevisionAsync(PostgreSqlTestDatabase database)
+    {
+        await using var context = database.CreateContext();
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            UserName = $"draft_author_{Guid.NewGuid():N}",
+            Email = $"{Guid.NewGuid():N}@example.test",
+            PasswordHash = "test",
+            FullName = "Draft Author"
+        };
+        var problem = new Problem
+        {
+            Slug = $"draft-job-{Guid.NewGuid():N}",
+            Title = "Draft",
+            StatementMarkdown = "Statement",
+            ConstraintsMarkdown = "Constraints",
+            TimeLimitMs = 1000,
+            MemoryLimitKb = 262144,
+            ExecutionMode = ProblemExecutionMode.Function,
+            FunctionSignatureJson =
+                "{\"className\":\"Solution\",\"methodName\":\"solve\",\"returnType\":\"Int32\",\"parameters\":[]}"
+        };
+        var revision = new ProblemAuthoringRevision
+        {
+            Id = Guid.NewGuid(),
+            Problem = problem,
+            OwnerUser = user,
+            RevisionNumber = 1,
+            Status = AuthoringRevisionStatus.Draft,
+            Title = "Draft",
+            Slug = problem.Slug,
+            StatementMarkdown = "Statement",
+            ConstraintsMarkdown = "Constraints",
+            Difficulty = DifficultyLevel.Easy,
+            TimeLimitMs = 1000,
+            MemoryLimitKb = 262144,
+            SamplesJson = "[]",
+            DefinitionJson = "{}",
+            DefinitionSha256 = new string('a', 64)
+        };
+        context.Add(revision);
+        await context.SaveChangesAsync();
+        return revision.Id;
     }
 
     private static ContentGenerationResult Result() => new(new string('b', 64), "toolchain",

@@ -1,0 +1,458 @@
+<header class="authoring-header">
+  <div>
+    <p class="eyebrow">Maintainer workspace</p>
+    <h1>{{ store.draft()?.title || 'Create a problem' }}</h1>
+    <p>Build, verify, and publish a deterministic C++17 function problem.</p>
+  </div>
+  <a class="secondary-button" routerLink="/problems">Learner catalogue</a>
+</header>
+
+<ol class="steps" aria-label="Authoring progress">
+  <li>
+    <button type="button" [class.active]="step() === 'metadata'" (click)="selectStep('metadata')">
+      <span>1</span>Problem
+    </button>
+  </li>
+  <li>
+    <button
+      type="button"
+      [disabled]="!store.draft()"
+      [class.active]="step() === 'signature'"
+      (click)="selectStep('signature')"
+    >
+      <span>2</span>Signature
+    </button>
+  </li>
+  <li>
+    <button
+      type="button"
+      [disabled]="!store.draft()"
+      [class.active]="step() === 'cases'"
+      (click)="selectStep('cases')"
+    >
+      <span>3</span>Cases
+    </button>
+  </li>
+  <li>
+    <button
+      type="button"
+      [disabled]="!store.draft()"
+      [class.active]="step() === 'sources'"
+      (click)="selectStep('sources')"
+    >
+      <span>4</span>Sources
+    </button>
+  </li>
+  <li>
+    <button
+      type="button"
+      [disabled]="!store.draft()"
+      [class.active]="step() === 'review'"
+      (click)="selectStep('review')"
+    >
+      <span>5</span>Review
+    </button>
+  </li>
+</ol>
+
+@if (store.problem(); as problem) {
+  <div class="alert alert--error" role="alert">
+    <strong>{{ problem.title }}</strong> {{ problem.detail }}
+    @if (problem.code === 'forbidden') {
+      <span>This account is not in the maintainer allowlist.</span>
+    }
+  </div>
+}
+@if (localError(); as error) {
+  <div class="alert alert--error" role="alert">{{ error }}</div>
+}
+@if (store.published()) {
+  <div class="alert alert--success" role="status">
+    Published. The problem is now available in the learner catalogue.
+  </div>
+}
+
+@if (step() === 'metadata') {
+  <section class="panel">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Step 1</p>
+        <h2>Problem details</h2>
+      </div>
+      <p>Public content only. Hidden cases are authored later.</p>
+    </div>
+    <form class="form-grid" [formGroup]="metadataForm" (ngSubmit)="saveMetadata()">
+      <label>Slug<input formControlName="slug" autocomplete="off" placeholder="two-sum" /></label>
+      <label>Title<input formControlName="title" autocomplete="off" placeholder="Two Sum" /></label>
+      <label
+        >Difficulty<select formControlName="difficulty">
+          <option>Easy</option>
+          <option>Medium</option>
+          <option>Hard</option>
+        </select></label
+      >
+      <label>Time limit (ms)<input type="number" formControlName="timeLimitMs" /></label>
+      <label>Memory limit (KB)<input type="number" formControlName="memoryLimitKb" /></label>
+      <label class="wide"
+        >Statement (Markdown)<textarea
+          rows="8"
+          formControlName="statementMarkdown"
+          placeholder="Describe the task, inputs, and expected return value."
+        ></textarea>
+      </label>
+      <label class="wide"
+        >Constraints (Markdown)<textarea
+          rows="4"
+          formControlName="constraintsMarkdown"
+          placeholder="- 2 ≤ values.length ≤ 10,000"
+        ></textarea>
+      </label>
+      <label class="wide"
+        >Public sample arguments (JSON)<textarea rows="3" formControlName="sampleInput"></textarea>
+      </label>
+      <label class="wide"
+        >Public sample output (JSON)<textarea rows="2" formControlName="sampleOutput"></textarea>
+      </label>
+      <div class="actions wide">
+        <button class="primary-button" type="submit" [disabled]="store.busy()">
+          {{ store.draft() ? 'Save and continue' : 'Create draft' }}
+        </button>
+      </div>
+    </form>
+  </section>
+}
+
+@if (step() === 'signature') {
+  <section class="panel" [formGroup]="signatureForm">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Step 2</p>
+        <h2>Function signature</h2>
+      </div>
+      <p>The C++17 harness is derived from this contract.</p>
+    </div>
+    <div class="form-grid">
+      <label>Class name<input formControlName="className" /></label>
+      <label>Method name<input formControlName="methodName" /></label>
+      <label
+        >Return type<select formControlName="returnType">
+          @for (type of valueTypes; track type) {
+            <option [value]="type">{{ type }}</option>
+          }
+        </select></label
+      >
+    </div>
+    <div class="subsection">
+      <div class="row-heading">
+        <h3>Parameters</h3>
+        <button class="text-button" type="button" (click)="addParameter()">+ Add parameter</button>
+      </div>
+      <div formArrayName="parameters" class="stack">
+        @for (
+          parameter of signatureForm.controls.parameters.controls;
+          track parameter;
+          let index = $index
+        ) {
+          <div class="repeat-row" [formGroupName]="index">
+            <label>Parameter {{ index + 1 }}<input formControlName="name" /></label
+            ><label
+              >Type<select formControlName="type">
+                @for (type of valueTypes; track type) {
+                  <option [value]="type">{{ type }}</option>
+                }
+              </select></label
+            ><button
+              class="danger-button"
+              type="button"
+              (click)="removeParameter(index)"
+              aria-label="Remove parameter"
+            >
+              Remove
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+    <div class="actions">
+      <button
+        class="primary-button"
+        type="button"
+        [disabled]="store.busy()"
+        (click)="saveSignature()"
+      >
+        Save signature
+      </button>
+    </div>
+  </section>
+}
+
+@if (step() === 'cases') {
+  <section class="panel" [formGroup]="casesForm">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Step 3</p>
+        <h2>Handwritten testcases</h2>
+      </div>
+      <p>Arguments must match the function parameter names and types.</p>
+    </div>
+    <div class="row-heading">
+      <h3>Required edge cases</h3>
+      <button class="text-button" type="button" (click)="addCase()">+ Add testcase</button>
+    </div>
+    <div formArrayName="cases" class="stack">
+      @for (testcase of casesForm.controls.cases.controls; track testcase; let index = $index) {
+        <article class="case-card" [formGroupName]="index">
+          <div class="row-heading">
+            <label>Case name<input formControlName="name" /></label
+            ><button class="danger-button" type="button" (click)="removeCase(index)">Remove</button>
+          </div>
+          <label
+            >Arguments JSON<textarea
+              rows="5"
+              formControlName="argumentsJson"
+              spellcheck="false"
+            ></textarea>
+          </label>
+        </article>
+      }
+    </div>
+    <div class="actions">
+      <button class="primary-button" type="button" [disabled]="store.busy()" (click)="saveCases()">
+        Save cases
+      </button>
+    </div>
+  </section>
+}
+
+@if (step() === 'sources') {
+  <section class="panel" [formGroup]="sourcesForm">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Step 4</p>
+        <h2>Generation sources</h2>
+      </div>
+      <p>Autocomplete is available in Monaco. Presets are copied into editable source.</p>
+    </div>
+    <div class="editor-section">
+      <div class="row-heading">
+        <div>
+          <h3>C# generator</h3>
+          <p>
+            Deterministic groups: edge, random, adversarial, and stress. The current preset requests
+            {{ generatorPresetCaseCount }} generated cases plus handwritten cases.
+          </p>
+        </div>
+        <button class="text-button" type="button" (click)="applyGeneratorPreset()">
+          Apply preset
+        </button>
+      </div>
+      <aj-source-editor
+        language="csharp"
+        ariaLabel="C# testcase generator"
+        [value]="sourcesForm.controls.generator.value"
+        (valueChange)="sourcesForm.controls.generator.setValue($event)"
+      />
+    </div>
+    <div class="editor-section">
+      <div>
+        <h3>C# input validator</h3>
+        <p>Reject invalid generated arguments before reference execution.</p>
+      </div>
+      <aj-source-editor
+        language="csharp"
+        ariaLabel="C# input validator"
+        [value]="sourcesForm.controls.validator.value"
+        (valueChange)="sourcesForm.controls.validator.setValue($event)"
+      />
+    </div>
+    <div class="editor-section">
+      <div>
+        <h3>C++17 reference solution</h3>
+        <p>This solution produces every hidden expected output.</p>
+      </div>
+      <aj-source-editor
+        language="cpp"
+        ariaLabel="C++17 reference solution"
+        [value]="sourcesForm.controls.referenceSolution.value"
+        (valueChange)="sourcesForm.controls.referenceSolution.setValue($event)"
+      />
+    </div>
+    <div class="editor-section">
+      <div class="row-heading">
+        <div>
+          <h3>Known-wrong solution</h3>
+          <p>Optional, but useful to measure suite strength.</p>
+        </div>
+        <label>Identifier<input formControlName="wrongSolutionName" /></label>
+      </div>
+      <aj-source-editor
+        language="cpp"
+        ariaLabel="C++17 known-wrong solution"
+        [value]="sourcesForm.controls.wrongSolution.value"
+        (valueChange)="sourcesForm.controls.wrongSolution.setValue($event)"
+      />
+    </div>
+    <div class="actions">
+      <button
+        class="primary-button"
+        type="button"
+        [disabled]="store.busy()"
+        (click)="saveSources()"
+      >
+        Save sources
+      </button>
+    </div>
+  </section>
+}
+
+@if (step() === 'review') {
+  <section class="panel">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Step 5</p>
+        <h2>Generate, review, publish</h2>
+      </div>
+      <p>No hidden input or expected output is returned to the browser.</p>
+    </div>
+    @if (!store.review()) {
+      <div class="empty-state">
+        <h3>Generate the candidate suite</h3>
+        <p>The worker compiles the generator and reference solution in isolated stages.</p>
+        <button class="primary-button" type="button" [disabled]="store.busy()" (click)="generate()">
+          {{ store.busy() ? 'Generating…' : 'Generate suite' }}
+        </button>
+      </div>
+    }
+    @if (store.generation(); as generation) {
+      <dl class="stats">
+        <div>
+          <dt>Job status</dt>
+          <dd>{{ generation.jobStatus }}</dd>
+        </div>
+        <div>
+          <dt>Attempts</dt>
+          <dd>{{ generation.attemptCount }}</dd>
+        </div>
+        <div>
+          <dt>Generation time</dt>
+          <dd>{{ generationDuration() }}</dd>
+        </div>
+        <div>
+          <dt>Error</dt>
+          <dd>{{ generation.errorCode || 'None' }}</dd>
+        </div>
+      </dl>
+      @if (generation.errorMessage) {
+        <div class="alert alert--error" role="alert">{{ generation.errorMessage }}</div>
+      }
+    }
+    @if (store.review(); as review) {
+      <dl class="stats">
+        <div>
+          <dt>Total cases</dt>
+          <dd>{{ review.testCaseCount }}</dd>
+        </div>
+        <div>
+          <dt>Wrong solutions</dt>
+          <dd>{{ review.wrongSolutionCount }}</dd>
+        </div>
+        <div>
+          <dt>Toolchain</dt>
+          <dd>{{ review.toolchain }}</dd>
+        </div>
+        <div>
+          <dt>Suite SHA-256</dt>
+          <dd class="mono">{{ review.suiteSha256 }}</dd>
+        </div>
+      </dl>
+      <div class="review-grid">
+        <section>
+          <h3>Cases by group</h3>
+          <ul class="metric-list">
+            @for (entry of entries(review.casesByGroup); track entry[0]) {
+              <li>
+                <span>{{ entry[0] }}</span
+                ><strong>{{ entry[1] }}</strong>
+              </li>
+            }
+          </ul>
+        </section>
+        <section>
+          <h3>Wrong-solution kills</h3>
+          <ul class="metric-list">
+            @for (entry of entries(review.killedCaseCountByWrongSolution); track entry[0]) {
+              <li>
+                <span>{{ entry[0] }}</span
+                ><strong>{{ entry[1] }}</strong>
+              </li>
+            } @empty {
+              <li>No wrong solutions configured.</li>
+            }
+          </ul>
+        </section>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <caption>
+            Safe testcase metadata preview
+          </caption>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Group</th>
+              <th>Seed</th>
+              <th>Kills</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of review.casePreview; track item.ordinal) {
+              <tr>
+                <td>{{ item.ordinal }}</td>
+                <td>{{ item.name }}</td>
+                <td>{{ item.group }}</td>
+                <td class="mono">{{ item.seed }}</td>
+                <td>{{ item.killedWrongSolutions?.join(', ') || '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (review.isCasePreviewTruncated) {
+        <p class="muted">Preview limited to the first 100 cases.</p>
+      }
+      @if (review.survivingWrongSolutions?.length) {
+        <div class="alert alert--error" role="alert">
+          Still surviving: {{ review.survivingWrongSolutions?.join(', ') }}
+        </div>
+      }
+      @if (!store.published()) {
+        <div class="actions">
+          <button
+            class="primary-button"
+            type="button"
+            [disabled]="store.busy() || !!review.survivingWrongSolutions?.length"
+            (click)="publish()"
+          >
+            Publish problem</button
+          ><button
+            class="secondary-button"
+            type="button"
+            [disabled]="store.busy()"
+            (click)="generate()"
+          >
+            Regenerate
+          </button>
+        </div>
+      }
+    }
+    <aside class="legacy">
+      <h3>Legacy ZIP migration</h3>
+      <p>
+        Existing packages stay on the audited ContentTool path; private files are never uploaded
+        through the browser.
+      </p>
+      <code>./scripts/import-content.ps1 -PackagePath ./content/problem.zip</code>
+    </aside>
+  </section>
+}

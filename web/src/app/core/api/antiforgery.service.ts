@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { catchError, shareReplay, throwError } from 'rxjs';
+import { finalize, shareReplay } from 'rxjs';
 import type { Observable } from 'rxjs';
 
 import { AlgoJudgeApi } from './generated/algo-judge-api';
@@ -16,9 +16,8 @@ export class AntiforgeryService {
     }
 
     this.tokenRequest = this.api.invoke(apiAuthCsrfGet).pipe(
-      catchError((error: unknown) => {
+      finalize(() => {
         this.tokenRequest = null;
-        return throwError(() => error);
       }),
       shareReplay({ bufferSize: 1, refCount: false }),
     );

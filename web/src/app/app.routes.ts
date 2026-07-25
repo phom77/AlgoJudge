@@ -57,6 +57,24 @@ export const routes: Routes = [
     title: 'Submission history | AlgoJudge',
   },
   {
+    path: 'admin/problems/new',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/admin-authoring/problem-authoring.page').then(
+        (module) => module.ProblemAuthoringPage,
+      ),
+    title: 'Create problem | AlgoJudge',
+  },
+  {
+    path: 'admin/problems/:revisionId/author',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/admin-authoring/problem-authoring.page').then(
+        (module) => module.ProblemAuthoringPage,
+      ),
+    title: 'Problem authoring | AlgoJudge',
+  },
+  {
     path: '**',
     redirectTo: 'problems',
   },

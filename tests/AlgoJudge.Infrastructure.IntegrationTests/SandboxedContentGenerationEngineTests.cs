@@ -34,6 +34,27 @@ public sealed class SandboxedContentGenerationEngineTests
         Assert.DoesNotContain(result.SuiteSha256, result.Cases[0].Input, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task EngineAcceptsJsonbNormalizedSnapshotWhenCanonicalDefinitionHashMatches()
+    {
+        var canonicalJson = DefinitionJson();
+        using var document = JsonDocument.Parse(canonicalJson);
+        var normalizedJson = JsonSerializer.Serialize(
+            document.RootElement,
+            new JsonSerializerOptions { WriteIndented = true });
+        Assert.NotEqual(canonicalJson, normalizedJson);
+
+        var engine = new SandboxedContentGenerationEngine(
+            new FakeSourceSandbox(),
+            new FakeReferenceRunner(),
+            new FakeWrongRunner(),
+            Configuration());
+
+        var result = await engine.GenerateAsync(Claim(normalizedJson, canonicalJson));
+
+        Assert.Single(result.Cases);
+    }
+
     private static IConfiguration Configuration() => new ConfigurationBuilder().AddInMemoryCollection(
         new Dictionary<string, string?>
         {
@@ -42,9 +63,11 @@ public sealed class SandboxedContentGenerationEngineTests
             ["ContentGeneration:MaximumCaseCount"] = "500"
         }).Build();
 
-    private static ContentGenerationClaim Claim(string json) => new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
-        "worker", 1, DateTime.UtcNow.AddMinutes(1), json,
-        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(json))), 1000, 262144);
+    private static ContentGenerationClaim Claim(string json, string? hashSource = null) =>
+        new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+            "worker", 1, DateTime.UtcNow.AddMinutes(1), json,
+            Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(hashSource ?? json))),
+            1000, 262144);
 
     private static string DefinitionJson() => JsonSerializer.Serialize(new ProblemAuthoringDefinition
     {

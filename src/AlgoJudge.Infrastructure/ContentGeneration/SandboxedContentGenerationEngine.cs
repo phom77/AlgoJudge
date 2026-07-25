@@ -45,7 +45,8 @@ public sealed class SandboxedContentGenerationEngine : IContentGenerationEngine
                 ?? throw new JsonException();
         }
         catch (JsonException exception) { throw new ContentGenerationException("invalid_snapshot", "The authoring snapshot is invalid.", exception); }
-        if (!string.Equals(Hash(claim.DefinitionSnapshotJson), claim.DefinitionSha256, StringComparison.Ordinal))
+        var canonicalDefinitionJson = JsonSerializer.Serialize(definition, JsonOptions);
+        if (!string.Equals(Hash(canonicalDefinitionJson), claim.DefinitionSha256, StringComparison.Ordinal))
             throw new ContentGenerationException("invalid_snapshot", "The authoring snapshot hash does not match.");
 
         var request = new SourceGenerationRequest(definition.Generator.Source, definition.InputValidator.Source,

@@ -77,6 +77,8 @@ function createState() {
     runs: new Map(),
     createRequests: 0,
     runCreateRequests: 0,
+    authoringDraft: null,
+    generationPolls: 0,
   };
 }
 
@@ -132,6 +134,97 @@ async function handleApi(request, response, url) {
     );
     response.writeHead(204);
     return response.end();
+  }
+
+  if (url.pathname === '/api/internal/admin/problem-drafts' && request.method === 'POST') {
+    if (!userName) return authenticationProblem(response);
+    if (!hasValidCsrf(request, cookies)) return csrfProblem(response);
+    const body = await readJson(request);
+    state.authoringDraft = {
+      revisionId: randomUUID(),
+      problemId: 9,
+      revisionNumber: 1,
+      status: 'Draft',
+      ...body,
+      definition: {
+        schemaVersion: 1,
+        executionMode: 'Function',
+        functionSignature: {},
+        handwrittenCases: [],
+        generator: { language: 'csharp', sdkVersion: 1, source: '' },
+        inputValidator: { language: 'csharp', sdkVersion: 1, source: '' },
+        referenceSolution: { language: 'cpp17', source: '' },
+        wrongSolutions: [],
+      },
+      updatedAt: '2026-07-22T00:00:00Z',
+    };
+    return json(response, 201, state.authoringDraft);
+  }
+
+  const draftMatch = /^\/api\/internal\/admin\/problem-drafts\/([0-9a-f-]+)$/i.exec(url.pathname);
+  if (draftMatch && request.method === 'GET') {
+    if (!userName) return authenticationProblem(response);
+    return state.authoringDraft
+      ? json(response, 200, state.authoringDraft)
+      : problemDetails(response, 404, 'not-found', 'Draft not found.');
+  }
+
+  const authoringAction =
+    /^\/api\/internal\/admin\/problem-drafts\/([0-9a-f-]+)\/(metadata|signature|handwritten-cases|sources|generation|suite-review|publish)$/i.exec(
+      url.pathname,
+    );
+  if (authoringAction) {
+    if (!userName) return authenticationProblem(response);
+    const action = authoringAction[2];
+    if (request.method !== 'GET' && !hasValidCsrf(request, cookies)) return csrfProblem(response);
+    if (request.method === 'PUT') {
+      const body = await readJson(request);
+      if (action === 'metadata') Object.assign(state.authoringDraft, body);
+      if (action === 'signature')
+        state.authoringDraft.definition.functionSignature = body.signature;
+      if (action === 'handwritten-cases')
+        state.authoringDraft.definition.handwrittenCases = body.cases;
+      if (action === 'sources') Object.assign(state.authoringDraft.definition, body);
+      return json(response, 200, state.authoringDraft);
+    }
+    if (action === 'generation' && request.method === 'POST') {
+      state.generationPolls = 0;
+      state.authoringDraft.status = 'Generating';
+      return json(response, 202, generationStatus('Pending'));
+    }
+    if (action === 'generation' && request.method === 'GET') {
+      state.generationPolls += 1;
+      const done = state.generationPolls > 1;
+      state.authoringDraft.status = done ? 'Ready' : 'Generating';
+      return json(response, 200, generationStatus(done ? 'Succeeded' : 'Running'));
+    }
+    if (action === 'suite-review' && request.method === 'GET') {
+      return json(response, 200, {
+        revisionId: state.authoringDraft.revisionId,
+        suiteSha256: 'a'.repeat(64),
+        testCaseCount: 85,
+        casesByGroup: { handwritten: 1, edge: 12, random: 60, adversarial: 8, stress: 4 },
+        wrongSolutionCount: 1,
+        killedCaseCountByWrongSolution: { 'adjacent-only': 80 },
+        survivingWrongSolutions: [],
+        toolchain: 'e2e-generator-sdk-v1',
+        casePreview: [
+          {
+            ordinal: 1,
+            name: 'minimum',
+            group: 'handwritten',
+            seed: 0,
+            killedWrongSolutions: ['adjacent-only'],
+          },
+        ],
+        isCasePreviewTruncated: false,
+      });
+    }
+    if (action === 'publish' && request.method === 'POST') {
+      state.authoringDraft.status = 'Published';
+      response.writeHead(204);
+      return response.end();
+    }
   }
 
   if (url.pathname === '/api/problems' && request.method === 'GET') {
@@ -192,6 +285,33 @@ async function handleApi(request, response, url) {
     });
   }
 
+  if (
+    state.authoringDraft &&
+    url.pathname === `/api/problems/${state.authoringDraft.slug}` &&
+    request.method === 'GET'
+  ) {
+    return json(response, 200, {
+      id: state.authoringDraft.problemId,
+      slug: state.authoringDraft.slug,
+      title: state.authoringDraft.title,
+      difficulty: state.authoringDraft.difficulty,
+      tags: [],
+      isSolved: userName ? hasAcceptedSubmission(userName, state.authoringDraft.problemId) : null,
+      statementMarkdown: state.authoringDraft.statementMarkdown,
+      constraintsMarkdown: state.authoringDraft.constraintsMarkdown,
+      timeLimitMs: state.authoringDraft.timeLimitMs,
+      memoryLimitKb: state.authoringDraft.memoryLimitKb,
+      judgeVersion: 1,
+      executionMode: 1,
+      functionSignature: state.authoringDraft.definition.functionSignature,
+      publishedAt: '2026-07-22T00:05:00Z',
+      samples: state.authoringDraft.samples.map((sample, index) => ({
+        ordinal: index + 1,
+        ...sample,
+      })),
+    });
+  }
+
   const createRunMatch = /^\/api\/problems\/([^/]+)\/runs$/i.exec(url.pathname);
   if (createRunMatch && request.method === 'POST') {
     if (!userName) return authenticationProblem(response);
@@ -237,6 +357,7 @@ async function handleApi(request, response, url) {
       startedAt: null,
       finishedAt: null,
       polls: 0,
+      finalStatus: String(body.sourceCode).includes('WRONG') ? 'WrongAnswer' : 'Accepted',
     };
     state.submissions.set(submission.id, submission);
     return json(response, 201, publicSubmission(submission));
@@ -319,7 +440,7 @@ function advanceSubmission(submission) {
     submission.status = 'Running';
     submission.startedAt = '2026-07-17T01:00:01Z';
   } else if (submission.status === 'Running') {
-    submission.status = 'Accepted';
+    submission.status = submission.finalStatus;
     submission.executionTimeMs = 12;
     submission.memoryUsedKb = 2048;
     submission.finishedAt = '2026-07-17T01:00:02Z';
@@ -491,4 +612,19 @@ function contentType(filePath) {
 
 function delay(milliseconds) {
   return new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds));
+}
+
+function generationStatus(jobStatus) {
+  return {
+    jobId: '11111111-1111-1111-1111-111111111111',
+    revisionId: state.authoringDraft.revisionId,
+    jobStatus,
+    revisionStatus: state.authoringDraft.status,
+    attemptCount: 1,
+    errorCode: null,
+    errorMessage: null,
+    createdAt: '2026-07-22T00:01:00Z',
+    startedAt: '2026-07-22T00:01:01Z',
+    finishedAt: jobStatus === 'Succeeded' ? '2026-07-22T00:01:02Z' : null,
+  };
 }

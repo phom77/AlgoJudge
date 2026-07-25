@@ -84,7 +84,8 @@ System suites are selected by problem ID plus positive suite version and are
 executed in stable ordinal order. Missing versions are operational failures,
 not empty Accepted suites. Generator code and reference solutions never run in
 the worker. Submission retries and reclaimed leases use the original pinned
-version.
+version. Testcase input and content-generation protocol requests are written to
+container stdin as UTF-8 without a byte-order mark on every supported host OS.
 
 ## 3.1 Offline content generation
 

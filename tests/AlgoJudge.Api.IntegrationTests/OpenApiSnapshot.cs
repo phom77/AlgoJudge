@@ -45,7 +45,7 @@ internal static class OpenApiSnapshot
             .Replace("\r\n", "\n", StringComparison.Ordinal) + "\n";
     }
 
-    public static string GetSnapshotPath()
+    public static string GetSnapshotPath(string relativePath = RelativePath)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null &&
@@ -62,7 +62,7 @@ internal static class OpenApiSnapshot
 
         return Path.Combine(
             directory.FullName,
-            RelativePath.Replace('/', Path.DirectorySeparatorChar));
+            relativePath.Replace('/', Path.DirectorySeparatorChar));
     }
 
     public static async Task WriteAsync(string path, string content)

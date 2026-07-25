@@ -14,7 +14,7 @@ describe('AntiforgeryService', () => {
     });
   });
 
-  it('shares and caches the CSRF bootstrap request', () => {
+  it('shares only an in-flight CSRF bootstrap request', () => {
     const response = new Subject<void>();
     invoke.mockReturnValue(response.asObservable());
     const service = TestBed.inject(AntiforgeryService);
@@ -26,7 +26,7 @@ describe('AntiforgeryService', () => {
     response.next();
     response.complete();
     service.ensureToken().subscribe();
-    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(invoke).toHaveBeenCalledTimes(2);
   });
 
   it('allows bootstrap to retry after a failure', () => {

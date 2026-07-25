@@ -453,10 +453,12 @@ public sealed class BackendAcceptanceTests
             });
         await AssertSuccessAsync(registerResponse, "register test account");
 
+        await EnableAntiforgeryAsync(client);
         var loginResponse = await client.PostAsJsonAsync(
             "/api/auth/login",
             new { userName, password });
         await AssertSuccessAsync(loginResponse, "login test account");
+        await EnableAntiforgeryAsync(client);
         return Deserialize<AuthResponse>(
             await loginResponse.Content.ReadAsStringAsync());
     }

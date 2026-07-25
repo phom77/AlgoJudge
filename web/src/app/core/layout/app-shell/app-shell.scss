@@ -46,6 +46,7 @@
 .navigation {
   display: flex;
   align-self: stretch;
+  gap: var(--space-5);
 }
 
 .navigation__link {

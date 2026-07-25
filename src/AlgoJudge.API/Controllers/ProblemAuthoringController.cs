@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace AlgoJudge.API.Controllers;
 
 [ApiController]
-[ApiExplorerSettings(IgnoreApi = true)]
+[ApiExplorerSettings(GroupName = "admin-v1")]
 [Authorize(Policy = "Maintainer")]
 [Route("api/internal/admin/problem-drafts")]
 public sealed class ProblemAuthoringController : ControllerBase
