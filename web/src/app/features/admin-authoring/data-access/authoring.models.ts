@@ -44,3 +44,13 @@ export interface SourcesInput {
   readonly wrongSolutionName: string;
   readonly wrongSolution: string;
 }
+
+export interface SuiteQualityPolicyInput {
+  readonly minimumTestCaseCount: number;
+  readonly minimumHandwrittenCases: number;
+  readonly minimumEdgeCases: number;
+  readonly minimumRandomCases: number;
+  readonly minimumAdversarialCases: number;
+  readonly minimumStressCases: number;
+  readonly requireEachDeclaredWrongSolutionKilled: boolean;
+}

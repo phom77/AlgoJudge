@@ -1,6 +1,7 @@
 using AlgoJudge.Application.ContentGeneration;
 using AlgoJudge.Application.FunctionExecution;
 using AlgoJudge.Application.Interfaces;
+using AlgoJudge.Domain.Execution;
 
 namespace AlgoJudge.ContentTool.Generation;
 
@@ -8,13 +9,16 @@ public sealed class Cpp17WrongSolutionRunner : IWrongSolutionRunner
 {
     private readonly IDockerSandbox _sandbox;
     private readonly IFunctionHarnessBuilder _functionHarnessBuilder;
+    private readonly IOutputChecker _outputChecker;
 
     public Cpp17WrongSolutionRunner(
         IDockerSandbox sandbox,
-        IFunctionHarnessBuilder functionHarnessBuilder)
+        IFunctionHarnessBuilder functionHarnessBuilder,
+        IOutputChecker outputChecker)
     {
         _sandbox = sandbox;
         _functionHarnessBuilder = functionHarnessBuilder;
+        _outputChecker = outputChecker;
     }
 
     public async Task<IReadOnlySet<int>> FindKilledCasesAsync(
@@ -23,6 +27,7 @@ public sealed class Cpp17WrongSolutionRunner : IWrongSolutionRunner
         IReadOnlyList<string> inputs,
         IReadOnlyList<string> expectedOutputs,
         ReferenceSolutionLimits limits,
+        OutputCheckerConfiguration outputChecker,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(sourceCode);
@@ -59,10 +64,7 @@ public sealed class Cpp17WrongSolutionRunner : IWrongSolutionRunner
                 if (result.Status == SandboxRunStatus.SystemError)
                     throw new TestGenerationException("Wrong-solution sandbox execution failed.");
                 if (result.Status != SandboxRunStatus.Success ||
-                    !string.Equals(
-                        result.Output.Trim(),
-                        expectedOutputs[index].Trim(),
-                        StringComparison.Ordinal))
+                    !_outputChecker.IsMatch(outputChecker, expectedOutputs[index], result.Output))
                 {
                     killed.Add(index + 1);
                 }

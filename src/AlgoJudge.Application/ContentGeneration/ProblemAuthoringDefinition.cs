@@ -13,4 +13,5 @@ public sealed class ProblemAuthoringDefinition
     public GeneratorSourceDefinition InputValidator { get; init; } = new();
     public FunctionSourceDefinition ReferenceSolution { get; init; } = new();
     public IReadOnlyList<WrongSolutionDefinition> WrongSolutions { get; init; } = [];
+    public SuiteQualityPolicy QualityPolicy { get; init; } = new();
 }

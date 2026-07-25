@@ -13,6 +13,7 @@ import type {
   HandwrittenCaseInput,
   SignatureInput,
   SourcesInput,
+  SuiteQualityPolicyInput,
 } from './authoring.models';
 
 interface AuthoringState {
@@ -102,6 +103,17 @@ export class AuthoringStore {
 
   saveSources(revisionId: string, value: SourcesInput): Observable<ProblemDraftResponse | null> {
     return this.request(this.gateway.updateSources(revisionId, value), (draft) => ({
+      draft,
+      review: null,
+      published: false,
+    }));
+  }
+
+  saveQualityPolicy(
+    revisionId: string,
+    value: SuiteQualityPolicyInput,
+  ): Observable<ProblemDraftResponse | null> {
+    return this.request(this.gateway.updateQualityPolicy(revisionId, value), (draft) => ({
       draft,
       review: null,
       published: false,

@@ -1,4 +1,5 @@
 using AlgoJudge.Application.Contracts.Admin;
+using AlgoJudge.Application.ContentGeneration;
 using AlgoJudge.Application.Exceptions;
 using AlgoJudge.Application.FunctionExecution;
 using AlgoJudge.Application.Interfaces;
@@ -97,6 +98,54 @@ public sealed class ProblemAuthoringServiceTests
         Assert.DoesNotContain(review.GetType().GetProperties(), property =>
             property.Name.Contains("Input", StringComparison.OrdinalIgnoreCase) ||
             property.Name.Contains("ExpectedOutput", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task UpdatingQualityPolicyInvalidatesReadyCandidateAndSnapshotsThePolicy()
+    {
+        var repository = new FakeRepository();
+        var service = new ProblemAuthoringService(repository, new FakeUnitOfWork());
+        var owner = Guid.NewGuid();
+        var draft = await service.CreateDraftAsync(owner, ValidCreateRequest());
+        repository.Revision!.Status = AuthoringRevisionStatus.Ready;
+        repository.Revision.CandidateSuiteSha256 = new string('a', 64);
+        repository.Revision.CandidateCaseCount = 1;
+
+        var updated = await service.UpdateQualityPolicyAsync(owner, draft.RevisionId,
+            new UpdateSuiteQualityPolicyRequest
+            {
+                QualityPolicy = new SuiteQualityPolicy
+                {
+                    MinimumTestCaseCount = 500,
+                    MinimumCasesByGroup =
+                    [
+                        new SuiteQualityGroupRequirement
+                        {
+                            Group = "random",
+                            MinimumCaseCount = 400
+                        }
+                    ]
+                }
+            });
+
+        Assert.Equal(AuthoringRevisionStatus.Draft, updated.Status);
+        Assert.Equal(500, updated.Definition.QualityPolicy.MinimumTestCaseCount);
+        Assert.Equal("random", updated.Definition.QualityPolicy.MinimumCasesByGroup[0].Group);
+        Assert.Null(repository.Revision.CandidateSuiteSha256);
+        Assert.Null(repository.Revision.CandidateCaseCount);
+    }
+
+    [Fact]
+    public async Task UpdatingQualityPolicyRejectsNullPolicy()
+    {
+        var repository = new FakeRepository();
+        var service = new ProblemAuthoringService(repository, new FakeUnitOfWork());
+        var owner = Guid.NewGuid();
+        var draft = await service.CreateDraftAsync(owner, ValidCreateRequest());
+
+        await Assert.ThrowsAsync<RequestValidationException>(() =>
+            service.UpdateQualityPolicyAsync(owner, draft.RevisionId,
+                new UpdateSuiteQualityPolicyRequest { QualityPolicy = null! }));
     }
 
     private static CreateProblemDraftRequest ValidCreateRequest() => new()

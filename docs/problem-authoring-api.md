@@ -20,6 +20,7 @@ and is versioned separately so the stable learner contract remains unchanged.
 | `PUT /{revisionId}/signature` | Save the Function signature. |
 | `PUT /{revisionId}/handwritten-cases` | Replace handwritten cases. |
 | `PUT /{revisionId}/sources` | Save generator, validator, reference, and wrong-solution source. |
+| `PUT /{revisionId}/quality-policy` | Save minimum total/group coverage and wrong-solution-kill requirements. |
 | `POST /{revisionId}/generation` | Snapshot the Draft and enqueue generation. |
 | `GET /{revisionId}/generation` | Read job state and safe errors. |
 | `GET /{revisionId}/suite-review` | Read counts by group, differential kill counts, survivors, hashes, and toolchain identity. |
@@ -29,6 +30,12 @@ Editing Ready deletes its private candidate and returns it to Draft. Generating
 snapshots and Published revisions are immutable. Suite review never includes
 generated input or expected output. Compiler output, source, generated values,
 and reference output are absent from job status and normal logs.
+
+`qualityPolicy` belongs to the revision definition and is validated before a
+generation job is created. A candidate that misses a required total, group, or
+declared wrong-solution kill fails with the safe `quality_gate_failed` job
+category. Publish repeats the policy check over the stored private candidate;
+it cannot publish a Ready revision that no longer satisfies its snapshot.
 
 The suite review includes at most 100 safe case metadata rows: ordinal, name,
 group, deterministic seed, and killed wrong-solution identifiers. A truncation

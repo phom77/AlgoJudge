@@ -1,5 +1,7 @@
 namespace AlgoJudge.Application.Contracts.Admin;
 
+using AlgoJudge.Application.ContentGeneration;
+
 public sealed class GeneratedSuiteReviewResponse
 {
     public Guid RevisionId { get; init; }
@@ -14,4 +16,5 @@ public sealed class GeneratedSuiteReviewResponse
     public string Toolchain { get; init; } = string.Empty;
     public IReadOnlyList<GeneratedCaseReviewResponse> CasePreview { get; init; } = [];
     public bool IsCasePreviewTruncated { get; init; }
+    public SuiteQualityPolicy QualityPolicy { get; init; } = new();
 }

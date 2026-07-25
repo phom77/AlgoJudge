@@ -11,6 +11,7 @@ public interface IProblemAuthoringService
     Task<ProblemDraftResponse> UpdateSignatureAsync(Guid ownerUserId, Guid revisionId, UpdateFunctionSignatureRequest request, CancellationToken cancellationToken = default);
     Task<ProblemDraftResponse> UpdateHandwrittenCasesAsync(Guid ownerUserId, Guid revisionId, UpdateHandwrittenCasesRequest request, CancellationToken cancellationToken = default);
     Task<ProblemDraftResponse> UpdateSourcesAsync(Guid ownerUserId, Guid revisionId, UpdateAuthoringSourcesRequest request, CancellationToken cancellationToken = default);
+    Task<ProblemDraftResponse> UpdateQualityPolicyAsync(Guid ownerUserId, Guid revisionId, UpdateSuiteQualityPolicyRequest request, CancellationToken cancellationToken = default);
     Task<ContentGenerationStatusResponse> StartGenerationAsync(Guid ownerUserId, Guid revisionId, CancellationToken cancellationToken = default);
     Task<ContentGenerationStatusResponse> GetGenerationStatusAsync(Guid ownerUserId, Guid revisionId, CancellationToken cancellationToken = default);
     Task<GeneratedSuiteReviewResponse> GetSuiteReviewAsync(Guid ownerUserId, Guid revisionId, CancellationToken cancellationToken = default);

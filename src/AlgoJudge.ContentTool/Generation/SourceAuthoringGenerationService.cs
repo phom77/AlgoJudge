@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using AlgoJudge.Application.ContentGeneration;
 using AlgoJudge.Application.FunctionExecution;
+using AlgoJudge.Domain.Execution;
 using AlgoJudge.ContentTool.Configuration;
 
 namespace AlgoJudge.ContentTool.Generation;
@@ -123,6 +124,7 @@ public sealed class SourceAuthoringGenerationService
                 inputs,
                 outputs,
                 limits,
+                OutputCheckerConfiguration.JsonExact,
                 cancellationToken);
             foreach (var ordinal in killed)
             {
@@ -168,6 +170,17 @@ public sealed class SourceAuthoringGenerationService
             .Select(item => item.Name)
             .Order(StringComparer.Ordinal)
             .ToArray();
+        var casesByGroup = first.Cases
+            .GroupBy(item => item.Group)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
+        var violations = SuiteQualityGate.Evaluate(
+            definition.QualityPolicy,
+            generatedCases.Count,
+            casesByGroup,
+            definition.WrongSolutions.Select(item => item.Name).ToArray(),
+            survivors);
+        if (violations.Count > 0)
+            throw new TestGenerationException("Generated suite did not meet its quality policy.");
         var suiteMaterial = BuildSuiteMaterial(
             document,
             first.ToolchainIdentity,
@@ -310,7 +323,8 @@ public sealed class SourceAuthoringGenerationService
             _cpp17ToolchainIdentity,
             "source-engine-v1",
             $"sdk={document.Definition.Generator.SdkVersion}",
-            "comparator=json-exact-v1"
+            "comparator=json-exact-v1",
+            $"quality-policy={JsonSerializer.Serialize(document.Definition.QualityPolicy)}"
         };
         lines.AddRange(wrongSolutions.OrderBy(item => item.Name, StringComparer.Ordinal)
             .Select(item => $"wrong|{item.Name}|{item.SourceSha256}|{item.KilledCaseCount}"));

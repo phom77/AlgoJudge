@@ -55,6 +55,22 @@ public sealed class SandboxedContentGenerationEngineTests
         Assert.Single(result.Cases);
     }
 
+    [Fact]
+    public async Task EngineRejectsCandidateWhenADeclaredWrongSolutionSurvivesTheQualityGate()
+    {
+        var engine = new SandboxedContentGenerationEngine(
+            new FakeSourceSandbox(),
+            new FakeReferenceRunner(),
+            new FakeWrongRunner(),
+            Configuration());
+
+        var exception = await Assert.ThrowsAsync<ContentGenerationException>(() =>
+            engine.GenerateAsync(Claim(DefinitionJson(requireEachWrongSolutionKilled: true))));
+
+        Assert.Equal("quality_gate_failed", exception.ErrorCode);
+        Assert.DoesNotContain("survives", exception.SafeMessage, StringComparison.Ordinal);
+    }
+
     private static IConfiguration Configuration() => new ConfigurationBuilder().AddInMemoryCollection(
         new Dictionary<string, string?>
         {
@@ -69,7 +85,7 @@ public sealed class SandboxedContentGenerationEngineTests
             Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(hashSource ?? json))),
             1000, 262144);
 
-    private static string DefinitionJson() => JsonSerializer.Serialize(new ProblemAuthoringDefinition
+    private static string DefinitionJson(bool requireEachWrongSolutionKilled = false) => JsonSerializer.Serialize(new ProblemAuthoringDefinition
     {
         SchemaVersion = 1,
         ExecutionMode = AlgoJudge.Domain.Enums.ProblemExecutionMode.Function,
@@ -82,7 +98,8 @@ public sealed class SandboxedContentGenerationEngineTests
         [
             new() { Name = "survives", Language = "cpp17", Source = "survives" },
             new() { Name = "killed", Language = "cpp17", Source = "killed" }
-        ]
+        ],
+        QualityPolicy = new SuiteQualityPolicy { RequireEachDeclaredWrongSolutionKilled = requireEachWrongSolutionKilled }
     }, new JsonSerializerOptions(JsonSerializerDefaults.Web)
     {
         Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter(allowIntegerValues: false) }
@@ -103,7 +120,7 @@ public sealed class SandboxedContentGenerationEngineTests
     private sealed class FakeWrongRunner : IWrongSolutionRunner
     {
         public int Calls { get; private set; }
-        public Task<IReadOnlySet<int>> FindKilledCasesAsync(string sourceCode, FunctionSignature signature, IReadOnlyList<string> inputs, IReadOnlyList<string> expectedOutputs, ReferenceSolutionLimits limits, CancellationToken cancellationToken = default)
+        public Task<IReadOnlySet<int>> FindKilledCasesAsync(string sourceCode, FunctionSignature signature, IReadOnlyList<string> inputs, IReadOnlyList<string> expectedOutputs, ReferenceSolutionLimits limits, AlgoJudge.Domain.Execution.OutputCheckerConfiguration outputChecker, CancellationToken cancellationToken = default)
         {
             Calls++;
             return Task.FromResult<IReadOnlySet<int>>(

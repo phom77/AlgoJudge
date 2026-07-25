@@ -1,4 +1,5 @@
 using AlgoJudge.Application.FunctionExecution;
+using AlgoJudge.Domain.Execution;
 
 namespace AlgoJudge.Application.ContentGeneration;
 
@@ -10,5 +11,6 @@ public interface IWrongSolutionRunner
         IReadOnlyList<string> inputs,
         IReadOnlyList<string> expectedOutputs,
         ReferenceSolutionLimits limits,
+        OutputCheckerConfiguration outputChecker,
         CancellationToken cancellationToken = default);
 }

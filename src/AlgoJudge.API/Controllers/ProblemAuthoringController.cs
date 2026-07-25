@@ -50,6 +50,10 @@ public sealed class ProblemAuthoringController : ControllerBase
     public Task<ProblemDraftResponse> UpdateSources(Guid revisionId, UpdateAuthoringSourcesRequest request, CancellationToken cancellationToken) =>
         _service.UpdateSourcesAsync(UserId(), revisionId, request, cancellationToken);
 
+    [HttpPut("{revisionId:guid}/quality-policy")]
+    public Task<ProblemDraftResponse> UpdateQualityPolicy(Guid revisionId, UpdateSuiteQualityPolicyRequest request, CancellationToken cancellationToken) =>
+        _service.UpdateQualityPolicyAsync(UserId(), revisionId, request, cancellationToken);
+
     [HttpPost("{revisionId:guid}/generation")]
     public async Task<ActionResult<ContentGenerationStatusResponse>> Generate(Guid revisionId, CancellationToken cancellationToken)
     {
