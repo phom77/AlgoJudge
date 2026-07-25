@@ -13,6 +13,9 @@ Coverage includes:
   Error, and Runtime Error;
 - stdin/stdout and Function execution through the API, PostgreSQL queues, real
   worker, generated Function harness, and Docker sandbox;
+- maintainer authoring through the API, PostgreSQL content-generation queue,
+  content worker, quality review, and publication of a 1,000-case Function
+  suite; the published suite is then exercised by the real judge sandbox;
 - custom Run output stays separate from system-suite Submit history and solved
   state, while submissions remain pinned to their system-suite version;
 - submission ownership and absence of source or hidden testcase data from API
