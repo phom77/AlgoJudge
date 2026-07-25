@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AlgoJudge.API\AlgoJudge.API.csproj" Aliases="Api" />
+    <ProjectReference Include="..\..\src\AlgoJudge.ContentWorker\AlgoJudge.ContentWorker.csproj" />
     <ProjectReference Include="..\..\src\AlgoJudge.Worker\AlgoJudge.Worker.csproj" />
   </ItemGroup>
 

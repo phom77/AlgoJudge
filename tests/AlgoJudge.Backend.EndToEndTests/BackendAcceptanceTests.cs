@@ -1,10 +1,14 @@
 using AlgoJudge.Application.Contracts.Auth;
+using AlgoJudge.Application.Contracts.Admin;
 using AlgoJudge.Application.Contracts.Common;
 using AlgoJudge.Application.Contracts.Problems;
 using AlgoJudge.Application.Contracts.Runs;
 using AlgoJudge.Application.Contracts.Submissions;
+using AlgoJudge.Application.ContentGeneration;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
+using AlgoJudge.Domain.Execution;
+using AlgoJudge.Infrastructure.Grading;
 using AlgoJudge.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
@@ -56,6 +60,120 @@ public sealed class BackendAcceptanceTests
 
     private const string FunctionSource =
         "class Solution { public: int solve(int value) { return value * 2; } };";
+
+    private const string ScaleInput =
+        "{\"values\":[123456789,123456789],\"target\":246913578}";
+
+    private const string ScaleAcceptedSource = """
+        // private-source-e2e-sentinel-84d19c
+        #include <vector>
+        using namespace std;
+        class Solution {
+        public:
+            vector<int> twoSum(vector<int>, int) { return { 0, 1 }; }
+        };
+        """;
+
+    private const string ScaleWrongAnswerSource = """
+        // private-source-e2e-sentinel-84d19c
+        #include <vector>
+        using namespace std;
+        class Solution {
+        public:
+            vector<int> twoSum(vector<int>, int) { return {}; }
+        };
+        """;
+
+    [BackendEndToEndFact]
+    public async Task MaintainerAuthorsPublishesAndJudgesAOneThousandCaseFunctionProblem()
+    {
+        await using var database = await EndToEndPostgreSqlDatabase.CreateAsync();
+        var logs = new CapturingLoggerProvider();
+        var maintainerId = Guid.NewGuid();
+        await SeedMaintainerAsync(database, maintainerId);
+        await using var factory = new EndToEndApiFactory(
+            database.ConnectionString,
+            logs,
+            maintainerId);
+        using var client = CreateClient(factory);
+        await LoginMaintainerAsync(client);
+
+        var unique = Guid.NewGuid().ToString("N");
+        var draft = await CreateDraftAsync(client, unique);
+        await UpdateScaleDefinitionAsync(client, draft.RevisionId);
+
+        var start = await client.PostAsync(
+            $"/api/internal/admin/problem-drafts/{draft.RevisionId}/generation",
+            null);
+        Assert.Equal(HttpStatusCode.Accepted, start.StatusCode);
+
+        var sourceSandbox = new ScaleSourceGenerationSandbox();
+        await using (var contentWorker = await EndToEndContentWorkerHost.StartAsync(
+                         database.ConnectionString,
+                         "scale-authoring-worker",
+                         logs,
+                         sourceSandbox,
+                         new ScaleReferenceRunner(),
+                         new ScaleWrongSolutionRunner()))
+        {
+            var generated = await WaitForGenerationAsync(client, draft.RevisionId);
+            Assert.True(
+                generated.JobStatus == ContentGenerationJobStatus.Succeeded,
+                $"Generation failed with {generated.ErrorCode}: {generated.ErrorMessage}");
+            Assert.Equal(AuthoringRevisionStatus.Ready, generated.RevisionStatus);
+        }
+
+        Assert.Equal(2, sourceSandbox.InvocationCount);
+        Assert.Equal(1_000, sourceSandbox.LastRequest?.MaximumCaseCount);
+        Assert.Equal(["values", "target"], sourceSandbox.LastRequest?.ParameterNames);
+        var review = await GetJsonAsync<GeneratedSuiteReviewResponse>(
+            client,
+            $"/api/internal/admin/problem-drafts/{draft.RevisionId}/suite-review");
+        Assert.Equal(1_000, review.TestCaseCount);
+        Assert.Equal(1, review.CasesByGroup["handwritten"]);
+        Assert.Equal(100, review.CasesByGroup["edge"]);
+        Assert.Equal(700, review.CasesByGroup["random"]);
+        Assert.Equal(149, review.CasesByGroup["adversarial"]);
+        Assert.Equal(50, review.CasesByGroup["stress"]);
+        Assert.Equal(1_000, review.KilledCaseCountByWrongSolution["always-empty"]);
+        Assert.Empty(review.SurvivingWrongSolutions);
+        Assert.Equal(100, review.CasePreview.Count);
+        Assert.True(review.IsCasePreviewTruncated);
+
+        var publish = await client.PostAsync(
+            $"/api/internal/admin/problem-drafts/{draft.RevisionId}/publish",
+            null);
+        Assert.Equal(HttpStatusCode.NoContent, publish.StatusCode);
+
+        var publicProblem = await client.GetAsync($"/api/problems/{draft.Slug}");
+        publicProblem.EnsureSuccessStatusCode();
+        AssertPrivateDataAbsent(await publicProblem.Content.ReadAsStringAsync());
+
+        await using (var context = database.CreateContext())
+        {
+            Assert.Equal(1_000, await context.JudgeTestCases.CountAsync(
+                item => item.ProblemId == draft.ProblemId && item.SystemTestSuiteVersion == 1));
+            var suite = await context.SystemTestSuites.SingleAsync(item =>
+                item.ProblemId == draft.ProblemId && item.Version == 1);
+            Assert.Equal(OutputCheckerKind.JsonExact, suite.OutputCheckerKind);
+        }
+
+        var submission = await SubmitAsync(client, draft.ProblemId, ScaleWrongAnswerSource);
+        var sandbox = new CountingDockerSandbox(EndToEndWorkerHost.CreateDockerSandbox());
+        await using (var worker = await EndToEndWorkerHost.StartAsync(
+                         database.ConnectionString,
+                         "scale-judge-worker",
+                         logs,
+                         sandbox))
+        {
+            var final = await WaitForFinalSubmissionAsync(client, submission.Id);
+            Assert.Equal(SubmissionStatus.WrongAnswer, final.Status);
+        }
+
+        Assert.Equal(1, sandbox.CompileCount);
+        Assert.Equal(1, sandbox.RunCount);
+        AssertPrivateDataAbsent(string.Join(Environment.NewLine, logs.Entries));
+    }
 
     [BackendEndToEndFact]
     public async Task FullUserFlowProducesEveryVerdictAndProtectsPrivateData()
@@ -412,9 +530,10 @@ public sealed class BackendAcceptanceTests
 
     private static async Task<SubmissionResponse> WaitForFinalSubmissionAsync(
         HttpClient client,
-        Guid submissionId)
+        Guid submissionId,
+        TimeSpan? timeoutDuration = null)
     {
-        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+        using var timeout = new CancellationTokenSource(timeoutDuration ?? TimeSpan.FromMinutes(5));
         while (true)
         {
             var response = await client.GetAsync(
@@ -432,6 +551,176 @@ public sealed class BackendAcceptanceTests
 
             await Task.Delay(200, timeout.Token);
         }
+    }
+
+    private static async Task<ContentGenerationStatusResponse> WaitForGenerationAsync(
+        HttpClient client,
+        Guid revisionId)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+        while (true)
+        {
+            var generation = await GetJsonAsync<ContentGenerationStatusResponse>(
+                client,
+                $"/api/internal/admin/problem-drafts/{revisionId}/generation");
+            if (generation.JobStatus == ContentGenerationJobStatus.Failed ||
+                (generation.JobStatus == ContentGenerationJobStatus.Succeeded &&
+                    generation.RevisionStatus == AuthoringRevisionStatus.Ready))
+            {
+                return generation;
+            }
+
+            await Task.Delay(200, timeout.Token);
+        }
+    }
+
+    private static async Task<ProblemDraftResponse> CreateDraftAsync(
+        HttpClient client,
+        string unique)
+    {
+        var response = await client.PostAsJsonAsync(
+            "/api/internal/admin/problem-drafts",
+            new
+            {
+                slug = $"authoring-scale-{unique}",
+                title = "One thousand case function acceptance",
+                statementMarkdown = "Return the indexes of the two values that sum to the target.",
+                constraintsMarkdown = "Exactly one pair exists.",
+                difficulty = "Easy",
+                timeLimitMs = 1_000,
+                memoryLimitKb = 64 * 1024,
+                samples = new[]
+                {
+                    new
+                    {
+                        input = "{\"values\":[1,2],\"target\":3}",
+                        expectedOutput = "[0,1]",
+                        explanation = "The two values form the target."
+                    }
+                }
+            });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        return Deserialize<ProblemDraftResponse>(await response.Content.ReadAsStringAsync());
+    }
+
+    private static async Task UpdateScaleDefinitionAsync(HttpClient client, Guid revisionId)
+    {
+        var signature = await client.PutAsJsonAsync(
+            $"/api/internal/admin/problem-drafts/{revisionId}/signature",
+            new
+            {
+                signature = new
+                {
+                    className = "Solution",
+                    methodName = "twoSum",
+                    returnType = "Int32Array",
+                    parameters = new[]
+                    {
+                        new { name = "values", type = "Int32Array" },
+                        new { name = "target", type = "Int32" }
+                    }
+                }
+            });
+        await AssertSuccessAsync(signature, "set Function signature");
+
+        var handwritten = await client.PutAsJsonAsync(
+            $"/api/internal/admin/problem-drafts/{revisionId}/handwritten-cases",
+            new
+            {
+                cases = new[]
+                {
+                    new
+                    {
+                        name = "handwritten-duplicate",
+                        group = "handwritten",
+                        arguments = new
+                        {
+                            values = new[] { 123456789, 123456789 },
+                            target = 246913578
+                        }
+                    }
+                }
+            });
+        await AssertSuccessAsync(handwritten, "set handwritten testcase");
+
+        var sources = await client.PutAsJsonAsync(
+            $"/api/internal/admin/problem-drafts/{revisionId}/sources",
+            new
+            {
+                generator = new
+                {
+                    language = "csharp",
+                    sdkVersion = 1,
+                    source = "// private-source-e2e-sentinel-84d19c\npublic sealed class Generator { }"
+                },
+                inputValidator = new
+                {
+                    language = "csharp",
+                    sdkVersion = 1,
+                    source = "// private-source-e2e-sentinel-84d19c\npublic sealed class Validator { }"
+                },
+                referenceSolution = new
+                {
+                    language = "cpp17",
+                    source = ScaleAcceptedSource
+                },
+                wrongSolutions = new[]
+                {
+                    new
+                    {
+                        name = "always-empty",
+                        language = "cpp17",
+                        source = "// private-source-e2e-sentinel-84d19c\nclass Solution { };"
+                    }
+                }
+            });
+        await AssertSuccessAsync(sources, "set authoring sources");
+
+        var qualityPolicy = await client.PutAsJsonAsync(
+            $"/api/internal/admin/problem-drafts/{revisionId}/quality-policy",
+            new
+            {
+                qualityPolicy = new
+                {
+                    minimumTestCaseCount = 1_000,
+                    minimumCasesByGroup = new[]
+                    {
+                        new { group = "handwritten", minimumCaseCount = 1 },
+                        new { group = "edge", minimumCaseCount = 100 },
+                        new { group = "random", minimumCaseCount = 700 },
+                        new { group = "adversarial", minimumCaseCount = 149 },
+                        new { group = "stress", minimumCaseCount = 50 }
+                    },
+                    requireEachDeclaredWrongSolutionKilled = true
+                }
+            });
+        await AssertSuccessAsync(qualityPolicy, "set suite quality policy");
+    }
+
+    private static async Task SeedMaintainerAsync(
+        EndToEndPostgreSqlDatabase database,
+        Guid maintainerId)
+    {
+        await using var context = database.CreateContext();
+        context.Users.Add(new User
+        {
+            Id = maintainerId,
+            UserName = "scale_maintainer",
+            Email = "scale-maintainer@example.test",
+            FullName = "Scale Maintainer",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("test-password-123")
+        });
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task LoginMaintainerAsync(HttpClient client)
+    {
+        await EnableAntiforgeryAsync(client);
+        var response = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { userName = "scale_maintainer", password = "test-password-123" });
+        await AssertSuccessAsync(response, "login maintainer account");
+        await EnableAntiforgeryAsync(client);
     }
 
     private static async Task<AuthResponse> RegisterAndLoginAsync(
@@ -605,6 +894,79 @@ public sealed class BackendAcceptanceTests
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         options.Converters.Add(new JsonStringEnumConverter());
         return options;
+    }
+
+    private sealed class ScaleSourceGenerationSandbox : ISourceGenerationSandbox
+    {
+        public int InvocationCount { get; private set; }
+        public SourceGenerationRequest? LastRequest { get; private set; }
+
+        public Task<SourceGenerationResult> GenerateAsync(
+            SourceGenerationRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            InvocationCount++;
+            LastRequest = request;
+            var handwritten = Assert.Single(request.HandwrittenCases);
+
+            var cases = new List<SourceGeneratedCase>
+            {
+                new(1, handwritten.Name, handwritten.Group, 0, handwritten.ArgumentsJson)
+            };
+            AddCases(cases, "edge", 100);
+            AddCases(cases, "random", 700);
+            AddCases(cases, "adversarial", 149);
+            AddCases(cases, "stress", 50);
+            return Task.FromResult<SourceGenerationResult>(
+                new(cases, "scale-source-sandbox:v1"));
+        }
+
+        private static void AddCases(
+            ICollection<SourceGeneratedCase> cases,
+            string group,
+            int count)
+        {
+            for (var index = 1; index <= count; index++)
+            {
+                var ordinal = cases.Count + 1;
+                cases.Add(new SourceGeneratedCase(
+                    ordinal,
+                    $"{group}-{index:D3}",
+                    group,
+                    ordinal,
+                    ScaleInput));
+            }
+        }
+    }
+
+    private sealed class ScaleReferenceRunner : IFunctionReferenceSolutionRunner
+    {
+        public Task<IReadOnlyList<string>> RunFunctionAsync(
+            string sourceCode,
+            AlgoJudge.Application.FunctionExecution.FunctionSignature signature,
+            IReadOnlyList<string> inputs,
+            ReferenceSolutionLimits limits,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<string>>(
+                Enumerable.Repeat("[0,1]", inputs.Count).ToArray());
+        }
+    }
+
+    private sealed class ScaleWrongSolutionRunner : IWrongSolutionRunner
+    {
+        public Task<IReadOnlySet<int>> FindKilledCasesAsync(
+            string sourceCode,
+            AlgoJudge.Application.FunctionExecution.FunctionSignature signature,
+            IReadOnlyList<string> inputs,
+            IReadOnlyList<string> expectedOutputs,
+            ReferenceSolutionLimits limits,
+            OutputCheckerConfiguration outputChecker,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlySet<int>>(
+                Enumerable.Range(1, inputs.Count).ToHashSet());
+        }
     }
 
     private const string MemoryLimitSource = """
