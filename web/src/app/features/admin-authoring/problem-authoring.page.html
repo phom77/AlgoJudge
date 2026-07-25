@@ -314,6 +314,63 @@
       </div>
       <p>No hidden input or expected output is returned to the browser.</p>
     </div>
+    <form class="form-grid" [formGroup]="qualityPolicyForm" (ngSubmit)="saveQualityPolicy()">
+      <label
+        >Minimum total cases<input
+          type="number"
+          min="1"
+          max="5000"
+          formControlName="minimumTestCaseCount"
+        />
+      </label>
+      <label
+        >Minimum handwritten<input
+          type="number"
+          min="0"
+          max="5000"
+          formControlName="minimumHandwrittenCases"
+        />
+      </label>
+      <label
+        >Minimum edge<input type="number" min="0" max="5000" formControlName="minimumEdgeCases"
+      /></label>
+      <label
+        >Minimum random<input
+          type="number"
+          min="0"
+          max="5000"
+          formControlName="minimumRandomCases"
+        />
+      </label>
+      <label
+        >Minimum adversarial<input
+          type="number"
+          min="0"
+          max="5000"
+          formControlName="minimumAdversarialCases"
+        />
+      </label>
+      <label
+        >Minimum stress<input
+          type="number"
+          min="0"
+          max="5000"
+          formControlName="minimumStressCases"
+        />
+      </label>
+      <label class="wide checkbox-label"
+        ><input type="checkbox" formControlName="requireEachDeclaredWrongSolutionKilled" />
+        Require every declared wrong solution to be killed
+      </label>
+      <p class="wide muted">
+        Saving a policy invalidates a ready candidate. Generate always saves this policy first.
+      </p>
+      <div class="actions wide">
+        <button class="secondary-button" type="submit" [disabled]="store.busy()">
+          Save quality policy
+        </button>
+      </div>
+    </form>
     @if (!store.review()) {
       <div class="empty-state">
         <h3>Generate the candidate suite</h3>
@@ -431,7 +488,11 @@
           <button
             class="primary-button"
             type="button"
-            [disabled]="store.busy() || !!review.survivingWrongSolutions?.length"
+            [disabled]="
+              store.busy() ||
+              (review.qualityPolicy?.requireEachDeclaredWrongSolutionKilled !== false &&
+                !!review.survivingWrongSolutions?.length)
+            "
             (click)="publish()"
           >
             Publish problem</button

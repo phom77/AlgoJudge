@@ -6,6 +6,7 @@ import { FunctionSourceDefinition } from '../models/function-source-definition';
 import { GeneratorSourceDefinition } from '../models/generator-source-definition';
 import { HandwrittenCaseDefinition } from '../models/handwritten-case-definition';
 import { ProblemExecutionMode } from '../models/problem-execution-mode';
+import { SuiteQualityPolicy } from '../models/suite-quality-policy';
 import { WrongSolutionDefinition } from '../models/wrong-solution-definition';
 export interface ProblemAuthoringDefinition {
   executionMode?: ProblemExecutionMode;
@@ -13,6 +14,7 @@ export interface ProblemAuthoringDefinition {
   generator?: GeneratorSourceDefinition;
   handwrittenCases?: Array<HandwrittenCaseDefinition>;
   inputValidator?: GeneratorSourceDefinition;
+  qualityPolicy?: SuiteQualityPolicy;
   referenceSolution?: FunctionSourceDefinition;
   schemaVersion?: (number | string);
   wrongSolutions?: Array<WrongSolutionDefinition>;

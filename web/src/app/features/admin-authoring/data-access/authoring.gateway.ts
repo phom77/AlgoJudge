@@ -11,6 +11,7 @@ import { apiInternalAdminProblemDraftsRevisionIdGet$Json } from '../../../core/a
 import { apiInternalAdminProblemDraftsRevisionIdHandwrittenCasesPut$Json } from '../../../core/api/admin-generated/fn/problem-authoring/api-internal-admin-problem-drafts-revision-id-handwritten-cases-put-json';
 import { apiInternalAdminProblemDraftsRevisionIdMetadataPut$Json } from '../../../core/api/admin-generated/fn/problem-authoring/api-internal-admin-problem-drafts-revision-id-metadata-put-json';
 import { apiInternalAdminProblemDraftsRevisionIdPublishPost } from '../../../core/api/admin-generated/fn/problem-authoring/api-internal-admin-problem-drafts-revision-id-publish-post';
+import { apiInternalAdminProblemDraftsRevisionIdQualityPolicyPut$Json } from '../../../core/api/admin-generated/fn/problem-authoring/api-internal-admin-problem-drafts-revision-id-quality-policy-put-json';
 import { apiInternalAdminProblemDraftsRevisionIdSignaturePut$Json } from '../../../core/api/admin-generated/fn/problem-authoring/api-internal-admin-problem-drafts-revision-id-signature-put-json';
 import { apiInternalAdminProblemDraftsRevisionIdSourcesPut$Json } from '../../../core/api/admin-generated/fn/problem-authoring/api-internal-admin-problem-drafts-revision-id-sources-put-json';
 import { apiInternalAdminProblemDraftsRevisionIdSuiteReviewGet$Json } from '../../../core/api/admin-generated/fn/problem-authoring/api-internal-admin-problem-drafts-revision-id-suite-review-get-json';
@@ -23,6 +24,7 @@ import type {
   HandwrittenCaseInput,
   SignatureInput,
   SourcesInput,
+  SuiteQualityPolicyInput,
 } from './authoring.models';
 
 @Injectable({ providedIn: 'root' })
@@ -105,6 +107,34 @@ export class AuthoringGateway {
           inputValidator: { language: 'csharp', sdkVersion: 1, source: sources.validator },
           referenceSolution: { language: 'cpp17', source: sources.referenceSolution },
           wrongSolutions,
+        },
+      }),
+    );
+  }
+
+  updateQualityPolicy(
+    revisionId: string,
+    qualityPolicy: SuiteQualityPolicyInput,
+  ): Observable<ProblemDraftResponse> {
+    const groupMinimums = [
+      ['handwritten', qualityPolicy.minimumHandwrittenCases],
+      ['edge', qualityPolicy.minimumEdgeCases],
+      ['random', qualityPolicy.minimumRandomCases],
+      ['adversarial', qualityPolicy.minimumAdversarialCases],
+      ['stress', qualityPolicy.minimumStressCases],
+    ] as const;
+    return this.runUnsafe(
+      this.api.invoke(apiInternalAdminProblemDraftsRevisionIdQualityPolicyPut$Json, {
+        revisionId,
+        body: {
+          qualityPolicy: {
+            minimumTestCaseCount: qualityPolicy.minimumTestCaseCount,
+            minimumCasesByGroup: groupMinimums
+              .filter(([, minimumCaseCount]) => minimumCaseCount > 0)
+              .map(([group, minimumCaseCount]) => ({ group, minimumCaseCount })),
+            requireEachDeclaredWrongSolutionKilled:
+              qualityPolicy.requireEachDeclaredWrongSolutionKilled,
+          },
         },
       }),
     );

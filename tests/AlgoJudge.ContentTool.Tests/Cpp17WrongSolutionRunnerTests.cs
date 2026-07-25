@@ -2,6 +2,7 @@ using AlgoJudge.Application.FunctionExecution;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Application.ContentGeneration;
 using AlgoJudge.ContentTool.Generation;
+using AlgoJudge.Domain.Execution;
 using AlgoJudge.Infrastructure.Grading;
 
 namespace AlgoJudge.ContentTool.Tests;
@@ -19,14 +20,16 @@ public sealed class Cpp17WrongSolutionRunnerTests
         ]);
         var runner = new Cpp17WrongSolutionRunner(
             sandbox,
-            new Cpp17FunctionHarnessBuilder());
+            new Cpp17FunctionHarnessBuilder(),
+            new OutputChecker());
 
         var killed = await runner.FindKilledCasesAsync(
             "class Solution { public: int solve(int value) { return value; } };",
             Signature(),
             ["{\"value\":1}", "{\"value\":2}", "{\"value\":3}"],
             ["1", "2", "3"],
-            new ReferenceSolutionLimits(1000, 262144));
+            new ReferenceSolutionLimits(1000, 262144),
+            OutputCheckerConfiguration.JsonExact);
 
         Assert.Equal([2, 3], killed.Order());
     }
@@ -37,7 +40,8 @@ public sealed class Cpp17WrongSolutionRunnerTests
         var sandbox = new SequencedSandbox([]) { CompileSuccess = false };
         var runner = new Cpp17WrongSolutionRunner(
             sandbox,
-            new Cpp17FunctionHarnessBuilder());
+            new Cpp17FunctionHarnessBuilder(),
+            new OutputChecker());
 
         var exception = await Assert.ThrowsAsync<TestGenerationException>(() =>
             runner.FindKilledCasesAsync(
@@ -45,7 +49,8 @@ public sealed class Cpp17WrongSolutionRunnerTests
                 Signature(),
                 ["{\"value\":1}"],
                 ["1"],
-                new ReferenceSolutionLimits(1000, 262144)));
+                new ReferenceSolutionLimits(1000, 262144),
+                OutputCheckerConfiguration.JsonExact));
 
         Assert.Contains("did not compile", exception.Message, StringComparison.Ordinal);
     }

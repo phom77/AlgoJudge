@@ -59,6 +59,29 @@ public sealed class ContentGenerationQueueRepositoryTests
     }
 
     [PostgreSqlFact]
+    public async Task PublishRejectsReadyCandidateThatNoLongerMeetsItsQualityPolicy()
+    {
+        await using var database = await PostgreSqlTestDatabase.CreateAsync();
+        var (revisionId, ownerId, problemId) = await SeedReadyRevisionAsync(database);
+        await using (var context = database.CreateContext())
+        {
+            var revision = await context.ProblemAuthoringRevisions.SingleAsync(item => item.Id == revisionId);
+            revision.DefinitionJson = revision.DefinitionJson[..^1] +
+                ",\"qualityPolicy\":{\"minimumTestCaseCount\":2}}";
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = database.CreateContext())
+            Assert.False(await new ProblemAuthoringRepository(context).PublishAsync(revisionId, ownerId));
+
+        await using var verify = database.CreateContext();
+        Assert.Empty(await verify.SystemTestSuites.Where(item => item.ProblemId == problemId).ToListAsync());
+        Assert.Empty(await verify.JudgeTestCases.Where(item => item.ProblemId == problemId).ToListAsync());
+        Assert.Equal(ProblemStatus.Draft,
+            await verify.Problems.Where(item => item.Id == problemId).Select(item => item.Status).SingleAsync());
+    }
+
+    [PostgreSqlFact]
     public async Task ConcurrentWorkersClaimJobOnceAndStaleWorkerCannotComplete()
     {
         await using var database = await PostgreSqlTestDatabase.CreateAsync();

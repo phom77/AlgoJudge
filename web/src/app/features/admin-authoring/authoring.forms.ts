@@ -74,6 +74,36 @@ export function createCasesForm() {
   return new FormGroup({ cases: new FormArray([createCaseControl()]) });
 }
 
+export function createQualityPolicyForm() {
+  return new FormGroup({
+    minimumTestCaseCount: new FormControl(1, {
+      nonNullable: true,
+      validators: [Validators.min(1), Validators.max(5000)],
+    }),
+    minimumHandwrittenCases: new FormControl(1, {
+      nonNullable: true,
+      validators: [Validators.min(0), Validators.max(5000)],
+    }),
+    minimumEdgeCases: new FormControl(0, {
+      nonNullable: true,
+      validators: [Validators.min(0), Validators.max(5000)],
+    }),
+    minimumRandomCases: new FormControl(0, {
+      nonNullable: true,
+      validators: [Validators.min(0), Validators.max(5000)],
+    }),
+    minimumAdversarialCases: new FormControl(0, {
+      nonNullable: true,
+      validators: [Validators.min(0), Validators.max(5000)],
+    }),
+    minimumStressCases: new FormControl(0, {
+      nonNullable: true,
+      validators: [Validators.min(0), Validators.max(5000)],
+    }),
+    requireEachDeclaredWrongSolutionKilled: new FormControl(true, { nonNullable: true }),
+  });
+}
+
 export function createCaseControl(name = 'minimum', argumentsJson = '{"values":[2,7],"target":9}') {
   return new FormGroup({
     name: new FormControl(name, {

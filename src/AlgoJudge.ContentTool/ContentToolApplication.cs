@@ -234,7 +234,10 @@ public static class ContentToolApplication
             NullLogger<DockerSandboxService>.Instance);
         var harnessBuilder = new Cpp17FunctionHarnessBuilder();
         var referenceRunner = new Cpp17ReferenceSolutionRunner(cpp17Sandbox, harnessBuilder);
-        var wrongSolutionRunner = new Cpp17WrongSolutionRunner(cpp17Sandbox, harnessBuilder);
+        var wrongSolutionRunner = new Cpp17WrongSolutionRunner(
+            cpp17Sandbox,
+            harnessBuilder,
+            new OutputChecker());
         var sourceSandbox = new DotNetSourceGenerationSandbox(
             configuration,
             NullLogger<DotNetSourceGenerationSandbox>.Instance);

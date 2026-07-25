@@ -67,6 +67,34 @@ public sealed class ProblemAuthoringRepository : IProblemAuthoringRepository
         if (revision is null || revision.OwnerUserId != ownerUserId || revision.Status != AuthoringRevisionStatus.Ready ||
             revision.CandidateCaseCount is null || revision.CandidateTestCases.Count != revision.CandidateCaseCount.Value)
             return false;
+        var definition = JsonSerializer.Deserialize<ProblemAuthoringDefinition>(revision.DefinitionJson, JsonOptions)
+            ?? throw new InvalidOperationException("Stored authoring definition is invalid.");
+        var groupCounts = revision.CandidateTestCases.GroupBy(item => item.Group)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
+        var killedWrongSolutions = revision.CandidateTestCases
+            .SelectMany(item => JsonSerializer.Deserialize<IReadOnlyList<string>>(
+                item.KilledWrongSolutionsJson, JsonOptions) ?? [])
+            .ToHashSet(StringComparer.Ordinal);
+        var survivors = definition.WrongSolutions
+            .Select(item => item.Name)
+            .Where(name => !killedWrongSolutions.Contains(name))
+            .ToArray();
+        IReadOnlyList<string> qualityViolations;
+        try
+        {
+            qualityViolations = SuiteQualityGate.Evaluate(
+                definition.QualityPolicy,
+                revision.CandidateTestCases.Count,
+                groupCounts,
+                definition.WrongSolutions.Select(item => item.Name).ToArray(),
+                survivors);
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        if (qualityViolations.Count > 0)
+            return false;
         _ = await _context.Problems
             .FromSqlInterpolated($"SELECT * FROM \"Problems\" WHERE \"Id\" = {revision.ProblemId} FOR UPDATE")
             .SingleAsync(cancellationToken);
@@ -102,8 +130,6 @@ public sealed class ProblemAuthoringRepository : IProblemAuthoringRepository
             Explanation = sample.Explanation
         }), cancellationToken);
 
-        var definition = JsonSerializer.Deserialize<ProblemAuthoringDefinition>(revision.DefinitionJson, JsonOptions)
-            ?? throw new InvalidOperationException("Stored authoring definition is invalid.");
         var problem = revision.Problem;
         problem.Slug = revision.Slug; problem.Title = revision.Title;
         problem.StatementMarkdown = revision.StatementMarkdown;

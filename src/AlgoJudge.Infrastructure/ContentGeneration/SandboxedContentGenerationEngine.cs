@@ -7,6 +7,7 @@ using AlgoJudge.Application.ContentGeneration;
 using AlgoJudge.Application.FunctionExecution;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Application.Models.ContentGeneration;
+using AlgoJudge.Domain.Execution;
 using AlgoJudge.Infrastructure.Grading;
 using Microsoft.Extensions.Configuration;
 
@@ -45,6 +46,15 @@ public sealed class SandboxedContentGenerationEngine : IContentGenerationEngine
                 ?? throw new JsonException();
         }
         catch (JsonException exception) { throw new ContentGenerationException("invalid_snapshot", "The authoring snapshot is invalid.", exception); }
+        try
+        {
+            if (definition.QualityPolicy is null) throw new ArgumentException();
+            definition.QualityPolicy.Validate();
+        }
+        catch (ArgumentException exception)
+        {
+            throw new ContentGenerationException("invalid_snapshot", "The authoring snapshot is invalid.", exception);
+        }
         var canonicalDefinitionJson = JsonSerializer.Serialize(definition, JsonOptions);
         if (!string.Equals(Hash(canonicalDefinitionJson), claim.DefinitionSha256, StringComparison.Ordinal))
             throw new ContentGenerationException("invalid_snapshot", "The authoring snapshot hash does not match.");
@@ -77,7 +87,7 @@ public sealed class SandboxedContentGenerationEngine : IContentGenerationEngine
         foreach (var wrong in definition.WrongSolutions.OrderBy(item => item.Name, StringComparer.Ordinal))
         {
             var killed = await _wrongRunner.FindKilledCasesAsync(wrong.Source, definition.FunctionSignature,
-                inputs, outputs, limits, cancellationToken);
+                inputs, outputs, limits, OutputCheckerConfiguration.JsonExact, cancellationToken);
             if (killed.Count == 0) survivors.Add(wrong.Name);
             killedCounts.Add(wrong.Name, killed.Count);
             foreach (var ordinal in killed)
@@ -91,12 +101,26 @@ public sealed class SandboxedContentGenerationEngine : IContentGenerationEngine
         var cases = first.Cases.Select((item, index) => new GeneratedContentCase(item.Ordinal, item.Name,
             item.Group, item.Seed, item.Input, outputs[index],
             killedByCase[index].Order(StringComparer.Ordinal).ToArray())).ToArray();
+        var casesByGroup = cases.GroupBy(item => item.Group)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
+        var violations = SuiteQualityGate.Evaluate(
+            definition.QualityPolicy,
+            cases.Length,
+            casesByGroup,
+            definition.WrongSolutions.Select(item => item.Name).ToArray(),
+            survivors);
+        if (violations.Count > 0)
+        {
+            throw new ContentGenerationException(
+                "quality_gate_failed",
+                "The generated suite did not meet its quality policy.");
+        }
         var toolchain = $"{first.ToolchainIdentity}|{_cppImage}|content-worker-engine-v1";
-        var material = new List<string> { claim.DefinitionSha256, toolchain, "json-exact-v1" };
+        var material = new List<string> { claim.DefinitionSha256, toolchain, "json-exact-v1", SerializeQualityPolicy(definition.QualityPolicy) };
         material.AddRange(wrongCoverage);
         material.AddRange(cases.Select(item => $"{item.Ordinal}|{item.Name}|{item.Group}|{item.Seed}|{Hash(item.Input)}|{Hash(item.ExpectedOutput)}|{string.Join(',', item.KilledWrongSolutions)}"));
         return new ContentGenerationResult(Hash(string.Join('\n', material)), toolchain, cases,
-            cases.GroupBy(item => item.Group).ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal),
+            casesByGroup,
             definition.WrongSolutions.Count, killedCounts, survivors);
     }
 
@@ -136,4 +160,6 @@ public sealed class SandboxedContentGenerationEngine : IContentGenerationEngine
         }
     }
     private static string Hash(string value) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+    private static string SerializeQualityPolicy(SuiteQualityPolicy policy) =>
+        JsonSerializer.Serialize(policy, JsonOptions);
 }

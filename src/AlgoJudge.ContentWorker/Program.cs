@@ -27,6 +27,7 @@ builder.Services.AddScoped<ISourceGenerationSandbox, DotNetSourceGenerationSandb
 builder.Services.AddScoped<IDockerSandbox, DockerSandboxService>();
 builder.Services.AddScoped<IFunctionReferenceSolutionRunner, Cpp17ContentReferenceRunner>();
 builder.Services.AddScoped<IWrongSolutionRunner, Cpp17ContentWrongSolutionRunner>();
+builder.Services.AddSingleton<IOutputChecker, OutputChecker>();
 builder.Services.AddSingleton<IFunctionHarnessBuilder, Cpp17FunctionHarnessBuilder>();
 builder.Services.AddSingleton(queueOptions);
 builder.Services.AddSingleton(identity);

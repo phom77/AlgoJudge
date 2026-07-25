@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { EMPTY, switchMap } from 'rxjs';
 
 import type { ProblemDraftResponse } from '../../core/api/admin-generated/models/problem-draft-response';
 import { SourceEditorComponent } from '../../shared/ui/code-editor/source-editor.component';
@@ -19,6 +20,7 @@ import {
   createCasesForm,
   createMetadataForm,
   createParameterControl,
+  createQualityPolicyForm,
   createSignatureForm,
   createSourcesForm,
 } from './authoring.forms';
@@ -50,6 +52,7 @@ export class ProblemAuthoringPage {
   protected readonly metadataForm = createMetadataForm();
   protected readonly signatureForm = createSignatureForm();
   protected readonly casesForm = createCasesForm();
+  protected readonly qualityPolicyForm = createQualityPolicyForm();
   protected readonly sourcesForm = createSourcesForm(
     GENERATOR_PRESET,
     VALIDATOR_PRESET,
@@ -155,11 +158,25 @@ export class ProblemAuthoringPage {
 
   protected generate(): void {
     const revisionId = this.revisionId();
-    if (revisionId !== null)
-      this.store
-        .generateAndReview(revisionId)
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe();
+    if (revisionId === null || this.qualityPolicyForm.invalid)
+      return this.qualityPolicyForm.markAllAsTouched();
+    this.store
+      .saveQualityPolicy(revisionId, this.qualityPolicyForm.getRawValue())
+      .pipe(
+        switchMap((draft) => (draft === null ? EMPTY : this.store.generateAndReview(revisionId))),
+      )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe();
+  }
+
+  protected saveQualityPolicy(): void {
+    const revisionId = this.revisionId();
+    if (revisionId === null || this.qualityPolicyForm.invalid)
+      return this.qualityPolicyForm.markAllAsTouched();
+    this.store
+      .saveQualityPolicy(revisionId, this.qualityPolicyForm.getRawValue())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe();
   }
 
   protected publish(): void {
@@ -208,6 +225,7 @@ export class ProblemAuthoringPage {
     this.hydrateSignature(draft);
     this.hydrateCases(draft);
     this.hydrateSources(draft);
+    this.hydrateQualityPolicy(draft);
     this.step.set(inferAuthoringStep(draft));
   }
 
@@ -262,6 +280,25 @@ export class ProblemAuthoringPage {
       referenceSolution: sourceOrDefault(definition.referenceSolution, REFERENCE_PRESET),
       wrongSolutionName: wrongSolution.name,
       wrongSolution: wrongSolution.source,
+    });
+  }
+
+  private hydrateQualityPolicy(draft: ProblemDraftResponse): void {
+    const policy = draft.definition?.qualityPolicy;
+    const groupMinimum = (group: string) =>
+      Number(
+        policy?.minimumCasesByGroup?.find((item) => item.group === group)?.minimumCaseCount ??
+          (group === 'handwritten' ? 1 : 0),
+      );
+    this.qualityPolicyForm.patchValue({
+      minimumTestCaseCount: Number(policy?.minimumTestCaseCount ?? 1),
+      minimumHandwrittenCases: groupMinimum('handwritten'),
+      minimumEdgeCases: groupMinimum('edge'),
+      minimumRandomCases: groupMinimum('random'),
+      minimumAdversarialCases: groupMinimum('adversarial'),
+      minimumStressCases: groupMinimum('stress'),
+      requireEachDeclaredWrongSolutionKilled:
+        policy?.requireEachDeclaredWrongSolutionKilled !== false,
     });
   }
 }

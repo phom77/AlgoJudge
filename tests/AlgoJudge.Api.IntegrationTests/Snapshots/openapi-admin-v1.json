@@ -220,6 +220,9 @@
             },
             "type": "object"
           },
+          "qualityPolicy": {
+            "$ref": "#/components/schemas/SuiteQualityPolicy"
+          },
           "revisionId": {
             "format": "uuid",
             "type": "string"
@@ -308,6 +311,9 @@
           },
           "inputValidator": {
             "$ref": "#/components/schemas/GeneratorSourceDefinition"
+          },
+          "qualityPolicy": {
+            "$ref": "#/components/schemas/SuiteQualityPolicy"
           },
           "referenceSolution": {
             "$ref": "#/components/schemas/FunctionSourceDefinition"
@@ -421,6 +427,44 @@
         },
         "type": "object"
       },
+      "SuiteQualityGroupRequirement": {
+        "properties": {
+          "group": {
+            "type": "string"
+          },
+          "minimumCaseCount": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "SuiteQualityPolicy": {
+        "properties": {
+          "minimumCasesByGroup": {
+            "items": {
+              "$ref": "#/components/schemas/SuiteQualityGroupRequirement"
+            },
+            "type": "array"
+          },
+          "minimumTestCaseCount": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "requireEachDeclaredWrongSolutionKilled": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
       "UpdateAuthoringSourcesRequest": {
         "properties": {
           "generator": {
@@ -498,6 +542,14 @@
           },
           "title": {
             "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateSuiteQualityPolicyRequest": {
+        "properties": {
+          "qualityPolicy": {
+            "$ref": "#/components/schemas/SuiteQualityPolicy"
           }
         },
         "type": "object"
@@ -922,6 +974,72 @@
         ],
         "responses": {
           "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AntiforgeryHeader": [],
+            "CookieSession": []
+          }
+        ],
+        "tags": [
+          "ProblemAuthoring"
+        ]
+      }
+    },
+    "/api/internal/admin/problem-drafts/{revisionId}/quality-policy": {
+      "put": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "revisionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSuiteQualityPolicyRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSuiteQualityPolicyRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSuiteQualityPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              }
+            },
             "description": "OK"
           }
         },

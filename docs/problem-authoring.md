@@ -2,8 +2,8 @@
 
 This document defines the approved target contract for internal problem
 authoring. The generator SDK and transitional ContentTool workflow implement
-version 1. PostgreSQL persistence, the content-generation worker, and internal
-maintainer API are implemented. The maintainer UI remains a later branch.
+version 1. PostgreSQL persistence, the content-generation worker, internal
+maintainer API, and maintainer UI are implemented.
 
 Problem authoring remains an internal maintainer operation. It does not create
 a public author role or a public testcase-authoring API.
@@ -24,7 +24,8 @@ ProblemAuthoringDefinition
 |-- generator
 |-- inputValidator
 |-- referenceSolution
-`-- wrongSolutions
+|-- wrongSolutions
+`-- qualityPolicy
 ```
 
 The first implementation supports `cpp17` Function problems only. Existing
@@ -44,6 +45,7 @@ decision.
 | `inputValidator` | Yes | C# validation source using the same SDK contract. Every generated or handwritten input must pass it. |
 | `referenceSolution` | Yes | C++17 class/method source matching `functionSignature`; no `main` or I/O adapter. |
 | `wrongSolutions` | No | Named C++17 class/method sources used only for differential quality checks. |
+| `qualityPolicy` | Yes | Minimum total/group coverage requirements and whether each declared wrong solution must be killed. |
 
 Problem statement, constraints, samples, tags, difficulty, and resource limits
 remain problem metadata. They are edited with the same draft revision but are
@@ -90,7 +92,15 @@ The version-1 serialized shape is:
       "language": "cpp17",
       "source": "class Solution { public: int findMaximum(vector<int>& nums) { ... } };"
     }
-  ]
+  ],
+  "qualityPolicy": {
+    "minimumTestCaseCount": 500,
+    "minimumCasesByGroup": [
+      { "group": "handwritten", "minimumCaseCount": 1 },
+      { "group": "random", "minimumCaseCount": 350 }
+    ],
+    "requireEachDeclaredWrongSolutionKilled": true
+  }
 }
 ```
 
@@ -106,8 +116,22 @@ is UI provenance only and never changes generation semantics.
 The initial Two Sum preset requests 84 generated cases across edge, random,
 adversarial, and stress groups, in addition to the maintainer's handwritten
 cases. It constructs exactly one valid pair per generated input and validates
-that invariant. The preset count is an editable starting point, not a platform
-quality target or suite limit.
+that invariant. The preset count is an editable starting point; a maintainer
+raises it and sets the corresponding quality policy before generation.
+
+### Suite quality policy
+
+`minimumTestCaseCount` is between 1 and 5,000. `minimumCasesByGroup` may set
+one minimum, also between 1 and 5,000, for each supported group. The supported
+groups are `handwritten`, `edge`, `random`, `adversarial`, and `stress`; a
+group may appear at most once. `requireEachDeclaredWrongSolutionKilled` is
+true by default, so every configured wrong solution must be distinguished by
+at least one candidate case.
+
+For compatibility, omitted policies deserialize to one total and one
+`handwritten` case, with declared wrong solutions required to be killed. The
+policy is part of the definition snapshot and candidate provenance. It is not
+a mutable property of a published system suite.
 
 ## 2. Function signature
 
@@ -190,9 +214,9 @@ to create expected values.
 Wrong solutions use the same source shape and harness. They are optional and
 never become learner-visible content. A generated case may record which wrong
 solutions it distinguishes. A wrong solution that survives does not silently
-change expected output; generation reports the survivor for maintainer review.
-The acceptance policy for suite quality is configured separately from verdict
-semantics.
+change expected output. When required by `qualityPolicy`, it fails generation
+with the safe `quality_gate_failed` category; raw source, inputs, and outputs
+remain private.
 
 Source, diagnostics, generated arguments, and expected values are private
 content. Normal logs contain identifiers, hashes, bounded counts, timings, and
@@ -210,8 +234,10 @@ For one immutable snapshot of a definition, the engine:
 6. runs the reference once per argument set to produce expected output;
 7. repeats generation and reference execution from the same snapshot and seeds
    and rejects any byte-level non-determinism;
-8. optionally executes wrong solutions and records differential coverage; and
-9. hashes all inputs, outputs, source identities, toolchain identities, seeds,
+8. optionally executes wrong solutions and records differential coverage;
+9. evaluates the immutable quality policy against aggregate group counts and
+   wrong-solution coverage; and
+10. hashes all inputs, outputs, source identities, toolchain identities, seeds,
    ordering, and comparator configuration into an immutable suite candidate.
 
 Version-1 source-authored Function definitions always produce a `JsonExact`
@@ -240,9 +266,11 @@ stateDiagram-v2
   create or update a Draft; they never alter the running snapshot.
 - `Ready` has one verified immutable suite candidate and review statistics.
   Editing any generation input invalidates that candidate and returns the
-  revision to Draft.
+  revision to Draft. Editing the quality policy has the same effect.
 - `Published` atomically makes the candidate the problem's current positive
-  system-suite version. Its content and provenance are immutable forever.
+  system-suite version. Publishing rechecks the stored candidate against its
+  snapshot policy before making it visible. Its content and provenance are
+  immutable forever.
 
 A generation failure is an attempt result, not a fifth lifecycle state. It
 records bounded safe diagnostics and returns the revision to Draft. Publishing

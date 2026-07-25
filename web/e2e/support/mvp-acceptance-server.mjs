@@ -155,6 +155,11 @@ async function handleApi(request, response, url) {
         inputValidator: { language: 'csharp', sdkVersion: 1, source: '' },
         referenceSolution: { language: 'cpp17', source: '' },
         wrongSolutions: [],
+        qualityPolicy: {
+          minimumTestCaseCount: 1,
+          minimumCasesByGroup: [{ group: 'handwritten', minimumCaseCount: 1 }],
+          requireEachDeclaredWrongSolutionKilled: true,
+        },
       },
       updatedAt: '2026-07-22T00:00:00Z',
     };
@@ -170,7 +175,7 @@ async function handleApi(request, response, url) {
   }
 
   const authoringAction =
-    /^\/api\/internal\/admin\/problem-drafts\/([0-9a-f-]+)\/(metadata|signature|handwritten-cases|sources|generation|suite-review|publish)$/i.exec(
+    /^\/api\/internal\/admin\/problem-drafts\/([0-9a-f-]+)\/(metadata|signature|handwritten-cases|sources|quality-policy|generation|suite-review|publish)$/i.exec(
       url.pathname,
     );
   if (authoringAction) {
@@ -185,6 +190,8 @@ async function handleApi(request, response, url) {
       if (action === 'handwritten-cases')
         state.authoringDraft.definition.handwrittenCases = body.cases;
       if (action === 'sources') Object.assign(state.authoringDraft.definition, body);
+      if (action === 'quality-policy')
+        state.authoringDraft.definition.qualityPolicy = body.qualityPolicy;
       return json(response, 200, state.authoringDraft);
     }
     if (action === 'generation' && request.method === 'POST') {
@@ -207,6 +214,7 @@ async function handleApi(request, response, url) {
         wrongSolutionCount: 1,
         killedCaseCountByWrongSolution: { 'adjacent-only': 80 },
         survivingWrongSolutions: [],
+        qualityPolicy: state.authoringDraft.definition.qualityPolicy,
         toolchain: 'e2e-generator-sdk-v1',
         casePreview: [
           {

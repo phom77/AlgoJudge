@@ -69,6 +69,21 @@ public sealed class SourceAuthoringGenerationServiceTests
     }
 
     [Fact]
+    public async Task GenerationRejectsADeclaredWrongSolutionThatSurvivesItsQualityPolicy()
+    {
+        using var directory = ProblemAuthoringDefinitionReaderTests.AuthoringDirectory.Create(
+            DefinitionWithWrongSolutions(requireEachWrongSolutionKilled: true));
+        var document = await new ProblemAuthoringDefinitionReader(new ContentImportOptions())
+            .ReadAsync(directory.Path);
+
+        var exception = await Assert.ThrowsAsync<TestGenerationException>(() =>
+            CreateService(new StubSourceSandbox(ValidCases()), new StubReferenceRunner(["1", "2"]),
+                new StubWrongSolutionRunner()).GenerateAsync(directory.Path, document));
+
+        Assert.Contains("quality policy", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task GeneratedArgumentsAreValidatedAgainstFunctionSignature()
     {
         using var directory = ProblemAuthoringDefinitionReaderTests.AuthoringDirectory.Create(
@@ -129,7 +144,7 @@ public sealed class SourceAuthoringGenerationServiceTests
         new SourceGeneratedCase(2, "random-1", "random", 42, "{\"value\":2}")
     ];
 
-    private static string DefinitionWithWrongSolutions()
+    private static string DefinitionWithWrongSolutions(bool requireEachWrongSolutionKilled = false)
     {
         using var document = JsonDocument.Parse(
             ProblemAuthoringDefinitionReaderTests.ValidDefinition());
@@ -143,6 +158,7 @@ public sealed class SourceAuthoringGenerationServiceTests
             generator = root.GetProperty("generator"),
             inputValidator = root.GetProperty("inputValidator"),
             referenceSolution = root.GetProperty("referenceSolution"),
+            qualityPolicy = new { requireEachDeclaredWrongSolutionKilled = requireEachWrongSolutionKilled },
             wrongSolutions = new[]
             {
                 new { name = "off-by-one", language = "cpp17", source = "wrong-one" },
@@ -228,6 +244,7 @@ public sealed class SourceAuthoringGenerationServiceTests
             IReadOnlyList<string> inputs,
             IReadOnlyList<string> expectedOutputs,
             ReferenceSolutionLimits limits,
+            AlgoJudge.Domain.Execution.OutputCheckerConfiguration outputChecker,
             CancellationToken cancellationToken = default)
         {
             IReadOnlySet<int> killed = sourceCode == "survivor"

@@ -177,6 +177,33 @@ public sealed partial class ProblemAuthoringService : IProblemAuthoringService
         return Map(revision);
     }
 
+    public async Task<ProblemDraftResponse> UpdateQualityPolicyAsync(
+        Guid ownerUserId,
+        Guid revisionId,
+        UpdateSuiteQualityPolicyRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var revision = await GetEditableAsync(ownerUserId, revisionId, cancellationToken);
+        if (request.QualityPolicy is null)
+            throw new RequestValidationException("The suite quality policy is invalid.");
+        try
+        {
+            request.QualityPolicy.Validate();
+        }
+        catch (ArgumentException)
+        {
+            throw new RequestValidationException("The suite quality policy is invalid.");
+        }
+
+        var current = DeserializeDefinition(revision.DefinitionJson);
+        SetDefinition(revision, Copy(current, qualityPolicy: request.QualityPolicy));
+        revision.ConcurrencyToken = Guid.NewGuid();
+        await InvalidateCandidateAsync(revision, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Map(revision);
+    }
+
     public async Task<ContentGenerationStatusResponse> StartGenerationAsync(
         Guid ownerUserId, Guid revisionId, CancellationToken cancellationToken = default)
     {
@@ -234,6 +261,7 @@ public sealed partial class ProblemAuthoringService : IProblemAuthoringService
             WrongSolutionCount = statistics.WrongSolutionCount,
             KilledCaseCountByWrongSolution = statistics.KilledCaseCountByWrongSolution,
             SurvivingWrongSolutions = statistics.SurvivingWrongSolutions,
+            QualityPolicy = DeserializeDefinition(revision.DefinitionJson).QualityPolicy,
             Toolchain = revision.CandidateToolchain ?? string.Empty,
             CasePreview = revision.CandidateTestCases
                 .OrderBy(item => item.Ordinal)
@@ -326,7 +354,8 @@ public sealed partial class ProblemAuthoringService : IProblemAuthoringService
         GeneratorSourceDefinition? generator = null,
         GeneratorSourceDefinition? inputValidator = null,
         FunctionSourceDefinition? referenceSolution = null,
-        IReadOnlyList<WrongSolutionDefinition>? wrongSolutions = null) => new()
+        IReadOnlyList<WrongSolutionDefinition>? wrongSolutions = null,
+        SuiteQualityPolicy? qualityPolicy = null) => new()
         {
             SchemaVersion = value.SchemaVersion,
             ExecutionMode = value.ExecutionMode,
@@ -335,7 +364,8 @@ public sealed partial class ProblemAuthoringService : IProblemAuthoringService
             Generator = generator ?? value.Generator,
             InputValidator = inputValidator ?? value.InputValidator,
             ReferenceSolution = referenceSolution ?? value.ReferenceSolution,
-            WrongSolutions = wrongSolutions ?? value.WrongSolutions
+            WrongSolutions = wrongSolutions ?? value.WrongSolutions,
+            QualityPolicy = qualityPolicy ?? value.QualityPolicy
         };
 
     private static void SetDefinition(ProblemAuthoringRevision revision, ProblemAuthoringDefinition definition)
@@ -404,6 +434,10 @@ public sealed partial class ProblemAuthoringService : IProblemAuthoringService
 
     private static void ValidateForGeneration(ProblemAuthoringRevision revision, ProblemAuthoringDefinition definition)
     {
+        if (definition.QualityPolicy is null)
+            throw new RequestValidationException("The suite quality policy is invalid.");
+        try { definition.QualityPolicy.Validate(); }
+        catch (ArgumentException) { throw new RequestValidationException("The suite quality policy is invalid."); }
         ValidateSignature(definition.FunctionSignature);
         if (definition.SchemaVersion != 1 || definition.ExecutionMode != ProblemExecutionMode.Function ||
             definition.HandwrittenCases.Count == 0 ||

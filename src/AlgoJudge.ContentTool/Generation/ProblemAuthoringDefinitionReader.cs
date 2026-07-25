@@ -74,6 +74,12 @@ public sealed partial class ProblemAuthoringDefinitionReader
             errors.Add("schemaVersion must be 1");
         if (definition.ExecutionMode != ProblemExecutionMode.Function)
             errors.Add("executionMode must be Function");
+        try
+        {
+            if (definition.QualityPolicy is null) throw new ArgumentException();
+            definition.QualityPolicy.Validate();
+        }
+        catch (ArgumentException) { errors.Add("qualityPolicy is invalid"); }
 
         var signatureJson = root.GetProperty("functionSignature").GetRawText();
         var signatureErrors = new List<string>();
