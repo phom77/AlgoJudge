@@ -209,8 +209,8 @@ async function handleApi(request, response, url) {
       return json(response, 200, {
         revisionId: state.authoringDraft.revisionId,
         suiteSha256: 'a'.repeat(64),
-        testCaseCount: 85,
-        casesByGroup: { handwritten: 1, edge: 12, random: 60, adversarial: 8, stress: 4 },
+        testCaseCount: 1000,
+        casesByGroup: { handwritten: 1, edge: 100, random: 700, adversarial: 149, stress: 50 },
         wrongSolutionCount: 1,
         killedCaseCountByWrongSolution: { 'adjacent-only': 80 },
         survivingWrongSolutions: [],

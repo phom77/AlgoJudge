@@ -28,11 +28,13 @@ import {
   GENERATOR_PRESET,
   GENERATOR_PRESET_CASE_COUNT,
   REFERENCE_PRESET,
+  TWO_SUM_QUALITY_PROFILE,
   VALIDATOR_PRESET,
   WRONG_SOLUTION_PRESET,
 } from './authoring-presets';
 import { AuthoringStore } from './data-access/authoring.store';
 import type { FunctionValueTypeName, HandwrittenCaseInput } from './data-access/authoring.models';
+import { qualityPolicyInputFor } from './authoring-quality-profile';
 
 @Component({
   selector: 'aj-problem-authoring-page',
@@ -201,6 +203,7 @@ export class ProblemAuthoringPage {
   }
   protected applyGeneratorPreset(): void {
     this.sourcesForm.controls.generator.setValue(GENERATOR_PRESET);
+    this.qualityPolicyForm.patchValue(TWO_SUM_QUALITY_PROFILE);
   }
 
   protected generationDuration(): string {
@@ -284,21 +287,6 @@ export class ProblemAuthoringPage {
   }
 
   private hydrateQualityPolicy(draft: ProblemDraftResponse): void {
-    const policy = draft.definition?.qualityPolicy;
-    const groupMinimum = (group: string) =>
-      Number(
-        policy?.minimumCasesByGroup?.find((item) => item.group === group)?.minimumCaseCount ??
-          (group === 'handwritten' ? 1 : 0),
-      );
-    this.qualityPolicyForm.patchValue({
-      minimumTestCaseCount: Number(policy?.minimumTestCaseCount ?? 1),
-      minimumHandwrittenCases: groupMinimum('handwritten'),
-      minimumEdgeCases: groupMinimum('edge'),
-      minimumRandomCases: groupMinimum('random'),
-      minimumAdversarialCases: groupMinimum('adversarial'),
-      minimumStressCases: groupMinimum('stress'),
-      requireEachDeclaredWrongSolutionKilled:
-        policy?.requireEachDeclaredWrongSolutionKilled !== false,
-    });
+    this.qualityPolicyForm.patchValue(qualityPolicyInputFor(draft.definition));
   }
 }

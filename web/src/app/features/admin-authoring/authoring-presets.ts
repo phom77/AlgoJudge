@@ -1,8 +1,8 @@
 const DUPLICATE_EDGE_CASE_COUNT = 1;
-const SMALL_EDGE_CASE_COUNT = 11;
-const RANDOM_CASE_COUNT = 60;
-const ADVERSARIAL_CASE_COUNT = 8;
-const STRESS_CASE_COUNT = 4;
+const SMALL_EDGE_CASE_COUNT = 99;
+const RANDOM_CASE_COUNT = 700;
+const ADVERSARIAL_CASE_COUNT = 149;
+const STRESS_CASE_COUNT = 50;
 
 export const GENERATOR_PRESET_CASE_COUNT =
   DUPLICATE_EDGE_CASE_COUNT +
@@ -10,6 +10,16 @@ export const GENERATOR_PRESET_CASE_COUNT =
   RANDOM_CASE_COUNT +
   ADVERSARIAL_CASE_COUNT +
   STRESS_CASE_COUNT;
+
+export const TWO_SUM_QUALITY_PROFILE = {
+  minimumTestCaseCount: 1_000,
+  minimumHandwrittenCases: 1,
+  minimumEdgeCases: DUPLICATE_EDGE_CASE_COUNT + SMALL_EDGE_CASE_COUNT,
+  minimumRandomCases: RANDOM_CASE_COUNT,
+  minimumAdversarialCases: ADVERSARIAL_CASE_COUNT,
+  minimumStressCases: STRESS_CASE_COUNT,
+  requireEachDeclaredWrongSolutionKilled: true,
+} as const;
 
 export const GENERATOR_PRESET = `using AlgoJudge.ProblemGeneratorSdk;
 

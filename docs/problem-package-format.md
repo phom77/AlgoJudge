@@ -164,9 +164,9 @@ public API.
 | Individual entry | 8 MiB |
 | Function signature | 64 KiB |
 | Function adapter | 256 KiB |
-| File entries | 1,100 |
+| File entries | 2,100 |
 | Public samples | 20 |
-| Private judge cases | 500 |
+| Private judge cases | 1,000 |
 | Time limit | 100-10,000 ms |
 | Memory limit | 16 MiB-1 GiB |
 

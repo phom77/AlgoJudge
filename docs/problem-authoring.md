@@ -113,11 +113,12 @@ snapshot never changes meaning when defaults are upgraded.
 An editor preset produces ordinary editable generator source. Preset identity
 is UI provenance only and never changes generation semantics.
 
-The initial Two Sum preset requests 84 generated cases across edge, random,
-adversarial, and stress groups, in addition to the maintainer's handwritten
-cases. It constructs exactly one valid pair per generated input and validates
-that invariant. The preset count is an editable starting point; a maintainer
-raises it and sets the corresponding quality policy before generation.
+The initial Two Sum preset requests 999 generated cases across edge, random,
+adversarial, and stress groups, plus one handwritten case, for a 1,000-case
+candidate suite. Its accompanying quality profile requires all five groups and
+every declared wrong solution to be killed. It constructs exactly one valid
+pair per generated input and validates that invariant. The preset count remains
+editable; maintainers adjust its policy when changing the distribution.
 
 ### Suite quality policy
 
