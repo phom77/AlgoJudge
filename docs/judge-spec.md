@@ -73,11 +73,18 @@ identical parsing and serialization.
 4. It compiles the source inside an isolated compiler container.
 5. On compiler failure, it stores a sanitized and truncated diagnostic and
    finalizes as Compile Error.
-6. On success, it executes the binary once per testcase in stable ordinal
-   order.
-7. For each run, it captures exit status, bounded stdout/stderr, elapsed time,
-   and peak memory.
-8. It stops at the first failure in MVP and finalizes one verdict.
+6. On success, it starts one hardened runtime container for the selected suite.
+   A trusted native batch supervisor invokes the existing native runner once
+   per testcase in stable ordinal order, so every testcase receives a fresh
+   solution process while container startup is amortized across the suite.
+7. For each process, the native runner independently captures exit status,
+   bounded stdout/stderr, elapsed time, and peak memory.
+8. The supervisor stops immediately after a process, resource, or output-limit
+   failure. Successful outputs return in framed order for host-side checker
+   comparison; because comparison happens outside the sandbox, later successful
+   processes in that batch may already have run when an earlier output is
+   classified as Wrong Answer. The worker still reports the first failing
+   testcase in stable ordinal order and finalizes one verdict.
 9. It deletes the work directory and all temporary artifacts.
 
 System suites are selected by problem ID plus positive suite version and are
@@ -85,8 +92,10 @@ executed in stable ordinal order. The same immutable suite record selects its
 output checker. Missing versions are operational failures, not empty Accepted
 suites. Generator code and reference solutions never run in the worker.
 Submission retries and reclaimed leases use the original pinned version.
-Testcase input and content-generation protocol requests are written to
-container stdin as UTF-8 without a byte-order mark on every supported host OS.
+Submission testcase inputs use a length-framed batch protocol over runtime
+container stdin. Content-generation protocol requests and custom-run input also
+use container stdin. All are UTF-8 without a byte-order mark on every supported
+host OS. Hidden testcase files are never mounted into the runtime container.
 
 ## 3.1 Offline content generation
 
@@ -175,7 +184,10 @@ separate, read-only artifact mount whenever practical.
 Compilation and execution always use different containers. The compile stage
 receives a writable build mount and bounded temporary filesystem. The runtime
 stage receives only the compiled artifact through a read-only mount and has no
-writable root filesystem.
+writable root filesystem. A system-suite submission uses one runtime container
+with a trusted batch supervisor, but every testcase still runs as a separate
+measured solution process with per-case limits. Custom runs remain single-case
+runtime containers.
 
 ## 7. Verdict mapping
 

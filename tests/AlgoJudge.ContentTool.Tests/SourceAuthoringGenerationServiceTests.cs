@@ -136,7 +136,7 @@ public sealed class SourceAuthoringGenerationServiceTests
             referenceRunner,
             wrongSolutionRunner,
             new Cpp17FunctionHarnessBuilder(),
-            "algojudge/judge-cpp17:14.3.0-v1");
+            "algojudge/judge-cpp17:14.3.0-v2");
 
     private static IReadOnlyList<SourceGeneratedCase> ValidCases() =>
     [

@@ -74,16 +74,6 @@ public sealed class BackendAcceptanceTests
         };
         """;
 
-    private const string ScaleWrongAnswerSource = """
-        // private-source-e2e-sentinel-84d19c
-        #include <vector>
-        using namespace std;
-        class Solution {
-        public:
-            vector<int> twoSum(vector<int>, int) { return {}; }
-        };
-        """;
-
     [BackendEndToEndFact]
     public async Task MaintainerAuthorsPublishesAndJudgesAOneThousandCaseFunctionProblem()
     {
@@ -158,7 +148,7 @@ public sealed class BackendAcceptanceTests
             Assert.Equal(OutputCheckerKind.JsonExact, suite.OutputCheckerKind);
         }
 
-        var submission = await SubmitAsync(client, draft.ProblemId, ScaleWrongAnswerSource);
+        var submission = await SubmitAsync(client, draft.ProblemId, ScaleAcceptedSource);
         var sandbox = new CountingDockerSandbox(EndToEndWorkerHost.CreateDockerSandbox());
         await using (var worker = await EndToEndWorkerHost.StartAsync(
                          database.ConnectionString,
@@ -167,11 +157,12 @@ public sealed class BackendAcceptanceTests
                          sandbox))
         {
             var final = await WaitForFinalSubmissionAsync(client, submission.Id);
-            Assert.Equal(SubmissionStatus.WrongAnswer, final.Status);
+            Assert.Equal(SubmissionStatus.Accepted, final.Status);
         }
 
         Assert.Equal(1, sandbox.CompileCount);
-        Assert.Equal(1, sandbox.RunCount);
+        Assert.Equal(1, sandbox.BatchCount);
+        Assert.Equal(1_000, sandbox.RunCount);
         AssertPrivateDataAbsent(string.Join(Environment.NewLine, logs.Entries));
     }
 

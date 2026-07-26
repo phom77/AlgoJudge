@@ -109,16 +109,22 @@ namespace AlgoJudge.Infrastructure.Grading
                 var finalStatus = SubmissionStatus.Accepted;
                 var maxExecutionTime = 0;
                 long maxMemoryUsedBytes = 0;
+                var testCases = suite.TestCases.ToArray();
+                var runResults = await _sandbox.RunBatchAsync(
+                    workDirectory,
+                    testCases.Select(testCase => testCase.Input).ToArray(),
+                    problem.TimeLimitMs,
+                    problem.MemoryLimitKb,
+                    cancellationToken);
 
-                foreach (var testCase in suite.TestCases)
+                for (var index = 0; index < runResults.Count; index++)
                 {
-                    var runResult = await _sandbox.RunAsync(
-                        workDirectory,
-                        testCase.Input,
-                        problem.TimeLimitMs,
-                        problem.MemoryLimitKb,
-                        cancellationToken);
+                    if (index >= testCases.Length)
+                        throw new InvalidOperationException(
+                            $"Sandbox returned excess results while grading submission {submission.Id}.");
 
+                    var runResult = runResults[index];
+                    var testCase = testCases[index];
                     maxExecutionTime = Math.Max(maxExecutionTime, runResult.ExecutionTimeMs);
                     maxMemoryUsedBytes = Math.Max(maxMemoryUsedBytes, runResult.MemoryUsedBytes);
 
@@ -163,6 +169,13 @@ namespace AlgoJudge.Infrastructure.Grading
                         finalStatus = SubmissionStatus.WrongAnswer;
                         break;
                     }
+                }
+
+                if (finalStatus == SubmissionStatus.Accepted &&
+                    runResults.Count != testCases.Length)
+                {
+                    throw new InvalidOperationException(
+                        $"Sandbox returned an incomplete batch while grading submission {submission.Id}.");
                 }
 
                 var memoryUsedKb = (int)Math.Min(int.MaxValue, maxMemoryUsedBytes / 1024);

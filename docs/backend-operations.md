@@ -98,6 +98,13 @@ The worker remains a separate host process because it needs the local Docker
 Engine to launch the hardened judge sandbox. The API and PostgreSQL can run in
 Compose without granting Docker socket access to the API container.
 
+System-suite grading starts one runtime container per submission. The pinned
+C++17 image contains a trusted batch supervisor that streams framed testcase
+inputs to separate native-runner child processes in stable order. Per-testcase
+time, memory, process, and output limits remain independent; only Docker
+container startup is shared. Custom runs continue to use one runtime container
+for their single input.
+
 ContentTool source generation requires two separately pinned images:
 
 ```powershell

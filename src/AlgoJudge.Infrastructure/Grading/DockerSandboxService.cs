@@ -14,6 +14,7 @@ public sealed class DockerSandboxService : IDockerSandbox
     private const string SourceFileName = "solution.cpp";
     private const string BinaryFileName = "solution";
     private const int CompileMemoryMb = 512;
+    private const int MaximumBatchCaseCount = 5_000;
 
     private readonly ILogger<DockerSandboxService> _logger;
     private readonly DockerSandboxOptions _options;
@@ -214,6 +215,136 @@ public sealed class DockerSandboxService : IDockerSandbox
             }
 
             return result;
+        }
+        finally
+        {
+            await _docker.RemoveAsync(containerName);
+        }
+    }
+
+    public async Task<IReadOnlyList<SandboxRunResult>> RunBatchAsync(
+        string workDir,
+        IReadOnlyList<string> inputs,
+        int timeLimitMs,
+        int memoryLimitKb,
+        CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workDir);
+        ArgumentNullException.ThrowIfNull(inputs);
+        if (inputs.Count is < 1 or > MaximumBatchCaseCount)
+            throw new ArgumentOutOfRangeException(
+                nameof(inputs),
+                $"A judge batch requires between 1 and {MaximumBatchCaseCount} testcases.");
+        if (inputs.Any(input => input is null))
+            throw new ArgumentException("Judge batch inputs cannot contain null.", nameof(inputs));
+        if (timeLimitMs <= 0)
+            throw new ArgumentOutOfRangeException(nameof(timeLimitMs));
+        if (memoryLimitKb < 16 * 1024)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(memoryLimitKb),
+                "The Docker judge requires a memory limit of at least 16384 KiB.");
+        }
+
+        var fullWorkDirectory = Path.GetFullPath(workDir);
+        var binaryFile = Path.Combine(fullWorkDirectory, BinaryFileName);
+        if (!File.Exists(binaryFile))
+            throw new FileNotFoundException("Compiled solution artifact was not found.", binaryFile);
+
+        var containerName = CreateContainerName("batch");
+        try
+        {
+            var memory = $"{memoryLimitKb}k";
+            var createArguments = BuildBaseCreateArguments(containerName, memory);
+            createArguments.AddRange([
+                "--interactive",
+                "--volume", $"{ToDockerPath(binaryFile)}:{RuntimeWorkDirectory}/{BinaryFileName}:ro",
+                "--workdir", RuntimeWorkDirectory,
+                _options.Image,
+                "/usr/local/bin/algojudge-batch-runner",
+                "--time-limit-ms", timeLimitMs.ToString(CultureInfo.InvariantCulture),
+                "--stdout-limit-bytes", _options.StdoutLimitBytes.ToString(CultureInfo.InvariantCulture),
+                "--stderr-limit-bytes", _options.StderrLimitBytes.ToString(CultureInfo.InvariantCulture),
+                "--",
+                $"{RuntimeWorkDirectory}/{BinaryFileName}"
+            ]);
+
+            await _docker.CreateAsync(createArguments, ct);
+            var batchInput = JudgeBatchInputProtocol.Serialize(inputs);
+            var perCaseProtocolLimit = checked(
+                _options.StdoutLimitBytes +
+                _options.StderrLimitBytes +
+                JudgeRunnerProtocol.OverheadBytes);
+            var aggregateProtocolLimit = (int)Math.Min(
+                int.MaxValue,
+                checked((long)perCaseProtocolLimit * inputs.Count));
+            var watchdog = TimeSpan.FromMilliseconds(
+                checked((long)timeLimitMs * inputs.Count)) +
+                _options.DockerStartupAllowance;
+
+            DockerCommandResult startResult;
+            try
+            {
+                startResult = await _docker.StartAsync(
+                    containerName,
+                    batchInput,
+                    watchdog,
+                    aggregateProtocolLimit,
+                    JudgeRunnerProtocol.OverheadBytes,
+                    ct);
+            }
+            catch (TimeoutException exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "The outer Docker watchdog expired for judge batch container {ContainerName}.",
+                    containerName);
+                return [new SandboxRunResult { Status = SandboxRunStatus.SystemError }];
+            }
+
+            var state = await _docker.InspectAsync(containerName, ct);
+            if (state.OomKilled)
+            {
+                return
+                [
+                    new SandboxRunResult
+                    {
+                        Status = SandboxRunStatus.MemoryLimitExceeded,
+                        MemoryUsedBytes = (long)memoryLimitKb * 1024
+                    }
+                ];
+            }
+
+            if (!state.Status.Equals("exited", StringComparison.OrdinalIgnoreCase) ||
+                state.ExitCode != 0 ||
+                startResult.Stdout.Truncated)
+            {
+                _logger.LogError(
+                    "Judge batch runner failed. Container status {Status}, exit {ExitCode}, " +
+                    "stdout truncated {StdoutTruncated}. Docker stderr captured " +
+                    "{DockerStderrBytes} bytes, truncated {DockerStderrTruncated}.",
+                    state.Status,
+                    state.ExitCode,
+                    startResult.Stdout.Truncated,
+                    startResult.Stderr.Bytes.Length,
+                    startResult.Stderr.Truncated);
+                return [new SandboxRunResult { Status = SandboxRunStatus.SystemError }];
+            }
+
+            if (!JudgeRunnerProtocol.TryParseBatch(
+                    startResult.Stdout.Bytes,
+                    inputs.Count,
+                    out var results))
+            {
+                _logger.LogError(
+                    "Judge batch runner returned an invalid protocol response. Docker stderr " +
+                    "captured {DockerStderrBytes} bytes, truncated {DockerStderrTruncated}.",
+                    startResult.Stderr.Bytes.Length,
+                    startResult.Stderr.Truncated);
+                return [new SandboxRunResult { Status = SandboxRunStatus.SystemError }];
+            }
+
+            return results;
         }
         finally
         {

@@ -58,5 +58,35 @@ namespace AlgoJudge.Application.Interfaces
         /// <param name="memoryLimitKb">Memory limit in KB, taken from Problem.MemoryLimitKb.</param>
         /// <param name="ct">Cancellation token</param>
         Task<SandboxRunResult> RunAsync(string workDir, string input, int timeLimitMs, int memoryLimitKb, CancellationToken ct = default);
+
+        /// <summary>
+        /// Execute multiple inputs in stable order while reusing one sandbox lifetime when
+        /// the implementation supports it. Each testcase still receives a fresh solution
+        /// process and independent resource measurements.
+        /// </summary>
+        async Task<IReadOnlyList<SandboxRunResult>> RunBatchAsync(
+            string workDir,
+            IReadOnlyList<string> inputs,
+            int timeLimitMs,
+            int memoryLimitKb,
+            CancellationToken ct = default)
+        {
+            ArgumentNullException.ThrowIfNull(inputs);
+            var results = new List<SandboxRunResult>(inputs.Count);
+            foreach (var input in inputs)
+            {
+                var result = await RunAsync(
+                    workDir,
+                    input,
+                    timeLimitMs,
+                    memoryLimitKb,
+                    ct);
+                results.Add(result);
+                if (result.Status != SandboxRunStatus.Success)
+                    break;
+            }
+
+            return results;
+        }
     }
 }
