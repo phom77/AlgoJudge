@@ -231,11 +231,15 @@ For one immutable snapshot of a definition, the engine:
 2. compiles the generator and validator in the content-generation sandbox;
 3. derives seeds and produces handwritten and generated arguments;
 4. validates and canonically serializes every argument set;
-5. generates and compiles the reference harness;
-6. runs the reference once per argument set to produce expected output;
-7. repeats generation and reference execution from the same snapshot and seeds
-   and rejects any byte-level non-determinism;
-8. optionally executes wrong solutions and records differential coverage;
+5. generates and compiles the reference harness once;
+6. runs all argument sets through one C++17 runtime batch to produce expected
+   output, with a fresh measured solution process for each case;
+7. repeats reference execution in a second batch using the same compiled
+   artifact, repeats generation from the same snapshot and seeds, and rejects
+   any byte-level non-determinism;
+8. compiles each optional wrong solution once, executes all cases in one
+   continuing batch, and records complete differential coverage even when an
+   individual case terminates abnormally;
 9. evaluates the immutable quality policy against aggregate group counts and
    wrong-solution coverage; and
 10. hashes all inputs, outputs, source identities, toolchain identities, seeds,
@@ -296,6 +300,13 @@ capabilities, no new privileges, a read-only runtime filesystem, bounded
 writable scratch space, and explicit CPU, wall-time, memory, PID, file, and
 stdout/stderr limits. Source mounts are read-only. Only a bounded framed result
 protocol crosses back to the content worker.
+
+Reference and wrong-solution batches reuse only the hardened runtime container
+and compiled artifact. Every testcase still receives a fresh native-runner
+child process with independent time, memory, process, and output limits.
+Reference batches stop on the first sandbox failure. Wrong-solution batches
+continue after per-case failures so quality-gate coverage remains complete;
+an infrastructure-level batch failure rejects the generation job.
 
 The CLI may orchestrate this same engine before the content worker and Admin
 API exist. ContentTool does this for a private directory containing

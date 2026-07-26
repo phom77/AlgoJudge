@@ -52,15 +52,22 @@ public sealed class Cpp17WrongSolutionRunner : IWrongSolutionRunner
             if (!compileResult.Success)
                 throw new TestGenerationException("A declared wrong solution did not compile.");
 
-            var killed = new HashSet<int>();
-            for (var index = 0; index < inputs.Count; index++)
+            var results = await _sandbox.RunBatchContinuingAfterFailureAsync(
+                workDirectory,
+                inputs,
+                limits.TimeLimitMs,
+                limits.MemoryLimitKb,
+                cancellationToken);
+            if (results.Count != inputs.Count)
             {
-                var result = await _sandbox.RunAsync(
-                    workDirectory,
-                    inputs[index],
-                    limits.TimeLimitMs,
-                    limits.MemoryLimitKb,
-                    cancellationToken);
+                throw new TestGenerationException(
+                    "Wrong-solution sandbox returned incomplete coverage.");
+            }
+
+            var killed = new HashSet<int>();
+            for (var index = 0; index < results.Count; index++)
+            {
+                var result = results[index];
                 if (result.Status == SandboxRunStatus.SystemError)
                     throw new TestGenerationException("Wrong-solution sandbox execution failed.");
                 if (result.Status != SandboxRunStatus.Success ||

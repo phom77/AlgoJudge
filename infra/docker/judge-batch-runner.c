@@ -316,6 +316,20 @@ int main(int argc, char **argv)
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
 
+    bool continue_after_failure = false;
+    char **runner_argv = calloc((size_t)argc + 1, sizeof(char *));
+    if (runner_argv == NULL)
+        fail("could not allocate runner arguments");
+    int runner_argc = 1;
+    runner_argv[0] = argv[0];
+    for (int index = 1; index < argc; index++)
+    {
+        if (strcmp(argv[index], "--continue-after-failure") == 0)
+            continue_after_failure = true;
+        else
+            runner_argv[runner_argc++] = argv[index];
+    }
+
     char line[128];
     read_line(line, sizeof(line));
     if (strcmp(line, INPUT_PROTOCOL_NAME) != 0)
@@ -337,14 +351,15 @@ int main(int argc, char **argv)
         size_t input_length = 0;
         unsigned char *input = read_case_input(&input_length);
         const bool success = run_case(
-            argc,
-            argv,
+            runner_argc,
+            runner_argv,
             input,
             input_length);
         free(input);
-        if (!success)
+        if (!success && !continue_after_failure)
             break;
     }
 
+    free(runner_argv);
     return 0;
 }

@@ -88,5 +88,31 @@ namespace AlgoJudge.Application.Interfaces
 
             return results;
         }
+
+        /// <summary>
+        /// Execute every input in stable order even when an earlier testcase fails.
+        /// Intended for offline differential analysis that requires complete coverage.
+        /// </summary>
+        async Task<IReadOnlyList<SandboxRunResult>> RunBatchContinuingAfterFailureAsync(
+            string workDir,
+            IReadOnlyList<string> inputs,
+            int timeLimitMs,
+            int memoryLimitKb,
+            CancellationToken ct = default)
+        {
+            ArgumentNullException.ThrowIfNull(inputs);
+            var results = new List<SandboxRunResult>(inputs.Count);
+            foreach (var input in inputs)
+            {
+                results.Add(await RunAsync(
+                    workDir,
+                    input,
+                    timeLimitMs,
+                    memoryLimitKb,
+                    ct));
+            }
+
+            return results;
+        }
     }
 }

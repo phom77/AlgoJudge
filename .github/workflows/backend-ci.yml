@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      TEST_DOCKER_JUDGE_IMAGE: algojudge/judge-cpp17:14.3.0-v2
+      TEST_DOCKER_JUDGE_IMAGE: algojudge/judge-cpp17:14.3.0-v3
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -73,7 +73,7 @@ jobs:
           --health-retries 10
     env:
       TEST_POSTGRES_CONNECTION: Host=localhost;Port=5432;Database=algojudge_e2e;Username=postgres;Password=postgres
-      TEST_DOCKER_JUDGE_IMAGE: algojudge/judge-cpp17:14.3.0-v2
+      TEST_DOCKER_JUDGE_IMAGE: algojudge/judge-cpp17:14.3.0-v3
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4

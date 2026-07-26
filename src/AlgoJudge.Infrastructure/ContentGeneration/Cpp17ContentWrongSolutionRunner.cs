@@ -28,10 +28,23 @@ public sealed class Cpp17ContentWrongSolutionRunner : IWrongSolutionRunner
             Directory.CreateDirectory(directory);
             var compile = await _sandbox.CompileAsync(_harnessBuilder.Build(sourceCode, signature), directory, cancellationToken);
             if (!compile.Success) throw new ContentGenerationException("wrong_solution_compile_error", "A declared wrong solution did not compile.");
-            var killed = new HashSet<int>();
-            for (var index = 0; index < inputs.Count; index++)
+            var runs = await _sandbox.RunBatchContinuingAfterFailureAsync(
+                directory,
+                inputs,
+                limits.TimeLimitMs,
+                limits.MemoryLimitKb,
+                cancellationToken);
+            if (runs.Count != inputs.Count)
             {
-                var run = await _sandbox.RunAsync(directory, inputs[index], limits.TimeLimitMs, limits.MemoryLimitKb, cancellationToken);
+                throw new ContentGenerationException(
+                    "sandbox_error",
+                    "A wrong-solution sandbox returned incomplete coverage.");
+            }
+
+            var killed = new HashSet<int>();
+            for (var index = 0; index < runs.Count; index++)
+            {
+                var run = runs[index];
                 if (run.Status == SandboxRunStatus.SystemError)
                     throw new ContentGenerationException("sandbox_error", "A wrong-solution sandbox failed.");
                 if (run.Status != SandboxRunStatus.Success ||
