@@ -25,7 +25,7 @@ public sealed class DockerSandboxConfigurationTests
     [Fact]
     public void VersionedJudgeImageIsAccepted()
     {
-        var configuration = CreateConfiguration("algojudge/judge-cpp17:14.3.0-v1");
+        var configuration = CreateConfiguration("algojudge/judge-cpp17:14.3.0-v2");
 
         var sandbox = new DockerSandboxService(
             configuration,

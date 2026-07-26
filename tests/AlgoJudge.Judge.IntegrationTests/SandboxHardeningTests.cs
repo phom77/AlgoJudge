@@ -146,6 +146,133 @@ public sealed class SandboxHardeningTests
         }
     }
 
+    [DockerJudgeFact]
+    public async Task BatchExecutionUsesFreshMeasuredProcessForEveryTestcase()
+    {
+        var sandbox = JudgeTestHarness.CreateSandbox();
+        var workDirectory = CreateWorkDirectory();
+
+        try
+        {
+            var compileResult = await sandbox.CompileAsync(
+                """
+                #include <iostream>
+                int invocationCount = 0;
+                int main() {
+                    int value = 0;
+                    std::cin >> value;
+                    std::cout << ++invocationCount << ':' << value * 2;
+                }
+                """,
+                workDirectory);
+            Assert.True(compileResult.Success, compileResult.ErrorOutput);
+
+            var inputs = Enumerable.Range(1, 200)
+                .Select(value => $"{value}\n")
+                .ToArray();
+            var results = await sandbox.RunBatchAsync(
+                workDirectory,
+                inputs,
+                timeLimitMs: 1_000,
+                memoryLimitKb: 64 * 1024);
+
+            Assert.Equal(inputs.Length, results.Count);
+            for (var index = 0; index < results.Count; index++)
+            {
+                Assert.Equal(SandboxRunStatus.Success, results[index].Status);
+                Assert.Equal($"1:{(index + 1) * 2}", results[index].Output);
+                Assert.InRange(results[index].ExecutionTimeMs, 1, 1_000);
+                Assert.True(results[index].MemoryUsedBytes > 0);
+            }
+        }
+        finally
+        {
+            TryDeleteDirectory(workDirectory);
+        }
+    }
+
+    [DockerJudgeFact]
+    public async Task BatchExecutionStopsAfterFirstSandboxFailure()
+    {
+        var sandbox = JudgeTestHarness.CreateSandbox();
+        var workDirectory = CreateWorkDirectory();
+
+        try
+        {
+            var compileResult = await sandbox.CompileAsync(
+                """
+                #include <iostream>
+                int main() {
+                    int value = 0;
+                    std::cin >> value;
+                    if (value == 1) {
+                        for (;;) {
+                        }
+                    }
+                    std::cout << value;
+                }
+                """,
+                workDirectory);
+            Assert.True(compileResult.Success, compileResult.ErrorOutput);
+
+            var results = await sandbox.RunBatchAsync(
+                workDirectory,
+                ["1\n", "2\n", "3\n"],
+                timeLimitMs: 100,
+                memoryLimitKb: 64 * 1024);
+
+            var result = Assert.Single(results);
+            Assert.Equal(SandboxRunStatus.TimeLimitExceeded, result.Status);
+        }
+        finally
+        {
+            TryDeleteDirectory(workDirectory);
+        }
+    }
+
+    [DockerJudgeFact]
+    public async Task BatchExecutionPreservesEmptyMultilineAndUtf8Inputs()
+    {
+        var sandbox = JudgeTestHarness.CreateSandbox();
+        var workDirectory = CreateWorkDirectory();
+
+        try
+        {
+            var compileResult = await sandbox.CompileAsync(
+                """
+                #include <iostream>
+                int main() {
+                    std::cout << std::cin.rdbuf();
+                }
+                """,
+                workDirectory);
+            Assert.True(compileResult.Success, compileResult.ErrorOutput);
+
+            string[] inputs =
+            [
+                string.Empty,
+                "first line\nsecond line\n",
+                "xin chào 🚀\n"
+            ];
+            var results = await sandbox.RunBatchAsync(
+                workDirectory,
+                inputs,
+                timeLimitMs: 1_000,
+                memoryLimitKb: 64 * 1024);
+
+            Assert.Equal(inputs.Length, results.Count);
+            for (var index = 0; index < inputs.Length; index++)
+            {
+                Assert.Equal(SandboxRunStatus.Success, results[index].Status);
+                Assert.Equal(inputs[index], results[index].Output);
+            }
+        }
+        finally
+        {
+            TryDeleteDirectory(workDirectory);
+        }
+    }
+
     private static string CreateWorkDirectory()
     {
         var path = Path.Combine(

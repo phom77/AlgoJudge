@@ -31,10 +31,11 @@ public sealed class SystemSuiteGradingTests
 
         Assert.Equal(SubmissionStatus.Accepted, outcome.Status);
         Assert.Equal(["1", "2", "3"], sandbox.Inputs);
+        Assert.Equal(1, sandbox.BatchCount);
     }
 
     [Fact]
-    public async Task SubmissionStopsAtFirstWrongAnswerInStableOrdinalOrder()
+    public async Task SubmissionReportsFirstWrongAnswerInStableOrdinalOrder()
     {
         var sandbox = new SequencedSandbox(["2", "wrong", "6"]);
         var cases = new[] { 3, 1, 2 }.Select(ordinal => new JudgeTestCase
@@ -54,7 +55,8 @@ public sealed class SystemSuiteGradingTests
             systemTestCases: cases);
 
         Assert.Equal(SubmissionStatus.WrongAnswer, outcome.Status);
-        Assert.Equal(["1", "2"], sandbox.Inputs);
+        Assert.Equal(["1", "2", "3"], sandbox.Inputs);
+        Assert.Equal(1, sandbox.BatchCount);
     }
 
     [Fact]
@@ -101,6 +103,7 @@ public sealed class SystemSuiteGradingTests
     {
         private int _index;
         public List<string> Inputs { get; } = [];
+        public int BatchCount { get; private set; }
         public Task<SandboxCompileResult> CompileAsync(string sourceCode, string workDir, CancellationToken ct = default) =>
             Task.FromResult(new SandboxCompileResult { Success = true });
         public Task<SandboxRunResult> RunAsync(string workDir, string input, int timeLimitMs, int memoryLimitKb, CancellationToken ct = default)
@@ -113,6 +116,20 @@ public sealed class SystemSuiteGradingTests
                 ExecutionTimeMs = 1,
                 MemoryUsedBytes = 1024
             });
+        }
+
+        public async Task<IReadOnlyList<SandboxRunResult>> RunBatchAsync(
+            string workDir,
+            IReadOnlyList<string> inputs,
+            int timeLimitMs,
+            int memoryLimitKb,
+            CancellationToken ct = default)
+        {
+            BatchCount++;
+            var results = new List<SandboxRunResult>(inputs.Count);
+            foreach (var input in inputs)
+                results.Add(await RunAsync(workDir, input, timeLimitMs, memoryLimitKb, ct));
+            return results;
         }
     }
 }

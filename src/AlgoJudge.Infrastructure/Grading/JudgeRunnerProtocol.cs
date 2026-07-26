@@ -12,12 +12,62 @@ internal static class JudgeRunnerProtocol
 
     public static bool TryParse(byte[] protocolBytes, out SandboxRunResult result)
     {
+        if (!TryParseFrame(protocolBytes, 0, out result, out var consumed))
+            return false;
+
+        return consumed == protocolBytes.Length;
+    }
+
+    public static bool TryParseBatch(
+        byte[] protocolBytes,
+        int requestedCaseCount,
+        out IReadOnlyList<SandboxRunResult> results)
+    {
+        results = [];
+        if (requestedCaseCount <= 0)
+            return false;
+
+        var parsed = new List<SandboxRunResult>(requestedCaseCount);
+        var offset = 0;
+        while (offset < protocolBytes.Length && parsed.Count < requestedCaseCount)
+        {
+            if (!TryParseFrame(protocolBytes, offset, out var result, out var consumed))
+                return false;
+
+            parsed.Add(result);
+            offset += consumed;
+            if (result.Status != SandboxRunStatus.Success)
+                break;
+        }
+
+        if (offset != protocolBytes.Length || parsed.Count == 0)
+            return false;
+        if (parsed.Count != requestedCaseCount &&
+            parsed[^1].Status == SandboxRunStatus.Success)
+        {
+            return false;
+        }
+
+        results = parsed;
+        return true;
+    }
+
+    private static bool TryParseFrame(
+        byte[] protocolBytes,
+        int offset,
+        out SandboxRunResult result,
+        out int consumed)
+    {
         result = new SandboxRunResult { Status = SandboxRunStatus.SystemError };
-        var headerEnd = FindHeaderEnd(protocolBytes);
+        consumed = 0;
+        var headerEnd = FindHeaderEnd(protocolBytes, offset);
         if (headerEnd < 0)
             return false;
 
-        var header = Encoding.ASCII.GetString(protocolBytes, 0, headerEnd);
+        var header = Encoding.ASCII.GetString(
+            protocolBytes,
+            offset,
+            headerEnd - offset);
         var lines = header.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         if (lines.Length < 6 || !lines[0].Equals(Name, StringComparison.Ordinal))
             return false;
@@ -41,7 +91,8 @@ internal static class JudgeRunnerProtocol
         }
 
         var payloadStart = headerEnd + 2;
-        if ((long)payloadStart + stdoutLength + stderrLength != protocolBytes.Length)
+        var frameEnd = (long)payloadStart + stdoutLength + stderrLength;
+        if (frameEnd > protocolBytes.Length)
             return false;
 
         var sandboxStatus = statusValue switch
@@ -67,6 +118,7 @@ internal static class JudgeRunnerProtocol
             ExecutionTimeMs = (int)Math.Min(int.MaxValue, (elapsedUs + 999) / 1000),
             MemoryUsedBytes = memoryBytes
         };
+        consumed = checked((int)frameEnd - offset);
         return true;
     }
 
@@ -92,10 +144,10 @@ internal static class JudgeRunnerProtocol
             value >= 0;
     }
 
-    private static int FindHeaderEnd(byte[] bytes)
+    private static int FindHeaderEnd(byte[] bytes, int offset)
     {
-        var searchLimit = Math.Min(bytes.Length - 1, OverheadBytes);
-        for (var index = 0; index < searchLimit; index++)
+        var searchLimit = Math.Min(bytes.Length - 1, offset + OverheadBytes);
+        for (var index = offset; index < searchLimit; index++)
         {
             if (bytes[index] == (byte)'\n' && bytes[index + 1] == (byte)'\n')
                 return index;

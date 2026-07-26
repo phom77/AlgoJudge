@@ -89,7 +89,7 @@ public sealed class SandboxedContentGenerationEngineTests
     private static IConfiguration Configuration() => new ConfigurationBuilder().AddInMemoryCollection(
         new Dictionary<string, string?>
         {
-            ["Sandbox:DockerImage"] = "algojudge/judge-cpp17:14.3.0-v1",
+            ["Sandbox:DockerImage"] = "algojudge/judge-cpp17:14.3.0-v2",
             ["DotNetGenerationSandbox:DockerImage"] = "algojudge/generator:10-v1",
             ["ContentGeneration:MaximumCaseCount"] = "500"
         }).Build();
@@ -97,7 +97,7 @@ public sealed class SandboxedContentGenerationEngineTests
     private static IConfiguration DefaultCapacityConfiguration() => new ConfigurationBuilder().AddInMemoryCollection(
         new Dictionary<string, string?>
         {
-            ["Sandbox:DockerImage"] = "algojudge/judge-cpp17:14.3.0-v1",
+            ["Sandbox:DockerImage"] = "algojudge/judge-cpp17:14.3.0-v2",
             ["DotNetGenerationSandbox:DockerImage"] = "algojudge/generator:10-v1"
         }).Build();
 

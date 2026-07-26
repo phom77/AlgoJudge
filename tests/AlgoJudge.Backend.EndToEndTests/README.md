@@ -15,7 +15,8 @@ Coverage includes:
   worker, generated Function harness, and Docker sandbox;
 - maintainer authoring through the API, PostgreSQL content-generation queue,
   content worker, quality review, and publication of a 1,000-case Function
-  suite; the published suite is then exercised by the real judge sandbox;
+  suite; the published suite is then exercised by one real judge batch
+  container with 1,000 independently measured solution processes;
 - custom Run output stays separate from system-suite Submit history and solved
   state, while submissions remain pinned to their system-suite version;
 - submission ownership and absence of source or hidden testcase data from API
