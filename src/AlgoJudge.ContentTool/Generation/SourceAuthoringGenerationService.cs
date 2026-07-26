@@ -94,13 +94,7 @@ public sealed class SourceAuthoringGenerationService
         var limits = await ProblemGenerationMetadataReader.ReadLimitsAsync(root, cancellationToken);
         EnsureLimits(limits);
         var inputs = first.Cases.Select(testCase => testCase.Input).ToArray();
-        var outputs = await _referenceRunner.RunFunctionAsync(
-            definition.ReferenceSolution.Source,
-            definition.FunctionSignature,
-            inputs,
-            limits,
-            cancellationToken);
-        var repeatedOutputs = await _referenceRunner.RunFunctionAsync(
+        var (outputs, repeatedOutputs) = await _referenceRunner.RunFunctionTwiceAsync(
             definition.ReferenceSolution.Source,
             definition.FunctionSignature,
             inputs,

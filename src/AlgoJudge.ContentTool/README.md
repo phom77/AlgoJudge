@@ -111,7 +111,8 @@ dotnet run --project src/AlgoJudge.ContentTool -- validate-generated path/to/pro
 When root `authoring.json` exists, ContentTool uses source-based generation
 instead of `generator/manifest.json`. It runs generator and validator source
 twice in the isolated .NET image, validates signature-shaped JSON, runs the
-reference method twice through the generic C++17 harness, and rejects any
-nondeterminism. Optional wrong solutions are executed against every case; the
+reference method twice through ordered C++17 runtime batches from one compiled
+generic harness, and rejects any nondeterminism. Optional wrong solutions are
+compiled once and executed against every case in continuing batches; the
 version-2 generated manifest records which cases kill each wrong solution and
 which wrong solutions survive for maintainer review.

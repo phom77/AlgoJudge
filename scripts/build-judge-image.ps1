@@ -1,5 +1,5 @@
 param(
-    [string]$Image = "algojudge/judge-cpp17:14.3.0-v2"
+    [string]$Image = "algojudge/judge-cpp17:14.3.0-v3"
 )
 
 $ErrorActionPreference = "Stop"

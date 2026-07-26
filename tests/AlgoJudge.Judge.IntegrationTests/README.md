@@ -2,13 +2,14 @@
 
 Docker-backed tests cover Accepted, Wrong Answer, TLE, MLE, Compile Error,
 Runtime Error, bounded output, runtime isolation, fresh per-testcase processes,
-and early batch termination after a sandbox failure.
+early batch termination after a submission sandbox failure, and complete
+1,000-case reference/wrong-solution batches for offline content generation.
 
 Build the image and opt in locally:
 
 ```powershell
 ./scripts/build-judge-image.ps1
-$env:TEST_DOCKER_JUDGE_IMAGE = "algojudge/judge-cpp17:14.3.0-v2"
+$env:TEST_DOCKER_JUDGE_IMAGE = "algojudge/judge-cpp17:14.3.0-v3"
 dotnet test tests/AlgoJudge.Judge.IntegrationTests
 ```
 

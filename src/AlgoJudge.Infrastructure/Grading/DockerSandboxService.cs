@@ -222,12 +222,41 @@ public sealed class DockerSandboxService : IDockerSandbox
         }
     }
 
-    public async Task<IReadOnlyList<SandboxRunResult>> RunBatchAsync(
+    public Task<IReadOnlyList<SandboxRunResult>> RunBatchAsync(
         string workDir,
         IReadOnlyList<string> inputs,
         int timeLimitMs,
         int memoryLimitKb,
-        CancellationToken ct = default)
+        CancellationToken ct = default) =>
+        RunBatchCoreAsync(
+            workDir,
+            inputs,
+            timeLimitMs,
+            memoryLimitKb,
+            stopAfterFailure: true,
+            ct);
+
+    public Task<IReadOnlyList<SandboxRunResult>> RunBatchContinuingAfterFailureAsync(
+        string workDir,
+        IReadOnlyList<string> inputs,
+        int timeLimitMs,
+        int memoryLimitKb,
+        CancellationToken ct = default) =>
+        RunBatchCoreAsync(
+            workDir,
+            inputs,
+            timeLimitMs,
+            memoryLimitKb,
+            stopAfterFailure: false,
+            ct);
+
+    private async Task<IReadOnlyList<SandboxRunResult>> RunBatchCoreAsync(
+        string workDir,
+        IReadOnlyList<string> inputs,
+        int timeLimitMs,
+        int memoryLimitKb,
+        bool stopAfterFailure,
+        CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workDir);
         ArgumentNullException.ThrowIfNull(inputs);
@@ -261,7 +290,11 @@ public sealed class DockerSandboxService : IDockerSandbox
                 "--volume", $"{ToDockerPath(binaryFile)}:{RuntimeWorkDirectory}/{BinaryFileName}:ro",
                 "--workdir", RuntimeWorkDirectory,
                 _options.Image,
-                "/usr/local/bin/algojudge-batch-runner",
+                "/usr/local/bin/algojudge-batch-runner"
+            ]);
+            if (!stopAfterFailure)
+                createArguments.Add("--continue-after-failure");
+            createArguments.AddRange([
                 "--time-limit-ms", timeLimitMs.ToString(CultureInfo.InvariantCulture),
                 "--stdout-limit-bytes", _options.StdoutLimitBytes.ToString(CultureInfo.InvariantCulture),
                 "--stderr-limit-bytes", _options.StderrLimitBytes.ToString(CultureInfo.InvariantCulture),
@@ -334,6 +367,7 @@ public sealed class DockerSandboxService : IDockerSandbox
             if (!JudgeRunnerProtocol.TryParseBatch(
                     startResult.Stdout.Bytes,
                     inputs.Count,
+                    stopAfterFailure,
                     out var results))
             {
                 _logger.LogError(

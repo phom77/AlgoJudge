@@ -21,6 +21,7 @@ internal static class JudgeRunnerProtocol
     public static bool TryParseBatch(
         byte[] protocolBytes,
         int requestedCaseCount,
+        bool stopAfterFailure,
         out IReadOnlyList<SandboxRunResult> results)
     {
         results = [];
@@ -36,17 +37,20 @@ internal static class JudgeRunnerProtocol
 
             parsed.Add(result);
             offset += consumed;
-            if (result.Status != SandboxRunStatus.Success)
+            if (stopAfterFailure && result.Status != SandboxRunStatus.Success)
                 break;
         }
 
         if (offset != protocolBytes.Length || parsed.Count == 0)
             return false;
-        if (parsed.Count != requestedCaseCount &&
+        if (stopAfterFailure &&
+            parsed.Count != requestedCaseCount &&
             parsed[^1].Status == SandboxRunStatus.Success)
         {
             return false;
         }
+        if (!stopAfterFailure && parsed.Count != requestedCaseCount)
+            return false;
 
         results = parsed;
         return true;

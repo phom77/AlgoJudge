@@ -32,6 +32,7 @@ public sealed class Cpp17WrongSolutionRunnerTests
             OutputCheckerConfiguration.JsonExact);
 
         Assert.Equal([2, 3], killed.Order());
+        Assert.Equal(1, sandbox.ContinuingBatchCalls);
     }
 
     [Fact]
@@ -71,6 +72,7 @@ public sealed class Cpp17WrongSolutionRunnerTests
         private int _index;
 
         public bool CompileSuccess { get; init; } = true;
+        public int ContinuingBatchCalls { get; private set; }
 
         public Task<SandboxCompileResult> CompileAsync(
             string sourceCode,
@@ -85,5 +87,24 @@ public sealed class Cpp17WrongSolutionRunnerTests
             int memoryLimitKb,
             CancellationToken ct = default) =>
             Task.FromResult(results[_index++]);
+
+        public async Task<IReadOnlyList<SandboxRunResult>> RunBatchContinuingAfterFailureAsync(
+            string workDir,
+            IReadOnlyList<string> inputs,
+            int timeLimitMs,
+            int memoryLimitKb,
+            CancellationToken ct = default)
+        {
+            ContinuingBatchCalls++;
+            var batchResults = new List<SandboxRunResult>(inputs.Count);
+            foreach (var input in inputs)
+                batchResults.Add(await RunAsync(
+                    workDir,
+                    input,
+                    timeLimitMs,
+                    memoryLimitKb,
+                    ct));
+            return batchResults;
+        }
     }
 }

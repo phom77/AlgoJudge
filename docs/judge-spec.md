@@ -117,6 +117,11 @@ Generation uses an immutable authoring snapshot. It validates every argument,
 uses the generic Function harness for the reference method, repeats generation
 and reference execution from identical seeds, and rejects byte-level
 non-determinism. Optional wrong solutions run under the same C++17 sandbox.
+The reference harness is compiled once and executed in two ordered runtime
+batches for the determinism comparison. Each wrong solution is compiled once
+and executed in one ordered batch that continues after per-case failures so
+differential coverage includes the complete suite. Every case still runs in a
+fresh measured process with independent resource limits.
 Only a complete, hashed candidate can become a positive immutable system-suite
 version. Generated source, hidden values, and raw diagnostics are excluded from
 normal logs and public contracts.

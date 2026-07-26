@@ -72,9 +72,8 @@ public sealed class SandboxedContentGenerationEngine : IContentGenerationEngine
         ValidateCases(first.Cases, definition.FunctionSignature);
         var inputs = first.Cases.Select(item => item.Input).ToArray();
         var limits = new ReferenceSolutionLimits(claim.TimeLimitMs, claim.MemoryLimitKb);
-        var outputs = await _referenceRunner.RunFunctionAsync(definition.ReferenceSolution.Source,
-            definition.FunctionSignature, inputs, limits, cancellationToken);
-        var repeated = await _referenceRunner.RunFunctionAsync(definition.ReferenceSolution.Source,
+        var (outputs, repeated) = await _referenceRunner.RunFunctionTwiceAsync(
+            definition.ReferenceSolution.Source,
             definition.FunctionSignature, inputs, limits, cancellationToken);
         if (!outputs.SequenceEqual(repeated, StringComparer.Ordinal) || outputs.Count != inputs.Length)
             throw new ContentGenerationException("nondeterministic_reference", "The reference solution is not deterministic.");

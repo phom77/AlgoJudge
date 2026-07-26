@@ -231,6 +231,47 @@ public sealed class SandboxHardeningTests
     }
 
     [DockerJudgeFact]
+    public async Task ContinuingBatchExecutionReturnsEverySandboxFailureAndSuccess()
+    {
+        var sandbox = JudgeTestHarness.CreateSandbox();
+        var workDirectory = CreateWorkDirectory();
+
+        try
+        {
+            var compileResult = await sandbox.CompileAsync(
+                """
+                #include <cstdlib>
+                #include <iostream>
+                int main() {
+                    int value = 0;
+                    std::cin >> value;
+                    if (value == 1) std::abort();
+                    std::cout << value * 2;
+                }
+                """,
+                workDirectory);
+            Assert.True(compileResult.Success, compileResult.ErrorOutput);
+
+            var results = await sandbox.RunBatchContinuingAfterFailureAsync(
+                workDirectory,
+                ["1\n", "2\n", "3\n"],
+                timeLimitMs: 1_000,
+                memoryLimitKb: 64 * 1024);
+
+            Assert.Equal(3, results.Count);
+            Assert.Equal(SandboxRunStatus.RuntimeError, results[0].Status);
+            Assert.Equal(SandboxRunStatus.Success, results[1].Status);
+            Assert.Equal("4", results[1].Output);
+            Assert.Equal(SandboxRunStatus.Success, results[2].Status);
+            Assert.Equal("6", results[2].Output);
+        }
+        finally
+        {
+            TryDeleteDirectory(workDirectory);
+        }
+    }
+
+    [DockerJudgeFact]
     public async Task BatchExecutionPreservesEmptyMultilineAndUtf8Inputs()
     {
         var sandbox = JudgeTestHarness.CreateSandbox();
