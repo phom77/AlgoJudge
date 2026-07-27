@@ -1,0 +1,109 @@
+<section class="management-heading">
+  <div>
+    <p class="eyebrow">Problem operations</p>
+    <h2>Problem management</h2>
+    <p>Review the catalogue, continue revisions, and control public availability.</p>
+  </div>
+  <a class="primary-action" routerLink="/admin/problems/new">Create problem</a>
+</section>
+
+<section class="dashboard" aria-label="Problem summary">
+  <div>
+    <span>{{ store.totalCount() }}</span
+    ><small>All problems</small>
+  </div>
+  <div>
+    <span>{{ countByStatus(2) }}</span
+    ><small>Published</small>
+  </div>
+  <div>
+    <span>{{ countByStatus(1) }}</span
+    ><small>Drafts</small>
+  </div>
+</section>
+
+<section class="management-panel" aria-labelledby="management-title">
+  <div class="toolbar">
+    <div>
+      <h3 id="management-title">Catalogue</h3>
+      <p>Archive preserves submissions and suite history; it does not delete a problem.</p>
+    </div>
+    <label>
+      <span>Search</span>
+      <input
+        type="search"
+        [value]="store.query().search"
+        (change)="search($any($event.target).value)"
+        placeholder="Title or slug"
+      />
+    </label>
+    <label>
+      <span>Status</span>
+      <select [value]="store.query().status" (change)="filterStatus($any($event.target).value)">
+        <option value="all">All</option>
+        <option value="draft">Draft</option>
+        <option value="published">Published</option>
+        <option value="archived">Archived</option>
+      </select>
+    </label>
+  </div>
+
+  @if (store.loading() && store.page() === null) {
+    <p class="state" role="status">Loading problems…</p>
+  } @else if (store.problem(); as problem) {
+    <div class="state state--error" role="alert">
+      <strong>{{ problem.title }}</strong> {{ problem.detail }}
+    </div>
+  } @else if (store.items().length === 0) {
+    <p class="state">No problems match this filter.</p>
+  } @else {
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Problem</th>
+            <th>Status</th>
+            <th>Latest revision</th>
+            <th>Updated</th>
+            <th><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of store.items(); track item.id) {
+            <tr>
+              <td>
+                <strong>{{ item.title }}</strong
+                ><small>{{ item.slug }} · v{{ item.judgeVersion }}</small>
+              </td>
+              <td>
+                <span class="status" [class.status--archived]="item.status === 3">{{
+                  problemStatusLabel(item.status)
+                }}</span>
+              </td>
+              <td>{{ revisionStatusLabel(item.latestRevisionStatus) }}</td>
+              <td>{{ item.updatedAt ? (item.updatedAt | date: 'mediumDate') : '—' }}</td>
+              <td class="actions">
+                @if (item.status === 1 && item.latestRevisionId) {
+                  <button type="button" [disabled]="isAction(item)" (click)="openRevision(item)">
+                    Review & publish
+                  </button>
+                } @else if (item.status === 2) {
+                  <button type="button" [disabled]="isAction(item)" (click)="createRevision(item)">
+                    Create revision
+                  </button>
+                  <button type="button" [disabled]="isAction(item)" (click)="archive(item)">
+                    Archive
+                  </button>
+                } @else if (item.status === 3) {
+                  <button type="button" [disabled]="isAction(item)" (click)="restore(item)">
+                    Restore
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
