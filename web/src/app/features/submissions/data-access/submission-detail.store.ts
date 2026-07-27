@@ -54,7 +54,7 @@ export class SubmissionDetailStore {
 
   private load(id: string): Observable<DetailState> {
     this.state.set({ id, submission: null, loading: true, problem: null });
-    if (!isUuid(id)) return of(invalidIdState(id));
+    if (!isSubmissionIdentifier(id)) return of(invalidIdState(id));
     return this.gateway.detail(id).pipe(
       switchMap((submission) => this.polling.watch(submission)),
       map((submission) => ({ id, submission, loading: false, problem: null })),
@@ -84,8 +84,8 @@ function invalidIdState(id: string): DetailState {
   };
 }
 
-function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+export function isSubmissionIdentifier(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
 function asApiProblem(error: unknown): ApiProblem {

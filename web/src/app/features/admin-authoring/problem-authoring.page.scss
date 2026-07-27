@@ -267,6 +267,26 @@ button:disabled {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
 }
+.publish-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--color-success) 45%, var(--color-border));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-success) 8%, var(--color-surface));
+}
+.publish-panel h3,
+.publish-panel p {
+  margin: 0;
+}
+.publish-panel p {
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
 .metric-list {
   display: grid;
   gap: var(--space-2);
@@ -350,5 +370,9 @@ code {
   }
   .panel {
     padding: var(--space-4);
+  }
+  .publish-panel {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

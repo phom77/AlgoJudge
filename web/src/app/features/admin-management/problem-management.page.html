@@ -13,11 +13,11 @@
     ><small>All problems</small>
   </div>
   <div>
-    <span>{{ countByStatus(2) }}</span
+    <span>{{ countByStatus('Published') }}</span
     ><small>Published</small>
   </div>
   <div>
-    <span>{{ countByStatus(1) }}</span
+    <span>{{ countByStatus('Draft') }}</span
     ><small>Drafts</small>
   </div>
 </section>
@@ -76,25 +76,27 @@
                 ><small>{{ item.slug }} · v{{ item.judgeVersion }}</small>
               </td>
               <td>
-                <span class="status" [class.status--archived]="item.status === 3">{{
-                  problemStatusLabel(item.status)
-                }}</span>
+                <span
+                  class="status"
+                  [class.status--archived]="isProblemStatus(item.status, 'Archived')"
+                  >{{ problemStatusLabel(item.status) }}</span
+                >
               </td>
               <td>{{ revisionStatusLabel(item.latestRevisionStatus) }}</td>
               <td>{{ item.updatedAt ? (item.updatedAt | date: 'mediumDate') : '—' }}</td>
               <td class="actions">
-                @if (item.status === 1 && item.latestRevisionId) {
+                @if (isProblemStatus(item.status, 'Draft') && item.latestRevisionId) {
                   <button type="button" [disabled]="isAction(item)" (click)="openRevision(item)">
                     Review & publish
                   </button>
-                } @else if (item.status === 2) {
+                } @else if (isProblemStatus(item.status, 'Published')) {
                   <button type="button" [disabled]="isAction(item)" (click)="createRevision(item)">
                     Create revision
                   </button>
                   <button type="button" [disabled]="isAction(item)" (click)="archive(item)">
                     Archive
                   </button>
-                } @else if (item.status === 3) {
+                } @else if (isProblemStatus(item.status, 'Archived')) {
                   <button type="button" [disabled]="isAction(item)" (click)="restore(item)">
                     Restore
                   </button>

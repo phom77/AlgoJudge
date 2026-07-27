@@ -130,6 +130,12 @@ After an operator has created the account for an initial or recovery
 administrator, configure its email through `AdminBootstrap__Emails__0` and
 subsequent array indexes, then restart the API. The bootstrap promotes matching
 existing accounts one way; removing an address does not demote an administrator.
+This is the approved administrative configuration boundary: it is deployment
+configuration, not a browser-editable setting or a secret. Record the change
+request, operator, normalized email set, deployment revision, and verification
+of the resulting role in the deployment audit trail. The API does not expose
+hidden testcase payloads through either public or internal administration
+responses.
 Queue polling, lease, heartbeat, retries, and identity are configured under
 `ContentQueue`.
 `ContentGeneration:MaximumCaseCount` defaults to 1,000 and must not exceed

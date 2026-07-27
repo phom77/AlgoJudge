@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 
 import type { AdminProblemListItemResponse } from '../../core/api/admin-generated/models/admin-problem-list-item-response';
 import {
+  isProblemStatus,
   problemStatusLabel,
   revisionStatusLabel,
   type AdminProblemStatus,
@@ -25,6 +26,7 @@ export class ProblemManagementPage {
   protected readonly store = inject(ProblemManagementStore);
   protected readonly problemStatusLabel = problemStatusLabel;
   protected readonly revisionStatusLabel = revisionStatusLabel;
+  protected readonly isProblemStatus = isProblemStatus;
 
   constructor() {
     this.store.load().pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
@@ -77,7 +79,7 @@ export class ProblemManagementPage {
     return this.store.actionProblemId() === Number(item.id);
   }
 
-  protected countByStatus(status: number): number {
-    return this.store.items().filter((item) => item.status === status).length;
+  protected countByStatus(status: 'Draft' | 'Published' | 'Archived'): number {
+    return this.store.items().filter((item) => isProblemStatus(item.status, status)).length;
   }
 }
