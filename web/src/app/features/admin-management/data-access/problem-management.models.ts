@@ -22,16 +22,31 @@ export function toProblemStatus(value: AdminProblemStatus): number | undefined {
 }
 
 export function problemStatusLabel(value: unknown): string {
-  return (
-    ({ 1: 'Draft', 2: 'Published', 3: 'Archived' } as Record<number, string>)[Number(value)] ??
-    'Unknown'
-  );
+  return normalizeEnumLabel(value, { 1: 'Draft', 2: 'Published', 3: 'Archived' });
 }
 
 export function revisionStatusLabel(value: unknown): string {
-  return (
-    ({ 0: 'Draft', 1: 'Generating', 2: 'Ready', 3: 'Published' } as Record<number, string>)[
-      Number(value)
-    ] ?? 'Unknown'
-  );
+  return normalizeEnumLabel(value, {
+    0: 'Draft',
+    1: 'Generating',
+    2: 'Ready',
+    3: 'Published',
+  });
+}
+
+export function isProblemStatus(
+  value: unknown,
+  expected: 'Draft' | 'Published' | 'Archived',
+): boolean {
+  return problemStatusLabel(value) === expected;
+}
+
+function normalizeEnumLabel(value: unknown, labels: Readonly<Record<number, string>>): string {
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    const stringMatch = Object.values(labels).find((label) => label.toLowerCase() === normalized);
+    if (stringMatch) return stringMatch;
+  }
+
+  return labels[Number(value)] ?? 'Unknown';
 }

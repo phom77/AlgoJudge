@@ -448,6 +448,40 @@
           </ul>
         </section>
       </div>
+      @if (review.survivingWrongSolutions?.length) {
+        <div class="alert alert--error" role="alert">
+          Still surviving: {{ review.survivingWrongSolutions?.join(', ') }}
+        </div>
+      }
+      @if (!store.published()) {
+        <div class="publish-panel">
+          <div>
+            <h3>Candidate ready</h3>
+            <p>The generated suite passed review and can now be published.</p>
+          </div>
+          <div class="actions">
+            <button
+              class="primary-button"
+              type="button"
+              [disabled]="
+                store.busy() ||
+                (review.qualityPolicy?.requireEachDeclaredWrongSolutionKilled !== false &&
+                  !!review.survivingWrongSolutions?.length)
+              "
+              (click)="publish()"
+            >
+              Publish problem</button
+            ><button
+              class="secondary-button"
+              type="button"
+              [disabled]="store.busy()"
+              (click)="generate()"
+            >
+              Regenerate
+            </button>
+          </div>
+        </div>
+      }
       <div class="table-wrap">
         <table>
           <caption>
@@ -477,34 +511,6 @@
       </div>
       @if (review.isCasePreviewTruncated) {
         <p class="muted">Preview limited to the first 100 cases.</p>
-      }
-      @if (review.survivingWrongSolutions?.length) {
-        <div class="alert alert--error" role="alert">
-          Still surviving: {{ review.survivingWrongSolutions?.join(', ') }}
-        </div>
-      }
-      @if (!store.published()) {
-        <div class="actions">
-          <button
-            class="primary-button"
-            type="button"
-            [disabled]="
-              store.busy() ||
-              (review.qualityPolicy?.requireEachDeclaredWrongSolutionKilled !== false &&
-                !!review.survivingWrongSolutions?.length)
-            "
-            (click)="publish()"
-          >
-            Publish problem</button
-          ><button
-            class="secondary-button"
-            type="button"
-            [disabled]="store.busy()"
-            (click)="generate()"
-          >
-            Regenerate
-          </button>
-        </div>
       }
     }
     <aside class="legacy">
