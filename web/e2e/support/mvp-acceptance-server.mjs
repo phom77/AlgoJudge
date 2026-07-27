@@ -138,6 +138,7 @@ async function handleApi(request, response, url) {
 
   if (url.pathname === '/api/internal/admin/problem-drafts' && request.method === 'POST') {
     if (!userName) return authenticationProblem(response);
+    if (!state.users.get(userName)?.isAdmin) return forbiddenProblem(response);
     if (!hasValidCsrf(request, cookies)) return csrfProblem(response);
     const body = await readJson(request);
     state.authoringDraft = {
@@ -169,6 +170,7 @@ async function handleApi(request, response, url) {
   const draftMatch = /^\/api\/internal\/admin\/problem-drafts\/([0-9a-f-]+)$/i.exec(url.pathname);
   if (draftMatch && request.method === 'GET') {
     if (!userName) return authenticationProblem(response);
+    if (!state.users.get(userName)?.isAdmin) return forbiddenProblem(response);
     return state.authoringDraft
       ? json(response, 200, state.authoringDraft)
       : problemDetails(response, 404, 'not-found', 'Draft not found.');
@@ -180,6 +182,7 @@ async function handleApi(request, response, url) {
     );
   if (authoringAction) {
     if (!userName) return authenticationProblem(response);
+    if (!state.users.get(userName)?.isAdmin) return forbiddenProblem(response);
     const action = authoringAction[2];
     if (request.method !== 'GET' && !hasValidCsrf(request, cookies)) return csrfProblem(response);
     if (request.method === 'PUT') {
@@ -527,7 +530,7 @@ function authResponse(user) {
   return {
     userName: user.userName,
     email: user.email,
-    isAdmin: true,
+    isAdmin: user.isAdmin,
     expiresAt: '2026-07-17T02:00:00Z',
   };
 }
@@ -538,6 +541,7 @@ function createUser(body) {
     userName: String(body.userName),
     email: String(body.email),
     fullName: String(body.fullName),
+    isAdmin: String(body.userName).startsWith('admin_'),
     passwordSalt,
     passwordHash: scryptSync(String(body.password), passwordSalt, 32).toString('hex'),
   };
@@ -601,6 +605,10 @@ function problemDetails(response, status, code, title, detail = null) {
 
 function authenticationProblem(response) {
   return problemDetails(response, 401, 'authentication', 'Authentication required.');
+}
+
+function forbiddenProblem(response) {
+  return problemDetails(response, 403, 'forbidden', 'Administrator access required.');
 }
 
 function csrfProblem(response) {

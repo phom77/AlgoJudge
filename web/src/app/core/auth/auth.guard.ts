@@ -13,6 +13,17 @@ export const authGuard: CanActivateFn = (_route, state) => {
     : router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
 };
 
+export const adminGuard: CanActivateFn = (_route, state) => {
+  const store = inject(AuthStore);
+  const router = inject(Router);
+
+  if (!store.isAuthenticated()) {
+    return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
+  }
+
+  return store.isAdmin() ? true : router.createUrlTree(['/forbidden']);
+};
+
 export const anonymousGuard: CanActivateFn = () => {
   const store = inject(AuthStore);
   const router = inject(Router);

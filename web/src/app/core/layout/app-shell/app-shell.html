@@ -16,12 +16,14 @@
           routerLinkActive="navigation__link--active"
           >Submissions</a
         >
-        <a
-          class="navigation__link"
-          routerLink="/admin/problems/new"
-          routerLinkActive="navigation__link--active"
-          >Authoring</a
-        >
+        @if (authStore.isAdmin()) {
+          <a
+            class="navigation__link"
+            routerLink="/admin"
+            routerLinkActive="navigation__link--active"
+            >Admin</a
+          >
+        }
       }
     </nav>
 
