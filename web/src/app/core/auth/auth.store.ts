@@ -18,6 +18,7 @@ export class AuthStore {
   readonly user = this.userState.asReadonly();
   readonly phase = this.phaseState.asReadonly();
   readonly isAuthenticated = computed(() => this.phaseState() === 'authenticated');
+  readonly isAdmin = computed(() => this.userState()?.isAdmin === true);
   readonly isChecking = computed(() => this.phaseState() === 'checking');
   readonly isSubmitting = this.submittingState.asReadonly();
   readonly problem = this.problemState.asReadonly();

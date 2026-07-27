@@ -2,6 +2,13 @@ import { expect } from '@playwright/test';
 import type { APIRequestContext, Page } from '@playwright/test';
 
 export const acceptanceUser = {
+  userName: 'admin_mvp_user',
+  email: 'admin-mvp@example.com',
+  fullName: 'MVP Administrator',
+  password: 'Cpp17!acceptance',
+};
+
+export const regularAcceptanceUser = {
   userName: 'mvp_user',
   email: 'mvp@example.com',
   fullName: 'MVP Learner',
@@ -14,11 +21,22 @@ export async function resetAcceptanceState(request: APIRequestContext): Promise<
 }
 
 export async function registerAcceptanceUser(page: Page): Promise<void> {
+  await registerUser(page, acceptanceUser);
+}
+
+export async function registerRegularAcceptanceUser(page: Page): Promise<void> {
+  await registerUser(page, regularAcceptanceUser);
+}
+
+async function registerUser(
+  page: Page,
+  user: { userName: string; email: string; fullName: string; password: string },
+): Promise<void> {
   await page.goto('/register');
-  await page.getByLabel('Username').fill(acceptanceUser.userName);
-  await page.getByLabel('Email').fill(acceptanceUser.email);
-  await page.getByLabel('Full name').fill(acceptanceUser.fullName);
-  await page.getByLabel('Password').fill(acceptanceUser.password);
+  await page.getByLabel('Username').fill(user.userName);
+  await page.getByLabel('Email').fill(user.email);
+  await page.getByLabel('Full name').fill(user.fullName);
+  await page.getByLabel('Password').fill(user.password);
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page).toHaveURL(/\/problems$/);
   await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();

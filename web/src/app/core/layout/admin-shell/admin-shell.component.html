@@ -1,0 +1,21 @@
+<section class="admin-shell" aria-label="Administration">
+  <header class="admin-shell__header">
+    <div>
+      <p class="admin-shell__eyebrow">Administration</p>
+      <h1>Manage AlgoJudge</h1>
+      <p>Author and maintain the problem catalogue.</p>
+    </div>
+    <a class="admin-shell__catalogue-link" routerLink="/problems">View learner catalogue</a>
+  </header>
+
+  <nav class="admin-shell__navigation" aria-label="Administration navigation">
+    <a
+      routerLink="/admin/problems/new"
+      routerLinkActive="admin-shell__navigation-link--active"
+      class="admin-shell__navigation-link"
+      >Create problem</a
+    >
+  </nav>
+
+  <router-outlet />
+</section>

@@ -1,0 +1,47 @@
+:host {
+  display: grid;
+  min-height: 50vh;
+  place-items: center;
+}
+
+.forbidden {
+  max-width: 38rem;
+  padding: var(--space-10);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+.forbidden__status {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+}
+
+h1 {
+  margin: var(--space-2) 0;
+  font-size: var(--font-size-2xl);
+}
+
+p:not(.forbidden__status) {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+a {
+  display: inline-flex;
+  margin-top: var(--space-6);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-brand);
+  color: #1f1f1f;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+a:hover {
+  background: color-mix(in srgb, var(--color-brand) 85%, var(--color-text));
+}

@@ -3,19 +3,21 @@ import { TestBed } from '@angular/core/testing';
 import type { ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { provideRouter, Router } from '@angular/router';
 
-import { authGuard, anonymousGuard } from './auth.guard';
+import { adminGuard, anonymousGuard, authGuard } from './auth.guard';
 import { AuthStore } from './auth.store';
 import { normalizeReturnUrl } from './return-url';
 
 describe('auth guards', () => {
   const authenticated = signal(false);
+  const admin = signal(false);
 
   beforeEach(() => {
     authenticated.set(false);
+    admin.set(false);
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: AuthStore, useValue: { isAuthenticated: authenticated } },
+        { provide: AuthStore, useValue: { isAuthenticated: authenticated, isAdmin: admin } },
       ],
     });
   });
@@ -37,6 +39,31 @@ describe('auth guards', () => {
     );
 
     expect(TestBed.inject(Router).serializeUrl(result as UrlTree)).toBe('/problems');
+  });
+
+  it('redirects an authenticated regular user away from admin routes', () => {
+    authenticated.set(true);
+    const result = TestBed.runInInjectionContext(() =>
+      adminGuard(
+        {} as ActivatedRouteSnapshot,
+        { url: '/admin/problems/new' } as RouterStateSnapshot,
+      ),
+    );
+
+    expect(TestBed.inject(Router).serializeUrl(result as UrlTree)).toBe('/forbidden');
+  });
+
+  it('allows an authenticated admin to open admin routes', () => {
+    authenticated.set(true);
+    admin.set(true);
+    const result = TestBed.runInInjectionContext(() =>
+      adminGuard(
+        {} as ActivatedRouteSnapshot,
+        { url: '/admin/problems/new' } as RouterStateSnapshot,
+      ),
+    );
+
+    expect(result).toBe(true);
   });
 
   it('rejects external and protocol-relative return URLs', () => {

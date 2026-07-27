@@ -9,6 +9,9 @@ Base route: `/api/internal/admin/problem-drafts`
 The same-origin administrator client is generated from
 `/openapi/admin-v1.json`. This internal document contains only authoring routes
 and is versioned separately so the stable learner contract remains unchanged.
+The browser exposes authoring only below `/admin`; regular users neither see
+the Admin navigation entry nor can open its routes. The server-side Admin policy
+remains the authoritative authorization boundary.
 
 | Method and route | Purpose |
 |---|---|

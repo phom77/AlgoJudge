@@ -1,6 +1,6 @@
 import type { Routes } from '@angular/router';
 
-import { anonymousGuard, authGuard } from './core/auth/auth.guard';
+import { adminGuard, anonymousGuard, authGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   {
@@ -57,22 +57,41 @@ export const routes: Routes = [
     title: 'Submission history | AlgoJudge',
   },
   {
-    path: 'admin/problems/new',
-    canActivate: [authGuard],
+    path: 'admin',
+    canActivate: [adminGuard],
     loadComponent: () =>
-      import('./features/admin-authoring/problem-authoring.page').then(
-        (module) => module.ProblemAuthoringPage,
+      import('./core/layout/admin-shell/admin-shell.component').then(
+        (module) => module.AdminShellComponent,
       ),
-    title: 'Create problem | AlgoJudge',
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'problems/new',
+      },
+      {
+        path: 'problems/new',
+        loadComponent: () =>
+          import('./features/admin-authoring/problem-authoring.page').then(
+            (module) => module.ProblemAuthoringPage,
+          ),
+        title: 'Create problem | AlgoJudge',
+      },
+      {
+        path: 'problems/:revisionId/author',
+        loadComponent: () =>
+          import('./features/admin-authoring/problem-authoring.page').then(
+            (module) => module.ProblemAuthoringPage,
+          ),
+        title: 'Problem authoring | AlgoJudge',
+      },
+    ],
   },
   {
-    path: 'admin/problems/:revisionId/author',
-    canActivate: [authGuard],
+    path: 'forbidden',
     loadComponent: () =>
-      import('./features/admin-authoring/problem-authoring.page').then(
-        (module) => module.ProblemAuthoringPage,
-      ),
-    title: 'Problem authoring | AlgoJudge',
+      import('./features/errors/forbidden/forbidden.page').then((module) => module.ForbiddenPage),
+    title: 'Access restricted | AlgoJudge',
   },
   {
     path: '**',
