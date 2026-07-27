@@ -76,8 +76,7 @@ public class ApiContractTests
         var paths = openApi.RootElement.GetProperty("paths");
         Assert.NotEmpty(paths.EnumerateObject());
         Assert.All(paths.EnumerateObject(), path =>
-            Assert.StartsWith("/api/internal/admin/problem-drafts", path.Name,
-                StringComparison.Ordinal));
+            Assert.StartsWith("/api/internal/admin/", path.Name, StringComparison.Ordinal));
         Assert.DoesNotContain("JudgeTestCase", openApiJson, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("AuthoringTestCase", openApiJson, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("claimToken", openApiJson, StringComparison.OrdinalIgnoreCase);

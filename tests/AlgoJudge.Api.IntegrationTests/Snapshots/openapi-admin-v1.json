@@ -1,6 +1,157 @@
 {
   "components": {
     "schemas": {
+      "AdminProblemListItemResponse": {
+        "properties": {
+          "difficulty": {
+            "$ref": "#/components/schemas/DifficultyLevel"
+          },
+          "id": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "judgeVersion": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "latestRevisionId": {
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "latestRevisionStatus": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AuthoringRevisionStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProblemStatus"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AdminProblemResponse": {
+        "properties": {
+          "constraintsMarkdown": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/DifficultyLevel"
+          },
+          "executionMode": {
+            "$ref": "#/components/schemas/ProblemExecutionMode"
+          },
+          "id": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "judgeVersion": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "latestRevisionId": {
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "latestRevisionStatus": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AuthoringRevisionStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "memoryLimitKb": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "statementMarkdown": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProblemStatus"
+          },
+          "timeLimitMs": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "AuthoringRevisionStatus": {
         "type": "integer"
       },
@@ -292,6 +443,49 @@
         "type": "object"
       },
       "JsonElement": {},
+      "PagedResponseOfAdminProblemListItemResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminProblemListItemResponse"
+            },
+            "type": "array"
+          },
+          "pageNumber": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "pageSize": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "totalCount": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "totalPages": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          }
+        },
+        "type": "object"
+      },
       "ProblemAuthoringDefinition": {
         "properties": {
           "executionMode": {
@@ -426,6 +620,9 @@
           }
         },
         "type": "object"
+      },
+      "ProblemStatus": {
+        "type": "integer"
       },
       "SuiteQualityGroupRequirement": {
         "properties": {
@@ -1230,11 +1427,241 @@
           "ProblemAuthoring"
         ]
       }
+    },
+    "/api/internal/admin/problems": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "PageNumber",
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageSize",
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "Search",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "Status",
+            "schema": {
+              "$ref": "#/components/schemas/ProblemStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseOfAdminProblemListItemResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseOfAdminProblemListItemResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseOfAdminProblemListItemResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "tags": [
+          "ProblemManagement"
+        ]
+      }
+    },
+    "/api/internal/admin/problems/{problemId}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "problemId",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "CookieSession": []
+          }
+        ],
+        "tags": [
+          "ProblemManagement"
+        ]
+      }
+    },
+    "/api/internal/admin/problems/{problemId}/archive": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "problemId",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AntiforgeryHeader": [],
+            "CookieSession": []
+          }
+        ],
+        "tags": [
+          "ProblemManagement"
+        ]
+      }
+    },
+    "/api/internal/admin/problems/{problemId}/restore": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "problemId",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AntiforgeryHeader": [],
+            "CookieSession": []
+          }
+        ],
+        "tags": [
+          "ProblemManagement"
+        ]
+      }
+    },
+    "/api/internal/admin/problems/{problemId}/revisions": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "problemId",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDraftResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "AntiforgeryHeader": [],
+            "CookieSession": []
+          }
+        ],
+        "tags": [
+          "ProblemManagement"
+        ]
+      }
     }
   },
   "tags": [
     {
       "name": "ProblemAuthoring"
+    },
+    {
+      "name": "ProblemManagement"
     }
   ]
 }
