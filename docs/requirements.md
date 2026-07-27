@@ -27,6 +27,7 @@
 | FR-01 | A visitor can create a standard account. | Registration always creates a regular user; the request cannot choose a privileged role. Duplicate username/email is rejected. |
 | FR-02 | A user can log in and refresh a session. | Passwords are stored only as secure hashes. Access and refresh tokens follow the configured expiry policy. |
 | FR-03 | A user can revoke their active refresh token. | A revoked token cannot create another access token. |
+| FR-04 | Accounts have one fixed platform role: User or Admin. | Registration always creates User. Only an operator-approved bootstrap or a future audited administration workflow can promote an existing account to Admin. |
 
 ### Problem catalogue
 
@@ -54,15 +55,15 @@
 
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
-| FR-30 | Maintainers can import a problem package through an internal tool. | The tool validates statement metadata, samples, testcase pairs, total uncompressed size, and duplicate names before persisting anything. |
-| FR-31 | Maintainers can publish or unpublish a problem. | Only published problems can be listed, viewed, or submitted to by public users. |
+| FR-30 | Administrators can import a problem package through an internal tool. | The tool validates statement metadata, samples, testcase pairs, total uncompressed size, and duplicate names before persisting anything. |
+| FR-31 | Administrators can publish or unpublish a problem. | Only published problems can be listed, viewed, or submitted to by public users. |
 | FR-32 | Hidden tests remain private. | There is no public endpoint, query flag, log entry, or error message that exposes hidden input or expected output. |
-| FR-33 | Maintainers can define a Function problem without building a project, DLL, full stdin/stdout program, or per-problem adapter. | One `ProblemAuthoringDefinition` contains a validated function signature, handwritten arguments, generator and validator source, a reference class/method, and optional wrong solutions. Generator helpers do not restrict problem-specific logic to a fixed strategy registry. |
+| FR-33 | Administrators can define a Function problem without building a project, DLL, full stdin/stdout program, or per-problem adapter. | One `ProblemAuthoringDefinition` contains a validated function signature, handwritten arguments, generator and validator source, a reference class/method, and optional wrong solutions. Generator helpers do not restrict problem-specific logic to a fixed strategy registry. |
 | FR-34 | The system generates candidate suites offline from a reproducible snapshot. | A content worker compiles and runs authoring source outside the API and grading worker, derives every seed, validates all arguments, creates outputs with the reference solution, repeats the run to detect non-determinism, and hashes the complete provenance. The default source-authoring and package capacity is 1,000 private cases, with deployment configuration able to apply a stricter safe limit. |
-| FR-35 | Maintainers can review and enforce quality requirements for a generated suite before publishing it. | An authoring revision follows Draft, Generating, Ready, and Published; the immutable definition policy requires configured minimum total/group counts and, when selected, a kill for every declared wrong solution. Failures safely return to Draft. Only an explicit publish of a Ready candidate that still meets its snapshot policy assigns a new positive immutable suite version. |
+| FR-35 | Administrators can review and enforce quality requirements for a generated suite before publishing it. | An authoring revision follows Draft, Generating, Ready, and Published; the immutable definition policy requires configured minimum total/group counts and, when selected, a kill for every declared wrong solution. Failures safely return to Draft. Only an explicit publish of a Ready candidate that still meets its snapshot policy assigns a new positive immutable suite version. |
 | FR-36 | Published suite versions remain immutable. | Editing a Ready or Published definition creates or returns to a Draft revision, never changes an existing suite, and never changes the suite version pinned by an existing submission. |
 | FR-37 | Legacy content remains usable during authoring migration. | Package schema versions 1 and 2, their imported tests, and existing schema-version-2 private adapters continue to import and judge without conversion. |
-| FR-38 | Internal maintainers can manage source-authored revisions through a protected backend workflow. | Configured maintainers can edit only owned revisions, enqueue generation, inspect safe status and aggregate review statistics, and explicitly publish a Ready candidate. Internal responses never expose candidate input/output. |
+| FR-38 | Administrators can manage source-authored revisions through a protected backend workflow. | The Admin policy permits the workflow; revision ownership still limits authoring operations until an approved management workflow changes that rule. Internal responses never expose candidate input/output. |
 
 ## 3. Required verdicts
 

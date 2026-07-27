@@ -70,6 +70,7 @@ public sealed class AuthCookieManager
         {
             UserName = session.UserName,
             Email = session.Email,
+            IsAdmin = session.IsAdmin,
             ExpiresAt = session.AccessTokenExpiresAt
         };
     }

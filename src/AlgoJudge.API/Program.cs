@@ -9,6 +9,7 @@ using AlgoJudge.Application.Services;
 using AlgoJudge.Infrastructure.Data;
 using AlgoJudge.Infrastructure.Health;
 using AlgoJudge.Infrastructure.Repositories;
+using AlgoJudge.Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
@@ -66,15 +67,15 @@ rateLimitingOptions.Validate();
 var databaseOptions = builder.Configuration
     .GetSection(DatabaseOptions.SectionName)
     .Get<DatabaseOptions>() ?? new DatabaseOptions();
-var maintainerAccessOptions = builder.Configuration
-    .GetSection(MaintainerAccessOptions.SectionName)
-    .Get<MaintainerAccessOptions>() ?? new MaintainerAccessOptions();
-_ = maintainerAccessOptions.ParseUserIds();
+var adminBootstrapOptions = builder.Configuration
+    .GetSection(AdminBootstrapOptions.SectionName)
+    .Get<AdminBootstrapOptions>() ?? new AdminBootstrapOptions();
+var adminBootstrapEmails = adminBootstrapOptions.ParseNormalizedEmails();
 
 builder.Services.AddSingleton(jwtOptions);
 builder.Services.AddSingleton(rateLimitingOptions);
 builder.Services.AddSingleton(databaseOptions);
-builder.Services.AddSingleton(maintainerAccessOptions);
+builder.Services.AddSingleton(adminBootstrapOptions);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -145,9 +146,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization(options =>
-    options.AddPolicy("Maintainer", policy =>
-        policy.RequireAuthenticatedUser().AddRequirements(new MaintainerRequirement())));
-builder.Services.AddSingleton<IAuthorizationHandler, MaintainerAuthorizationHandler>();
+    options.AddPolicy("Admin", policy =>
+        policy.RequireAuthenticatedUser().RequireRole("Admin")));
 DataProtectionConfiguration.AddConfiguredDataProtection(builder);
 builder.Services.AddAntiforgery(options =>
 {
@@ -268,7 +268,7 @@ builder.Services.AddOpenApi("admin-v1", options =>
         string.Equals(description.GroupName, "admin-v1", StringComparison.Ordinal);
     options.AddDocumentTransformer((document, _, _) =>
     {
-        document.Info.Title = "AlgoJudge Maintainer API";
+        document.Info.Title = "AlgoJudge Admin API";
         document.Info.Version = "admin-v1";
         document.Info.Description =
             "Internal same-origin contract for the problem authoring workspace.";
@@ -280,7 +280,7 @@ builder.Services.AddOpenApi("admin-v1", options =>
             Type = SecuritySchemeType.ApiKey,
             In = ParameterLocation.Cookie,
             Name = AuthCookieManager.AccessCookieName,
-            Description = "Secure HttpOnly maintainer session cookie."
+            Description = "Secure HttpOnly administrator session cookie."
         };
         document.Components.SecuritySchemes["AntiforgeryHeader"] = new OpenApiSecurityScheme
         {
@@ -371,6 +371,7 @@ builder.Services.AddScoped<IRunService, RunService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAdminBootstrapper, AdminBootstrapper>();
 builder.Services.AddSingleton<AuthCookieManager>();
 
 var app = builder.Build();
@@ -380,6 +381,13 @@ if (databaseOptions.MigrateOnStartup)
     await using var scope = app.Services.CreateAsyncScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await dbContext.Database.MigrateAsync();
+}
+
+if (adminBootstrapEmails.Count > 0)
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var bootstrapper = scope.ServiceProvider.GetRequiredService<IAdminBootstrapper>();
+    await bootstrapper.PromoteConfiguredUsersAsync(adminBootstrapEmails);
 }
 
 app.UseMiddleware<RequestLoggingMiddleware>();

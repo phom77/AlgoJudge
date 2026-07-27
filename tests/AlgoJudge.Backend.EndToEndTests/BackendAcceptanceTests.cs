@@ -83,8 +83,7 @@ public sealed class BackendAcceptanceTests
         await SeedMaintainerAsync(database, maintainerId);
         await using var factory = new EndToEndApiFactory(
             database.ConnectionString,
-            logs,
-            maintainerId);
+            logs);
         using var client = CreateClient(factory);
         await LoginMaintainerAsync(client);
 
@@ -699,7 +698,8 @@ public sealed class BackendAcceptanceTests
             UserName = "scale_maintainer",
             Email = "scale-maintainer@example.test",
             FullName = "Scale Maintainer",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("test-password-123")
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("test-password-123"),
+            Role = UserRole.Admin
         });
         await context.SaveChangesAsync();
     }

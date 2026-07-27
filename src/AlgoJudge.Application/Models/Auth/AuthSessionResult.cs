@@ -5,5 +5,6 @@ public sealed record AuthSessionResult(
     string RefreshToken,
     string UserName,
     string Email,
+    bool IsAdmin,
     DateTime AccessTokenExpiresAt,
     DateTime RefreshTokenExpiresAt);

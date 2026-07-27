@@ -107,6 +107,9 @@
             "format": "date-time",
             "type": "string"
           },
+          "isAdmin": {
+            "type": "boolean"
+          },
           "userName": {
             "type": "string"
           }

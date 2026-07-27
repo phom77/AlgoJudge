@@ -4,6 +4,7 @@ using AlgoJudge.Application.Helpers;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Application.Models.Auth;
 using AlgoJudge.Domain.Entities;
+using AlgoJudge.Domain.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -58,6 +59,7 @@ namespace AlgoJudge.Application.Services
                 Email = request.Email,
                 FullName = request.FullName,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                Role = UserRole.User,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -133,6 +135,7 @@ namespace AlgoJudge.Application.Services
                 refreshToken,
                 user.UserName,
                 user.Email,
+                user.Role == UserRole.Admin,
                 DateTime.UtcNow.AddHours(expiresInHours),
                 DateTime.UtcNow.AddDays(refreshExpiryDays));
         }
@@ -148,6 +151,7 @@ namespace AlgoJudge.Application.Services
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role.ToString()),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 

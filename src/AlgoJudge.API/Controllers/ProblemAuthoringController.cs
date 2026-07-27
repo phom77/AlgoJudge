@@ -8,7 +8,7 @@ namespace AlgoJudge.API.Controllers;
 
 [ApiController]
 [ApiExplorerSettings(GroupName = "admin-v1")]
-[Authorize(Policy = "Maintainer")]
+[Authorize(Policy = "Admin")]
 [Route("api/internal/admin/problem-drafts")]
 public sealed class ProblemAuthoringController : ControllerBase
 {

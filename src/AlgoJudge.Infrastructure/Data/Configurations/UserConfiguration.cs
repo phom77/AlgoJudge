@@ -11,7 +11,8 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<User> builder)
         {
-            builder.ToTable("Users");
+            builder.ToTable("Users", table =>
+                table.HasCheckConstraint("CK_User_Role", "\"Role\" IN (0, 1)"));
 
             builder.HasKey(u => u.Id);
 
@@ -30,6 +31,11 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
             builder.Property(u => u.PasswordHash)
                    .IsRequired()
                    .HasMaxLength(255);
+
+            builder.Property(u => u.Role)
+                   .IsRequired()
+                   .HasConversion<int>()
+                   .HasDefaultValue(AlgoJudge.Domain.Enums.UserRole.User);
 
             builder.Property(u => u.CreatedAt)
                    .HasDefaultValueSql("NOW()");

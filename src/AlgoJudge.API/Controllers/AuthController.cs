@@ -119,6 +119,7 @@ public sealed class AuthController : ControllerBase
         {
             UserName = userName,
             Email = email,
+            IsAdmin = User.IsInRole("Admin"),
             ExpiresAt = DateTimeOffset.FromUnixTimeSeconds(expiresUnixSeconds).UtcDateTime
         });
     }
