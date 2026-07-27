@@ -6,6 +6,7 @@ public interface IProblemAuthoringService
 {
     Task<ProblemDraftResponse> CreateDraftAsync(Guid ownerUserId, CreateProblemDraftRequest request, CancellationToken cancellationToken = default);
     Task<ProblemDraftResponse> CreateNextRevisionAsync(Guid ownerUserId, int problemId, CancellationToken cancellationToken = default);
+    Task<ProblemDraftResponse> CreateManagedNextRevisionAsync(Guid ownerUserId, int problemId, CancellationToken cancellationToken = default);
     Task<ProblemDraftResponse> GetDraftAsync(Guid ownerUserId, Guid revisionId, CancellationToken cancellationToken = default);
     Task<ProblemDraftResponse> UpdateMetadataAsync(Guid ownerUserId, Guid revisionId, UpdateProblemDraftRequest request, CancellationToken cancellationToken = default);
     Task<ProblemDraftResponse> UpdateSignatureAsync(Guid ownerUserId, Guid revisionId, UpdateFunctionSignatureRequest request, CancellationToken cancellationToken = default);

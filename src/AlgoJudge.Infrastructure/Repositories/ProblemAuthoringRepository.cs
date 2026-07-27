@@ -40,6 +40,13 @@ public sealed class ProblemAuthoringRepository : IProblemAuthoringRepository
             .Where(item => item.ProblemId == problemId && item.OwnerUserId == ownerUserId)
             .OrderByDescending(item => item.RevisionNumber).FirstOrDefaultAsync(cancellationToken);
 
+    public Task<ProblemAuthoringRevision?> GetLatestRevisionAsync(
+        int problemId,
+        CancellationToken cancellationToken = default) =>
+        _context.ProblemAuthoringRevisions.Include(item => item.Problem)
+            .Where(item => item.ProblemId == problemId)
+            .OrderByDescending(item => item.RevisionNumber).FirstOrDefaultAsync(cancellationToken);
+
     public Task<ContentGenerationJob?> GetLatestJobAsync(Guid revisionId, CancellationToken cancellationToken = default) =>
         _context.ContentGenerationJobs.AsNoTracking().Where(item => item.RevisionId == revisionId)
             .OrderByDescending(item => item.CreatedAt).FirstOrDefaultAsync(cancellationToken);

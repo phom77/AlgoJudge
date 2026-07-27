@@ -56,7 +56,7 @@
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
 | FR-30 | Administrators can import a problem package through an internal tool. | The tool validates statement metadata, samples, testcase pairs, total uncompressed size, and duplicate names before persisting anything. |
-| FR-31 | Administrators can publish or unpublish a problem. | Only published problems can be listed, viewed, or submitted to by public users. |
+| FR-31 | Administrators can publish, archive, and restore a problem. | Only published problems can be listed, viewed, or submitted to by public users. Archive never deletes submissions or immutable system suites. |
 | FR-32 | Hidden tests remain private. | There is no public endpoint, query flag, log entry, or error message that exposes hidden input or expected output. |
 | FR-33 | Administrators can define a Function problem without building a project, DLL, full stdin/stdout program, or per-problem adapter. | One `ProblemAuthoringDefinition` contains a validated function signature, handwritten arguments, generator and validator source, a reference class/method, and optional wrong solutions. Generator helpers do not restrict problem-specific logic to a fixed strategy registry. |
 | FR-34 | The system generates candidate suites offline from a reproducible snapshot. | A content worker compiles and runs authoring source outside the API and grading worker, derives every seed, validates all arguments, creates outputs with the reference solution, repeats the run to detect non-determinism, and hashes the complete provenance. The default source-authoring and package capacity is 1,000 private cases, with deployment configuration able to apply a stricter safe limit. |

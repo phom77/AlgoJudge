@@ -175,6 +175,7 @@ public sealed class ProblemAuthoringServiceTests
         public Task<ProblemAuthoringRevision?> GetOwnedRevisionAsync(Guid revisionId, Guid ownerUserId, bool includeCandidate = false, CancellationToken cancellationToken = default) =>
             Task.FromResult(Revision is not null && Revision.Id == revisionId && Revision.OwnerUserId == ownerUserId ? Revision : null);
         public Task<ProblemAuthoringRevision?> GetLatestOwnedRevisionAsync(int problemId, Guid ownerUserId, CancellationToken cancellationToken = default) => Task.FromResult<ProblemAuthoringRevision?>(Revision);
+        public Task<ProblemAuthoringRevision?> GetLatestRevisionAsync(int problemId, CancellationToken cancellationToken = default) => Task.FromResult<ProblemAuthoringRevision?>(Revision);
         public Task<ContentGenerationJob?> GetLatestJobAsync(Guid revisionId, CancellationToken cancellationToken = default)
         { return Task.FromResult(Job); }
         public Task AddGenerationJobAsync(ContentGenerationJob job, CancellationToken cancellationToken = default)

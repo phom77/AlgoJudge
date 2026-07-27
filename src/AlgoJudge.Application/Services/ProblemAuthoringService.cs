@@ -103,6 +103,28 @@ public sealed partial class ProblemAuthoringService : IProblemAuthoringService
         return Map(revision);
     }
 
+    public async Task<ProblemDraftResponse> CreateManagedNextRevisionAsync(
+        Guid ownerUserId,
+        int problemId,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateOwner(ownerUserId);
+        if (problemId <= 0)
+            throw new RequestValidationException("Problem ID must be positive.");
+        var latest = await _repository.GetLatestRevisionAsync(problemId, cancellationToken)
+            ?? throw new ResourceNotFoundException("Problem was not found.");
+        if (latest.Status != AuthoringRevisionStatus.Published)
+            throw new ConflictException("The problem already has an editable revision.");
+        var now = DateTime.UtcNow;
+        var revision = CreateRevision(latest.Problem, ownerUserId, latest.RevisionNumber + 1,
+            latest.Slug, latest.Title, latest.StatementMarkdown, latest.ConstraintsMarkdown,
+            latest.Difficulty, latest.TimeLimitMs, latest.MemoryLimitKb,
+            DeserializeSamples(latest.SamplesJson), latest.DefinitionJson, now);
+        await _repository.AddRevisionAsync(revision, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Map(revision);
+    }
+
     public async Task<ProblemDraftResponse> GetDraftAsync(Guid ownerUserId, Guid revisionId, CancellationToken cancellationToken = default) =>
         Map(await GetOwnedAsync(ownerUserId, revisionId, false, cancellationToken));
 

@@ -38,6 +38,16 @@ public class PublicApiScopeTests
     }
 
     [Fact]
+    public void AdminProblemControllerRequiresTheAdminPolicy()
+    {
+        var authorize = Assert.Single(typeof(ProblemManagementController)
+            .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true)
+            .Cast<AuthorizeAttribute>());
+
+        Assert.Equal("Admin", authorize.Policy);
+    }
+
+    [Fact]
     public void ProblemDetailRouteUsesSlug()
     {
         var action = typeof(ProblemsController).GetMethod(nameof(ProblemsController.GetBySlug));
@@ -100,6 +110,8 @@ public class PublicApiScopeTests
         Assert.DoesNotContain(properties, name => name.Contains("ClaimToken", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(properties, name => name.Contains("WorkerId", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(properties, name => name.Contains("Lease", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(properties, name => name.Contains("SourceCode", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(properties, name => name.Contains("FunctionAdapter", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
