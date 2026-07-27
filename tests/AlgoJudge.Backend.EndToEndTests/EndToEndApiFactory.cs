@@ -13,8 +13,7 @@ internal sealed class EndToEndApiFactory : WebApplicationFactory<ApiProgram>
 
     public EndToEndApiFactory(
         string connectionString,
-        CapturingLoggerProvider loggerProvider,
-        Guid? maintainerId = null)
+        CapturingLoggerProvider loggerProvider)
     {
         _loggerProvider = loggerProvider;
         Environment.SetEnvironmentVariable(
@@ -33,9 +32,6 @@ internal sealed class EndToEndApiFactory : WebApplicationFactory<ApiProgram>
         Environment.SetEnvironmentVariable("RateLimiting__WindowSeconds", "60");
         Environment.SetEnvironmentVariable("RateLimiting__QueueLimit", "0");
         Environment.SetEnvironmentVariable("Database__MigrateOnStartup", "false");
-        Environment.SetEnvironmentVariable(
-            "MaintainerAccess__UserIds__0",
-            maintainerId?.ToString());
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)

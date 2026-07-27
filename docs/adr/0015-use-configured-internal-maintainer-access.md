@@ -1,6 +1,7 @@
 # ADR-0015: Use configured internal maintainer access for authoring
 
-Status: Accepted
+Status: Superseded
+Superseded by: [ADR-0021](0021-use-persisted-admin-rbac.md)
 Date: 2026-07-22
 
 ## Context

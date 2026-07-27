@@ -577,7 +577,7 @@
         "type": "apiKey"
       },
       "CookieSession": {
-        "description": "Secure HttpOnly maintainer session cookie.",
+        "description": "Secure HttpOnly administrator session cookie.",
         "in": "cookie",
         "name": "__Host-algojudge-access",
         "type": "apiKey"
@@ -586,7 +586,7 @@
   },
   "info": {
     "description": "Internal same-origin contract for the problem authoring workspace.",
-    "title": "AlgoJudge Maintainer API",
+    "title": "AlgoJudge Admin API",
     "version": "admin-v1"
   },
   "openapi": "3.1.1",

@@ -122,6 +122,7 @@ public sealed class AuthCookieSecurityTests
         Assert.False(body.TryGetProperty("accessToken", out _));
         Assert.False(body.TryGetProperty("refreshToken", out _));
         Assert.False(body.TryGetProperty("tokenType", out _));
+        Assert.False(body.GetProperty("isAdmin").GetBoolean());
 
         var cookies = register.Headers.GetValues("Set-Cookie").ToArray();
         AssertSensitiveCookie(
@@ -173,6 +174,23 @@ public sealed class AuthCookieSecurityTests
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("csrf", problem.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task RegularSessionCannotAccessAdminAuthoringEndpoint()
+    {
+        const string unusedConnection =
+            "Host=127.0.0.1;Port=1;Database=unused;Username=unused;Password=unused";
+        await using var factory = new AlgoJudgeApiFactory(unusedConnection);
+        using var client = CreateClient(factory);
+        client.DefaultRequestHeaders.Add(
+            "Cookie",
+            $"{AuthCookieManager.AccessCookieName}={CreateAccessToken()}");
+
+        var response = await client.GetAsync(
+            $"/api/internal/admin/problem-drafts/{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     private static void AssertSensitiveCookie(

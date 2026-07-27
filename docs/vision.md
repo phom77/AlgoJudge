@@ -14,9 +14,9 @@ within the problem limits. The product does not award numeric scores.
 
 - **Learner:** practices data structures and algorithms, wants clear problems
   and fast, trustworthy feedback.
-- **Maintainer:** prepares and publishes the curated problem catalogue and its
-  hidden tests. This is an operational responsibility, not a public Teacher
-  role in the MVP.
+- **Administrator:** prepares and publishes the curated problem catalogue and
+  its hidden tests. This is a privileged operational role, never selectable by
+  public registration and distinct from the learner experience.
 
 ## 3. Core user promise
 
@@ -44,7 +44,8 @@ solution passed the complete test suite."
 
 ### Explicitly out of scope for MVP
 
-- Teacher, student, or public author roles.
+- Teacher, student, or public author roles. The fixed internal `Admin` role is
+  limited to platform administration and is not a public content-author role.
 - Numeric scoring, score-based leaderboards, ratings, or achievements.
 - Contests, teams, discussion forums, comments, and social features.
 - Multiple programming languages.

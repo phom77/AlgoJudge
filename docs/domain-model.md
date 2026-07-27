@@ -31,7 +31,7 @@ attempt count. Only the current claim may complete or fail a job.
 
 ### User
 
-Represents a regular platform account.
+Represents a platform account. Every account has a fixed platform role.
 
 | Field | Notes |
 |---|---|
@@ -40,9 +40,8 @@ Represents a regular platform account.
 | `email` | Unique login/contact identifier. |
 | `passwordHash` | Never exposed by any API. |
 | `fullName` | Optional display name policy may be decided later. |
+| `role` | `User` or `Admin`; required, defaults to `User`, and never comes from public registration. |
 | `createdAt` | UTC timestamp. |
-
-There is no `Role` field in the MVP domain.
 
 ### Problem
 

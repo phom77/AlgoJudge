@@ -16,6 +16,7 @@ describe('AuthStore', () => {
   const user: AuthUser = {
     userName: 'ada',
     email: 'ada@example.com',
+    isAdmin: false,
     expiresAt: '2026-07-17T10:00:00Z',
   };
 

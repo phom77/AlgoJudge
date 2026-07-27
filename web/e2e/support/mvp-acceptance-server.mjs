@@ -527,6 +527,7 @@ function authResponse(user) {
   return {
     userName: user.userName,
     email: user.email,
+    isAdmin: true,
     expiresAt: '2026-07-17T02:00:00Z',
   };
 }

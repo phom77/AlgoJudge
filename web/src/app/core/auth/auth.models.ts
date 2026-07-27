@@ -1,6 +1,7 @@
 export interface AuthUser {
   readonly userName: string;
   readonly email: string;
+  readonly isAdmin: boolean;
   readonly expiresAt: string;
 }
 

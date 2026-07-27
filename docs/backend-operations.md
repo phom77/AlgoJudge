@@ -126,9 +126,12 @@ without reusing the C++ solution process or weakening per-case limits.
 
 The deployable `AlgoJudge.ContentWorker` uses the same sandbox adapters and
 claims jobs from PostgreSQL. Start it with `./scripts/run-content-worker.ps1`.
-Configure internal access through `MaintainerAccess__UserIds__0` and subsequent
-array indexes; an empty list denies all authoring access. Queue polling, lease,
-heartbeat, retries, and identity are configured under `ContentQueue`.
+After an operator has created the account for an initial or recovery
+administrator, configure its email through `AdminBootstrap__Emails__0` and
+subsequent array indexes, then restart the API. The bootstrap promotes matching
+existing accounts one way; removing an address does not demote an administrator.
+Queue polling, lease, heartbeat, retries, and identity are configured under
+`ContentQueue`.
 `ContentGeneration:MaximumCaseCount` defaults to 1,000 and must not exceed
 5,000; deployments may choose a lower limit when their worker capacity requires
 it without weakening sandbox limits.

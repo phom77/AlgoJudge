@@ -1,9 +1,8 @@
 # Internal Problem Authoring API
 
-These endpoints support the maintainer UI and are intentionally excluded from
-`/openapi/v1.json`. They require a valid session, membership in the configured
-`MaintainerAccess:UserIds` allowlist, antiforgery protection for unsafe methods,
-and ownership of the target revision.
+These endpoints support the administrator UI and are intentionally excluded from
+`/openapi/v1.json`. They require a valid Admin session, antiforgery protection
+for unsafe methods, and ownership of the target revision.
 
 Base route: `/api/internal/admin/problem-drafts`
 

@@ -12,11 +12,11 @@ namespace AlgoJudge.Application.Tests;
 public class LegacyScopeTests
 {
     [Fact]
-    public void PublicAndDomainModelsDoNotExposeLegacyRoleOrScoreFields()
+    public void PublicContractsDoNotExposeRoleAndDomainUsesTheApprovedAdminRole()
     {
         Assert.Null(typeof(RegisterRequest).GetProperty("Role"));
         Assert.Null(typeof(AuthResponse).GetProperty("Role"));
-        Assert.Null(typeof(User).GetProperty("Role"));
+        Assert.NotNull(typeof(User).GetProperty("Role"));
         Assert.Null(typeof(Problem).GetProperty("Score"));
         Assert.Null(typeof(Problem).GetProperty("CreatedBy"));
         Assert.Null(typeof(Problem).GetProperty("Creator"));

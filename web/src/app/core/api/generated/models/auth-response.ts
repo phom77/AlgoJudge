@@ -4,5 +4,6 @@
 export interface AuthResponse {
   email?: string;
   expiresAt?: string;
+  isAdmin?: boolean;
   userName?: string;
 }

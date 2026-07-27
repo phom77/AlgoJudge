@@ -27,7 +27,12 @@ describe('AuthApiGateway', () => {
 
   it('bootstraps CSRF before login and maps the public user response', async () => {
     invoke.mockReturnValue(
-      of({ userName: 'ada', email: 'ada@example.com', expiresAt: '2026-07-17T10:00:00Z' }),
+      of({
+        userName: 'ada',
+        email: 'ada@example.com',
+        isAdmin: true,
+        expiresAt: '2026-07-17T10:00:00Z',
+      }),
     );
     const gateway = TestBed.inject(AuthApiGateway);
 
@@ -38,6 +43,7 @@ describe('AuthApiGateway', () => {
     expect(user).toEqual({
       userName: 'ada',
       email: 'ada@example.com',
+      isAdmin: true,
       expiresAt: '2026-07-17T10:00:00Z',
     });
   });
@@ -46,6 +52,7 @@ describe('AuthApiGateway', () => {
     const response = new Subject<{
       userName: string;
       email: string;
+      isAdmin: boolean;
       expiresAt: string;
     }>();
     invoke.mockReturnValue(response.asObservable());
@@ -62,6 +69,7 @@ describe('AuthApiGateway', () => {
     response.next({
       userName: 'ada',
       email: 'ada@example.com',
+      isAdmin: false,
       expiresAt: '2026-07-17T10:00:00Z',
     });
     response.complete();

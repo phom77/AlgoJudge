@@ -1,3 +1,5 @@
+using AlgoJudge.Domain.Enums;
+
 namespace AlgoJudge.Domain.Entities
 {
     public class User
@@ -7,6 +9,7 @@ namespace AlgoJudge.Domain.Entities
         public string Email { get; set; } = string.Empty;
         public string PasswordHash { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
+        public UserRole Role { get; set; } = UserRole.User;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public ICollection<Submission> Submissions { get; set; } = new List<Submission>();
         public ICollection<CodeRun> CodeRuns { get; set; } = new List<CodeRun>();

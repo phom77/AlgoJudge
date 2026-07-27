@@ -96,12 +96,17 @@ function toAuthUser(response: AuthResponse): AuthUser {
   const userName = readRequiredText(response.userName);
   const email = readRequiredText(response.email);
   const expiresAt = readRequiredText(response.expiresAt);
+  const isAdmin = response.isAdmin;
 
   if (Number.isNaN(Date.parse(expiresAt))) {
     throw new Error('The authentication response contains an invalid expiration timestamp.');
   }
 
-  return { userName, email, expiresAt };
+  if (typeof isAdmin !== 'boolean') {
+    throw new Error('The authentication response contains an invalid admin capability.');
+  }
+
+  return { userName, email, isAdmin, expiresAt };
 }
 
 function readRequiredText(value: string | undefined): string {
