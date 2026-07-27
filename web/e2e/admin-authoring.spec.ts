@@ -9,7 +9,10 @@ test('authors, publishes, and judges both Accepted and Wrong Answer solutions', 
 }) => {
   await registerAcceptanceUser(page);
   await page.getByRole('link', { name: 'Admin' }).click();
-  await page.getByRole('link', { name: 'Create problem' }).click();
+  await page
+    .getByLabel('Administration navigation')
+    .getByRole('link', { name: 'Create problem' })
+    .click();
 
   await page.getByLabel('Slug').fill('authored-two-sum');
   await page.getByLabel('Title').fill('Authored Two Sum');

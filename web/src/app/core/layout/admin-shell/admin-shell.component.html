@@ -10,6 +10,13 @@
 
   <nav class="admin-shell__navigation" aria-label="Administration navigation">
     <a
+      routerLink="/admin/problems"
+      routerLinkActive="admin-shell__navigation-link--active"
+      [routerLinkActiveOptions]="{ exact: true }"
+      class="admin-shell__navigation-link"
+      >Problems</a
+    >
+    <a
       routerLink="/admin/problems/new"
       routerLinkActive="admin-shell__navigation-link--active"
       class="admin-shell__navigation-link"

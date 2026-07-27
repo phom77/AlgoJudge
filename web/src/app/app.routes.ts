@@ -67,7 +67,15 @@ export const routes: Routes = [
       {
         path: '',
         pathMatch: 'full',
-        redirectTo: 'problems/new',
+        redirectTo: 'problems',
+      },
+      {
+        path: 'problems',
+        loadComponent: () =>
+          import('./features/admin-management/problem-management.page').then(
+            (module) => module.ProblemManagementPage,
+          ),
+        title: 'Problem management | AlgoJudge',
       },
       {
         path: 'problems/new',

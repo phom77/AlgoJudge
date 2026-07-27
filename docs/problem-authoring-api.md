@@ -61,3 +61,8 @@ Archive is deliberately not a physical delete: submissions, immutable suite
 versions, and audit history remain available. These management responses never
 include hidden testcases, candidate input/output, authoring source, private
 adapters, or submission source.
+
+The administrator dashboard at `/admin/problems` uses these endpoints to list
+and filter all problem states, start a revision from a Published problem, and
+archive or restore public availability. Creating, editing, reviewing, and
+publishing a revision continues in the existing authoring workflow.

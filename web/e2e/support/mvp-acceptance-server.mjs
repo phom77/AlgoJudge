@@ -78,6 +78,44 @@ function createState() {
     createRequests: 0,
     runCreateRequests: 0,
     authoringDraft: null,
+    adminProblems: [
+      {
+        id: 7,
+        slug: 'two-sum',
+        title: 'Two Sum',
+        difficulty: 1,
+        status: 2,
+        judgeVersion: 1,
+        latestRevisionId: '77777777-7777-7777-7777-777777777777',
+        latestRevisionStatus: 3,
+        publishedAt: '2026-07-17T00:00:00Z',
+        updatedAt: '2026-07-17T00:00:00Z',
+      },
+      {
+        id: 8,
+        slug: 'double-function',
+        title: 'Double Function',
+        difficulty: 1,
+        status: 1,
+        judgeVersion: 1,
+        latestRevisionId: '88888888-8888-8888-8888-888888888888',
+        latestRevisionStatus: 2,
+        publishedAt: null,
+        updatedAt: '2026-07-21T00:00:00Z',
+      },
+      {
+        id: 10,
+        slug: 'retired-array-sum',
+        title: 'Retired Array Sum',
+        difficulty: 2,
+        status: 3,
+        judgeVersion: 1,
+        latestRevisionId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        latestRevisionStatus: 3,
+        publishedAt: '2026-07-10T00:00:00Z',
+        updatedAt: '2026-07-20T00:00:00Z',
+      },
+    ],
     generationPolls: 0,
   };
 }
@@ -136,6 +174,50 @@ async function handleApi(request, response, url) {
     return response.end();
   }
 
+  if (url.pathname === '/api/internal/admin/problems' && request.method === 'GET') {
+    if (!userName) return authenticationProblem(response);
+    if (!state.users.get(userName)?.isAdmin) return forbiddenProblem(response);
+    const search = (url.searchParams.get('Search') ?? '').trim().toLowerCase();
+    const status = url.searchParams.get('Status');
+    const items = state.adminProblems.filter(
+      (item) =>
+        (!search || item.title.toLowerCase().includes(search) || item.slug.includes(search)) &&
+        (!status || item.status === Number(status)),
+    );
+    return json(response, 200, page(items, url));
+  }
+
+  const managementRevision = /^\/api\/internal\/admin\/problems\/(\d+)\/revisions$/i.exec(
+    url.pathname,
+  );
+  if (managementRevision && request.method === 'POST') {
+    if (!userName) return authenticationProblem(response);
+    if (!state.users.get(userName)?.isAdmin) return forbiddenProblem(response);
+    if (!hasValidCsrf(request, cookies)) return csrfProblem(response);
+    const managed = state.adminProblems.find((item) => item.id === Number(managementRevision[1]));
+    if (!managed) return problemDetails(response, 404, 'not-found', 'Problem not found.');
+    state.authoringDraft = managementDraft(managed);
+    managed.latestRevisionId = state.authoringDraft.revisionId;
+    managed.latestRevisionStatus = 0;
+    managed.updatedAt = '2026-07-27T00:00:00Z';
+    return json(response, 201, state.authoringDraft);
+  }
+
+  const managementTransition = /^\/api\/internal\/admin\/problems\/(\d+)\/(archive|restore)$/i.exec(
+    url.pathname,
+  );
+  if (managementTransition && request.method === 'POST') {
+    if (!userName) return authenticationProblem(response);
+    if (!state.users.get(userName)?.isAdmin) return forbiddenProblem(response);
+    if (!hasValidCsrf(request, cookies)) return csrfProblem(response);
+    const managed = state.adminProblems.find((item) => item.id === Number(managementTransition[1]));
+    if (!managed) return problemDetails(response, 404, 'not-found', 'Problem not found.');
+    managed.status = managementTransition[2] === 'archive' ? 3 : 2;
+    managed.updatedAt = '2026-07-27T00:00:00Z';
+    response.writeHead(204);
+    return response.end();
+  }
+
   if (url.pathname === '/api/internal/admin/problem-drafts' && request.method === 'POST') {
     if (!userName) return authenticationProblem(response);
     if (!state.users.get(userName)?.isAdmin) return forbiddenProblem(response);
@@ -164,6 +246,18 @@ async function handleApi(request, response, url) {
       },
       updatedAt: '2026-07-22T00:00:00Z',
     };
+    state.adminProblems.push({
+      id: state.authoringDraft.problemId,
+      slug: state.authoringDraft.slug,
+      title: state.authoringDraft.title,
+      difficulty: state.authoringDraft.difficulty,
+      status: 1,
+      judgeVersion: 1,
+      latestRevisionId: state.authoringDraft.revisionId,
+      latestRevisionStatus: 0,
+      publishedAt: null,
+      updatedAt: state.authoringDraft.updatedAt,
+    });
     return json(response, 201, state.authoringDraft);
   }
 
@@ -233,6 +327,14 @@ async function handleApi(request, response, url) {
     }
     if (action === 'publish' && request.method === 'POST') {
       state.authoringDraft.status = 'Published';
+      const managed = state.adminProblems.find(
+        (item) => item.id === state.authoringDraft.problemId,
+      );
+      if (managed) {
+        managed.status = 2;
+        managed.latestRevisionStatus = 3;
+        managed.publishedAt = '2026-07-27T00:00:00Z';
+      }
       response.writeHead(204);
       return response.end();
     }
@@ -544,6 +646,44 @@ function createUser(body) {
     isAdmin: String(body.userName).startsWith('admin_'),
     passwordSalt,
     passwordHash: scryptSync(String(body.password), passwordSalt, 32).toString('hex'),
+  };
+}
+
+function managementDraft(problemItem) {
+  return {
+    revisionId: randomUUID(),
+    problemId: problemItem.id,
+    revisionNumber: 2,
+    status: 'Draft',
+    slug: problemItem.slug,
+    title: problemItem.title,
+    statementMarkdown: 'Update the problem statement for the next revision.',
+    constraintsMarkdown: '- Use C++17.',
+    difficulty: problemItem.difficulty,
+    timeLimitMs: 1000,
+    memoryLimitKb: 262144,
+    samples: [{ input: '{"value":1}', expectedOutput: '2' }],
+    definition: {
+      schemaVersion: 1,
+      executionMode: 'Function',
+      functionSignature: {
+        className: 'Solution',
+        methodName: 'solve',
+        returnType: 0,
+        parameters: [],
+      },
+      handwrittenCases: [],
+      generator: { language: 'csharp', sdkVersion: 1, source: '' },
+      inputValidator: { language: 'csharp', sdkVersion: 1, source: '' },
+      referenceSolution: { language: 'cpp17', source: '' },
+      wrongSolutions: [],
+      qualityPolicy: {
+        minimumTestCaseCount: 1,
+        minimumCasesByGroup: [{ group: 'handwritten', minimumCaseCount: 1 }],
+        requireEachDeclaredWrongSolutionKilled: true,
+      },
+    },
+    updatedAt: '2026-07-27T00:00:00Z',
   };
 }
 
