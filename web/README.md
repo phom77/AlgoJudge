@@ -50,7 +50,8 @@ npm run check         # static, unit, production build, and security gates
 
 Playwright uses the optimized bundle and a deterministic same-origin acceptance
 server under `e2e/support`. The server models the stable cookie, CSRF, problem,
-submission, polling, history, and solved-status contracts; it is test-only and
+submission, polling, history, solved-status, and Admin content-batch contracts;
+it is test-only and
 does not replace backend end-to-end acceptance against PostgreSQL and Docker.
 Install the local browser once with `npx playwright install chromium`.
 
@@ -95,12 +96,22 @@ src/app/
       detail/
       history/
       ui/
+    admin-content-batches/
+      data-access/
 src/styles/              reset, typography, and CSS custom-property tokens
 ```
 
 Routes are lazy-loaded at feature boundaries. Routed `*.page.ts` files
 orchestrate state and focused child components; HTTP and DTO mapping belong in
 feature data-access gateways. Tests stay beside the code they cover.
+
+Admins use `/admin/content-batches` and `/admin/content-batches/:batchId` to
+monitor catalog processing. The detail route performs bounded polling only
+while the batch is active, searches and filters its items locally, retries
+explicit Failed item IDs, and confirms an explicit Ready revision selection
+before publish. Responses and rendered state contain safe diagnostics only.
+The Playwright scale fixture contains 100 items: 90 successful, five intentional
+generation failures, three unchanged/skipped items, and two invalid definitions.
 
 The problem workspace keeps source code and custom input in memory only. `Run`
 accepts stdin or typed Function arguments, polls one custom run to a terminal

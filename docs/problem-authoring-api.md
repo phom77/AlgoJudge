@@ -93,3 +93,11 @@ do not expose persisted definitions, generator parameters, authoring source,
 candidate input/output, hidden cases, compiler output, or tokens. Unsafe
 same-origin browser requests require antiforgery protection; internal bearer
 clients still require the Admin policy.
+
+The Admin browser exposes `/admin/content-batches` and
+`/admin/content-batches/:batchId`. Active batches use bounded polling that stops
+when the lifecycle reaches a review or completed state. The detail page searches
+slug/title locally, filters item status, shows partial-failure and worker
+availability guidance, retries explicit item IDs, and publishes only explicitly
+selected Ready revision IDs after confirmation. The UI never requests or renders
+private definitions, hidden cases, or source.

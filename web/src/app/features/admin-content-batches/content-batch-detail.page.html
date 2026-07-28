@@ -1,0 +1,189 @@
+<a class="back-link" routerLink="/admin/content-batches">← All content batches</a>
+
+@if (store.loading() && !store.detail()) {
+  <p class="state" role="status">Loading batch…</p>
+} @else if (!store.detail() && store.problem(); as problem) {
+  <div class="notice notice--error" role="alert">{{ batchProblemMessage(problem) }}</div>
+} @else if (store.detail(); as batch) {
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">Catalog batch</p>
+      <h2>{{ batch.catalogName }}</h2>
+      <p>{{ batch.id }} · Updated {{ batch.updatedAt | date: 'medium' }}</p>
+    </div>
+    <span class="batch-status">{{ batchStatusLabel(batch.status) }}</span>
+  </section>
+
+  <section class="summary" aria-label="Batch item counts" aria-live="polite">
+    <div>
+      <strong>{{ batch.counts?.pending ?? 0 }}</strong
+      ><span>Pending</span>
+    </div>
+    <div>
+      <strong>{{ batch.counts?.generating ?? 0 }}</strong
+      ><span>Generating</span>
+    </div>
+    <div>
+      <strong>{{ batch.counts?.ready ?? 0 }}</strong
+      ><span>Ready</span>
+    </div>
+    <div class="summary--failed">
+      <strong>{{ batch.counts?.failed ?? 0 }}</strong
+      ><span>Failed</span>
+    </div>
+    <div>
+      <strong>{{ batch.counts?.published ?? 0 }}</strong
+      ><span>Published</span>
+    </div>
+    <div>
+      <strong>{{ batch.counts?.skipped ?? 0 }}</strong
+      ><span>Skipped</span>
+    </div>
+  </section>
+
+  @if (store.problem(); as problem) {
+    <div class="notice notice--error" role="alert">{{ batchProblemMessage(problem) }}</div>
+  }
+  @if (store.workerUnavailable()) {
+    <div class="notice notice--warning" role="status">
+      Worker progress has not changed recently. The checkpoint is safe; verify ContentWorker and
+      retry only Failed items.
+    </div>
+  }
+  @if (hasPartialFailure(batch.counts)) {
+    <div class="notice notice--warning" role="status">
+      Partial failure: successful items remain Ready while failed items can be retried
+      independently.
+    </div>
+  }
+
+  <section class="actions" aria-label="Batch actions">
+    @if (
+      isBatchStatus(batch.status, 'Created') ||
+      isBatchStatus(batch.status, 'Validating') ||
+      isBatchStatus(batch.status, 'Generating')
+    ) {
+      <button type="button" [disabled]="!!store.action()" (click)="startOrResume()">
+        {{ isBatchStatus(batch.status, 'Created') ? 'Start batch' : 'Resume batch' }}
+      </button>
+    }
+    <button
+      type="button"
+      [disabled]="store.failedItemIds().length === 0 || !!store.action()"
+      (click)="retryAll()"
+    >
+      Retry all failed
+    </button>
+    <button
+      type="button"
+      class="primary"
+      [disabled]="store.selectedRevisionIds().length === 0 || !!store.action()"
+      (click)="publish()"
+    >
+      Publish selected ({{ store.selectedRevisionIds().length }})
+    </button>
+  </section>
+
+  <section class="panel" aria-labelledby="batch-items-title">
+    <header class="toolbar">
+      <div>
+        <h3 id="batch-items-title">Problems</h3>
+        <p>Only safe diagnostics are shown. Private source and hidden cases are never displayed.</p>
+      </div>
+      <label>
+        <span>Search</span>
+        <input
+          type="search"
+          [value]="store.query().search"
+          (input)="search($any($event.target).value)"
+          placeholder="Slug or title"
+        />
+      </label>
+      <label>
+        <span>Status</span>
+        <select [value]="store.query().status" (change)="filter($any($event.target).value)">
+          <option value="all">All</option>
+          <option value="pending">Pending</option>
+          <option value="generating">Generating</option>
+          <option value="ready">Ready</option>
+          <option value="failed">Failed</option>
+          <option value="published">Published</option>
+          <option value="skipped">Skipped</option>
+        </select>
+      </label>
+    </header>
+
+    @if (store.visibleItems().length === 0) {
+      <p class="state">No problems match this filter.</p>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="selection">
+                <input
+                  type="checkbox"
+                  aria-label="Select all Ready revisions"
+                  [checked]="
+                    store.readyRevisionIds().length > 0 &&
+                    store.selectedRevisionIds().length === store.readyRevisionIds().length
+                  "
+                  [disabled]="store.readyRevisionIds().length === 0"
+                  (change)="selectAll($any($event.target).checked)"
+                />
+              </th>
+              <th>Problem</th>
+              <th>Action</th>
+              <th>Status</th>
+              <th>Safe diagnostic</th>
+              <th><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of store.visibleItems(); track item.id) {
+              <tr>
+                <td class="selection">
+                  @if (isItemStatus(item.status, 'Ready') && item.revisionId) {
+                    <input
+                      type="checkbox"
+                      [attr.aria-label]="'Select ' + item.slug + ' for publish'"
+                      [checked]="selected(item.revisionId)"
+                      (change)="toggle(item, $any($event.target).checked)"
+                    />
+                  }
+                </td>
+                <td>
+                  <strong>{{ item.title }}</strong>
+                  <small>{{ item.slug }} · {{ item.catalogPath }}</small>
+                </td>
+                <td>{{ importActionLabel(item.action) }}</td>
+                <td>
+                  <span
+                    class="item-status"
+                    [class.item-status--failed]="isItemStatus(item.status, 'Failed')"
+                    >{{ itemStatusLabel(item.status) }}</span
+                  >
+                </td>
+                <td class="diagnostic">
+                  @if (item.safeFailureCategory) {
+                    <strong>{{ item.safeFailureCategory }}</strong>
+                    <span>{{ item.safeFailureMessage }}</span>
+                  } @else {
+                    <span>—</span>
+                  }
+                </td>
+                <td>
+                  @if (isRetryableItem(item) && item.id) {
+                    <button type="button" [disabled]="!!store.action()" (click)="retry(item)">
+                      Retry
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+}

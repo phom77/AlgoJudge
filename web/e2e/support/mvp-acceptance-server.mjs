@@ -45,6 +45,23 @@ const server = createServer(async (request, response) => {
         runs: state.runs.size,
       });
     }
+    if (url.pathname === '/__e2e/content-batch-state' && request.method === 'GET') {
+      const revisionIds = state.contentBatch.items.map((item) => item.revisionId).filter(Boolean);
+      return json(response, 200, {
+        batchRetryRequests: state.batchRetryRequests,
+        batchResumeRequests: state.batchResumeRequests,
+        publishedBatchRevisionIds: state.publishedBatchRevisionIds,
+        batchRevisionCount: revisionIds.length,
+        batchUniqueRevisionCount: new Set(revisionIds).size,
+      });
+    }
+    if (url.pathname === '/__e2e/content-batch-worker-restart' && request.method === 'POST') {
+      const item = state.contentBatch.items.find((candidate) => candidate.status === 2);
+      item.status = 1;
+      state.contentBatch.status = 2;
+      refreshBatchCounts(state.contentBatch);
+      return json(response, 200, { restarted: true });
+    }
     if (url.pathname.startsWith('/api/')) {
       return await handleApi(request, response, url);
     }
@@ -116,6 +133,10 @@ function createState() {
         updatedAt: '2026-07-20T00:00:00Z',
       },
     ],
+    contentBatch: createScaleContentBatch(),
+    batchRetryRequests: 0,
+    batchResumeRequests: 0,
+    publishedBatchRevisionIds: [],
     generationPolls: 0,
   };
 }
@@ -172,6 +193,99 @@ async function handleApi(request, response, url) {
     );
     response.writeHead(204);
     return response.end();
+  }
+
+  if (url.pathname === '/api/internal/admin/content-batches' && request.method === 'GET') {
+    if (!userName) return authenticationProblem(response);
+    if (!state.users.get(userName)?.isAdmin) return forbiddenProblem(response);
+    const batch = state.contentBatch;
+    return json(
+      response,
+      200,
+      page(
+        [
+          {
+            id: batch.id,
+            catalogName: batch.catalogName,
+            status: batch.status,
+            createdByUserId: batch.createdByUserId,
+            counts: batch.counts,
+            createdAt: batch.createdAt,
+            updatedAt: batch.updatedAt,
+          },
+        ],
+        url,
+      ),
+    );
+  }
+
+  const contentBatchMatch =
+    /^\/api\/internal\/admin\/content-batches\/([0-9a-f-]+)(?:\/(start|resume|retry|publish))?$/i.exec(
+      url.pathname,
+    );
+  if (contentBatchMatch) {
+    if (!userName) return authenticationProblem(response);
+    if (!state.users.get(userName)?.isAdmin) return forbiddenProblem(response);
+    if (contentBatchMatch[1] !== state.contentBatch.id)
+      return problemDetails(response, 404, 'not-found', 'Content batch not found.');
+    const action = contentBatchMatch[2];
+    if (!action && request.method === 'GET') return json(response, 200, state.contentBatch);
+    if (request.method !== 'POST') return problemDetails(response, 405, 'method', 'Method denied.');
+    if (!hasValidCsrf(request, cookies)) return csrfProblem(response);
+    if (action === 'start' || action === 'resume') {
+      if (action === 'resume') state.batchResumeRequests += 1;
+      for (const item of state.contentBatch.items) {
+        if (item.status === 0 || item.status === 1 || item.status === 5) item.status = 2;
+      }
+      state.contentBatch.status = 3;
+      refreshBatchCounts(state.contentBatch);
+      state.contentBatch.updatedAt = new Date().toISOString();
+      state.contentBatch.auditEntries.push(batchAudit(`batch.${action}`, 'completed'));
+      return json(response, 202, state.contentBatch);
+    }
+    if (action === 'retry') {
+      const body = await readJson(request);
+      const itemIds = Array.isArray(body.itemIds) ? body.itemIds : [];
+      state.batchRetryRequests += 1;
+      for (const item of state.contentBatch.items) {
+        if (
+          itemIds.includes(item.id) &&
+          item.status === 4 &&
+          item.revisionId &&
+          !['duplicate_slug', 'invalid_path'].includes(item.safeFailureCategory)
+        ) {
+          item.status = 2;
+          item.safeFailureCategory = null;
+          item.safeFailureMessage = null;
+          item.updatedAt = new Date().toISOString();
+        }
+      }
+      refreshBatchCounts(state.contentBatch);
+      state.contentBatch.auditEntries.push(batchAudit('batch.retry', 'completed'));
+      return json(response, 202, state.contentBatch);
+    }
+    if (action === 'publish') {
+      const body = await readJson(request);
+      const revisionIds = Array.isArray(body.revisionIds) ? body.revisionIds : [];
+      for (const revisionId of revisionIds) {
+        const item = state.contentBatch.items.find(
+          (candidate) => candidate.revisionId === revisionId && candidate.status === 2,
+        );
+        if (!item)
+          return problemDetails(
+            response,
+            409,
+            'conflict',
+            'Only Ready revisions can be published.',
+          );
+        item.status = 3;
+        item.updatedAt = new Date().toISOString();
+        state.publishedBatchRevisionIds.push(revisionId);
+      }
+      refreshBatchCounts(state.contentBatch);
+      state.contentBatch.auditEntries.push(batchAudit('batch.publish', 'completed'));
+      return json(response, 200, state.contentBatch);
+    }
   }
 
   if (url.pathname === '/api/internal/admin/problems' && request.method === 'GET') {
@@ -344,12 +458,31 @@ async function handleApi(request, response, url) {
     const search = (url.searchParams.get('Search') ?? '').trim().toLowerCase();
     const difficulty = url.searchParams.get('Difficulty');
     const solvedFilter = url.searchParams.get('Solved');
-    const solved = userName ? hasAcceptedSubmission(userName) : null;
-    const matches =
-      (!search || problem.title.toLowerCase().includes(search)) &&
-      (!difficulty || difficulty === '1') &&
-      (solvedFilter === null || solvedFilter === String(solved));
-    const items = matches ? [{ ...problem, isSolved: solved }] : [];
+    const candidates = [
+      problem,
+      ...state.contentBatch.items
+        .filter((item) => item.status === 3)
+        .map((item) => ({
+          id: item.problemId,
+          slug: item.slug,
+          title: item.title,
+          difficulty: 'Easy',
+          tags: [],
+        })),
+    ];
+    const items = candidates
+      .map((item) => ({
+        ...item,
+        isSolved: userName ? hasAcceptedSubmission(userName, item.id) : null,
+      }))
+      .filter(
+        (item) =>
+          (!search ||
+            item.title.toLowerCase().includes(search) ||
+            item.slug.toLowerCase().includes(search)) &&
+          (!difficulty || difficulty === '1') &&
+          (solvedFilter === null || solvedFilter === String(item.isSolved)),
+      );
     return json(response, 200, page(items, url));
   }
 
@@ -705,6 +838,115 @@ function page(items, url) {
     totalCount: items.length,
     totalPages: items.length === 0 ? 0 : 1,
   };
+}
+
+function createScaleContentBatch() {
+  const id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+  const createdAt = '2026-07-28T08:00:00Z';
+  const items = Array.from({ length: 100 }, (_, index) => {
+    const ordinal = index + 1;
+    const suffix = String(ordinal).padStart(3, '0');
+    const failed = ordinal >= 91 && ordinal <= 95;
+    const skipped = ordinal >= 96 && ordinal <= 98;
+    const invalid = ordinal >= 99;
+    const category =
+      ordinal === 91
+        ? 'compile_error'
+        : ordinal === 92
+          ? 'quality_gate_failed'
+          : ordinal === 93
+            ? 'worker_unavailable'
+            : ordinal === 94
+              ? 'reference_failed'
+              : ordinal === 95
+                ? 'validator_failed'
+                : ordinal === 99
+                  ? 'duplicate_slug'
+                  : ordinal === 100
+                    ? 'invalid_path'
+                    : null;
+    const names = {
+      1: ['template-only', 'Template Only'],
+      2: ['override-generator', 'Override Generator'],
+      3: ['override-validator', 'Override Validator'],
+      4: ['wrong-solutions', 'Wrong Solutions'],
+      91: ['compile-fail', 'Intentional Compile Failure'],
+      92: ['quality-gate-fail', 'Intentional Quality Gate Failure'],
+      99: ['duplicate-slug', 'Invalid Duplicate Slug'],
+      100: ['invalid-path', 'Invalid Path'],
+    };
+    const [slug, title] = names[ordinal] ?? [`problem-${suffix}`, `Problem ${suffix}`];
+    return {
+      id: `10000000-0000-0000-0000-${suffix.padStart(12, '0')}`,
+      ordinal,
+      catalogPath: `problems/${slug}`,
+      slug,
+      title,
+      action: ordinal === 90 ? 2 : 0,
+      status: failed || invalid ? 4 : skipped ? 6 : 2,
+      contentHash: suffix.padStart(64, '0'),
+      problemId: invalid ? null : 1000 + ordinal,
+      revisionId: skipped || invalid ? null : `20000000-0000-0000-0000-${suffix.padStart(12, '0')}`,
+      safeFailureCategory: category,
+      safeFailureMessage: category ? safeBatchMessage(category) : null,
+      updatedAt: createdAt,
+    };
+  });
+  const batch = {
+    id,
+    catalogName: 'acceptance-100/catalog.json',
+    status: 3,
+    createdByUserId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    counts: {},
+    items,
+    auditEntries: [batchAudit('batch.start', 'completed')],
+    createdAt,
+    updatedAt: createdAt,
+    startedAt: createdAt,
+    completedAt: null,
+  };
+  refreshBatchCounts(batch);
+  return batch;
+}
+
+function refreshBatchCounts(batch) {
+  batch.counts = {
+    total: batch.items.length,
+    pending: batch.items.filter((item) => item.status === 0).length,
+    generating: batch.items.filter((item) => item.status === 1 || item.status === 5).length,
+    ready: batch.items.filter((item) => item.status === 2).length,
+    failed: batch.items.filter((item) => item.status === 4).length,
+    published: batch.items.filter((item) => item.status === 3).length,
+    skipped: batch.items.filter((item) => item.status === 6).length,
+  };
+  batch.updatedAt = new Date().toISOString();
+}
+
+function batchAudit(action, result) {
+  return {
+    id: Date.now(),
+    adminUserId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    itemId: null,
+    problemId: null,
+    revisionId: null,
+    action,
+    result,
+    safeFailureCategory: null,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function safeBatchMessage(category) {
+  const messages = {
+    compile_error: 'Generator compilation failed.',
+    quality_gate_failed: 'The generated suite did not satisfy its quality policy.',
+    worker_unavailable: 'The generation attempt was interrupted.',
+    reference_failed: 'Reference execution failed.',
+    validator_failed: 'Generated input validation failed.',
+    duplicate_slug: 'The catalog contains a duplicate problem slug.',
+    invalid_path: 'The workspace item contains an unsafe or invalid path.',
+  };
+  return messages[category] ?? 'The item failed.';
 }
 
 function setSecurityHeaders(response) {

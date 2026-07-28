@@ -23,6 +23,12 @@ test('has no automated WCAG A/AA violations across the MVP pages', async ({ page
   await page.goto('/submissions');
   await expect(page.getByRole('heading', { name: 'Submission history' })).toBeVisible();
   await expectNoA11yViolations(page);
+  await page.goto('/admin/content-batches');
+  await expect(page.getByRole('heading', { name: 'Content batches' })).toBeVisible();
+  await expectNoA11yViolations(page);
+  await page.getByRole('link', { name: 'View batch' }).click();
+  await expect(page.getByRole('heading', { name: 'acceptance-100/catalog.json' })).toBeVisible();
+  await expectNoA11yViolations(page);
 });
 
 test('keeps the workspace operable and accessible at a mobile viewport', async ({ page }) => {

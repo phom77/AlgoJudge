@@ -59,6 +59,7 @@ h1 {
 
 .admin-shell__navigation {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
