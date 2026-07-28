@@ -29,7 +29,10 @@ public sealed class ContentGenerationJobConfiguration : IEntityTypeConfiguration
         builder.HasIndex(item => item.RevisionId)
             .HasFilter("\"Status\" IN (0, 1)")
             .IsUnique();
+        builder.HasIndex(item => item.BatchItemId);
         builder.HasOne(item => item.Revision).WithMany(revision => revision.GenerationJobs)
             .HasForeignKey(item => item.RevisionId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(item => item.BatchItem).WithMany(batchItem => batchItem.GenerationJobs)
+            .HasForeignKey(item => item.BatchItemId).OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -6,6 +6,7 @@ public sealed class ContentGenerationJob
 {
     public Guid Id { get; set; }
     public Guid RevisionId { get; set; }
+    public Guid? BatchItemId { get; set; }
     public ContentGenerationJobStatus Status { get; set; } = ContentGenerationJobStatus.Pending;
     public string DefinitionSnapshotJson { get; set; } = "{}";
     public string DefinitionSha256 { get; set; } = string.Empty;
@@ -21,4 +22,5 @@ public sealed class ContentGenerationJob
     public DateTime? StartedAt { get; set; }
     public DateTime? FinishedAt { get; set; }
     public ProblemAuthoringRevision Revision { get; set; } = null!;
+    public ContentBatchItem? BatchItem { get; set; }
 }

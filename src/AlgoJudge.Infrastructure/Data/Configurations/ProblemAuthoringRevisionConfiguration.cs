@@ -28,6 +28,8 @@ public sealed class ProblemAuthoringRevisionConfiguration :
         builder.Property(item => item.DefinitionJson).IsRequired().HasColumnType("jsonb");
         builder.Property(item => item.SamplesJson).IsRequired().HasColumnType("jsonb");
         builder.Property(item => item.DefinitionSha256).IsRequired().HasMaxLength(64).IsFixedLength();
+        builder.Property(item => item.ContentHash).HasMaxLength(64).IsFixedLength();
+        builder.Property(item => item.TagsJson).HasColumnType("jsonb");
         builder.Property(item => item.CandidateSuiteSha256).HasMaxLength(64).IsFixedLength();
         builder.Property(item => item.CandidateToolchain).HasMaxLength(512);
         builder.Property(item => item.CandidateStatisticsJson).HasColumnType("jsonb");

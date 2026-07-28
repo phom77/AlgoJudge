@@ -41,12 +41,15 @@ public static class ContentToolApplication
         try
         {
             var configuration = BuildConfiguration();
-            if (command.Name is "workspace-validate" or "workspace-resolve")
+            if (command.Name is "workspace-validate" or
+                "workspace-resolve" or
+                "workspace-import")
             {
                 return await ResolveWorkspaceAsync(
                     configuration,
                     command.Name,
                     command.Target!,
+                    command.ApiBaseUrl,
                     cancellationSource.Token);
             }
 
@@ -166,6 +169,7 @@ public static class ContentToolApplication
         IConfiguration configuration,
         string commandName,
         string catalogPath,
+        string? apiBaseUrl,
         CancellationToken cancellationToken)
     {
         var options = configuration
@@ -177,6 +181,30 @@ public static class ContentToolApplication
         {
             Console.WriteLine(
                 $"Valid content workspace with {resolution.Problems.Count} enabled problem(s).");
+            return 0;
+        }
+
+        if (commandName == "workspace-import")
+        {
+            var accessToken = Environment.GetEnvironmentVariable(
+                "ALGOJUDGE_ADMIN_ACCESS_TOKEN");
+            if (string.IsNullOrWhiteSpace(accessToken))
+            {
+                throw new InvalidOperationException(
+                    "ALGOJUDGE_ADMIN_ACCESS_TOKEN is required for workspace import.");
+            }
+            var client = new ContentBatchApiClient(
+                apiBaseUrl ??
+                configuration["ContentBatchApi:BaseUrl"] ??
+                "http://localhost:5016",
+                accessToken);
+            var batch = await client.CreateAndStartAsync(
+                catalogPath,
+                resolution,
+                cancellationToken);
+            Console.WriteLine(
+                $"Created content batch {batch.Id} with {batch.Counts.Total} item(s); " +
+                $"status {batch.Status}.");
             return 0;
         }
 
@@ -376,18 +404,31 @@ public static class ContentToolApplication
 
     private static bool TryParseCommand(string[] args, out ContentToolCommand command)
     {
-        command = new ContentToolCommand("help", null, Replace: false);
+        command = new ContentToolCommand("help", null, Replace: false, ApiBaseUrl: null);
         if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
             return true;
 
         if (args[0] == "workspace")
         {
-            if (args.Length != 3 || args[1] is not ("validate" or "resolve"))
+            if (args.Length < 3 || args[1] is not ("validate" or "resolve" or "import"))
                 return false;
+            string? apiBaseUrl = null;
+            if (args[1] == "import")
+            {
+                if (args.Length == 5 && args[3] == "--api-base-url")
+                    apiBaseUrl = args[4];
+                else if (args.Length != 3)
+                    return false;
+            }
+            else if (args.Length != 3)
+            {
+                return false;
+            }
             command = new ContentToolCommand(
                 $"workspace-{args[1]}",
                 args[2],
-                Replace: false);
+                Replace: false,
+                apiBaseUrl);
             return true;
         }
 
@@ -406,7 +447,7 @@ public static class ContentToolApplication
             if (args.Length != 2)
                 return false;
 
-            command = new ContentToolCommand(args[0], args[1], Replace: false);
+            command = new ContentToolCommand(args[0], args[1], Replace: false, ApiBaseUrl: null);
             return true;
         }
 
@@ -422,7 +463,7 @@ public static class ContentToolApplication
             return false;
         }
 
-        command = new ContentToolCommand(args[0], args[1], replace);
+        command = new ContentToolCommand(args[0], args[1], replace, ApiBaseUrl: null);
         return true;
     }
 
@@ -433,11 +474,16 @@ public static class ContentToolApplication
         Console.WriteLine("  import <package.zip> [--replace]");
         Console.WriteLine("  workspace validate <catalog.json>");
         Console.WriteLine("  workspace resolve <catalog.json>");
+        Console.WriteLine("  workspace import <catalog.json> [--api-base-url <url>]");
         Console.WriteLine("  generate <problem-directory>");
         Console.WriteLine("  validate-generated <problem-directory>");
         Console.WriteLine("  publish <slug>");
         Console.WriteLine("  unpublish <slug>");
     }
 
-    private sealed record ContentToolCommand(string Name, string? Target, bool Replace);
+    private sealed record ContentToolCommand(
+        string Name,
+        string? Target,
+        bool Replace,
+        string? ApiBaseUrl);
 }

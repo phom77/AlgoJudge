@@ -6,6 +6,7 @@ public sealed class ContentQueueOptions
     public int LeaseDurationSeconds { get; set; } = 120;
     public int HeartbeatIntervalSeconds { get; set; } = 30;
     public int MaxAttempts { get; set; } = 3;
+    public int MaxConcurrentJobs { get; set; } = 2;
     public string? WorkerId { get; set; }
     public TimeSpan PollInterval => TimeSpan.FromSeconds(PollIntervalSeconds);
     public TimeSpan LeaseDuration => TimeSpan.FromSeconds(LeaseDurationSeconds);
@@ -14,7 +15,8 @@ public sealed class ContentQueueOptions
     {
         if (PollIntervalSeconds is < 1 or > 60 || LeaseDurationSeconds is < 30 or > 3600 ||
             HeartbeatIntervalSeconds < 1 || HeartbeatIntervalSeconds >= LeaseDurationSeconds ||
-            MaxAttempts is < 1 or > 10 || WorkerId?.Length > 128)
+            MaxAttempts is < 1 or > 10 || MaxConcurrentJobs is < 1 or > 8 ||
+            WorkerId?.Length > 128)
             throw new InvalidOperationException("ContentQueue configuration is invalid.");
     }
 }

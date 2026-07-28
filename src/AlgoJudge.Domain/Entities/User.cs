@@ -15,5 +15,9 @@ namespace AlgoJudge.Domain.Entities
         public ICollection<CodeRun> CodeRuns { get; set; } = new List<CodeRun>();
         public ICollection<ProblemAuthoringRevision> AuthoringRevisions { get; set; } =
             new List<ProblemAuthoringRevision>();
+        public ICollection<ContentBatch> ContentBatches { get; set; } =
+            new List<ContentBatch>();
+        public ICollection<ContentBatchAuditEntry> ContentBatchAuditEntries { get; set; } =
+            new List<ContentBatchAuditEntry>();
     }
 }

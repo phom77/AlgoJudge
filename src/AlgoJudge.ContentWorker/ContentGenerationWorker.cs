@@ -18,28 +18,107 @@ public sealed class ContentGenerationWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Content worker {WorkerId} started.", _identity.Value);
-        while (!stoppingToken.IsCancellationRequested)
+        _logger.LogInformation(
+            "Content worker {WorkerId} started with concurrency {MaxConcurrentJobs}.",
+            _identity.Value,
+            _options.MaxConcurrentJobs);
+        var active = new HashSet<Task>();
+        try
         {
-            try
+            while (!stoppingToken.IsCancellationRequested)
             {
-                ContentGenerationClaim? claim;
-                using (var scope = _scopeFactory.CreateScope())
-                    claim = await scope.ServiceProvider.GetRequiredService<IContentGenerationJobRepository>()
-                        .ClaimNextAsync(_identity.Value, _options.LeaseDuration, _options.MaxAttempts, stoppingToken);
-                if (claim is null) { await Task.Delay(_options.PollInterval, stoppingToken); continue; }
-                _logger.LogInformation("Content worker {WorkerId} claimed generation job {JobId}, attempt {AttemptCount}.",
-                    _identity.Value, claim.JobId, claim.AttemptCount);
-                await ProcessAsync(claim, stoppingToken);
+                await ObserveCompletedAsync(active);
+                while (active.Count < _options.MaxConcurrentJobs &&
+                       !stoppingToken.IsCancellationRequested)
+                {
+                    ContentGenerationClaim? claim;
+                    using (var scope = _scopeFactory.CreateScope())
+                    {
+                        claim = await scope.ServiceProvider
+                            .GetRequiredService<IContentGenerationJobRepository>()
+                            .ClaimNextAsync(
+                                _identity.Value,
+                                _options.LeaseDuration,
+                                _options.MaxAttempts,
+                                stoppingToken);
+                    }
+                    if (claim is null)
+                        break;
+                    _logger.LogInformation(
+                        "Content worker {WorkerId} claimed generation job {JobId}, attempt {AttemptCount}.",
+                        _identity.Value,
+                        claim.JobId,
+                        claim.AttemptCount);
+                    var task = ProcessAsync(claim, stoppingToken);
+                    active.Add(task);
+                }
+
+                if (active.Count == 0)
+                {
+                    await Task.Delay(_options.PollInterval, stoppingToken);
+                }
+                else if (active.Count >= _options.MaxConcurrentJobs)
+                {
+                    await Task.WhenAny(active);
+                }
+                else
+                {
+                    await Task.WhenAny(
+                        Task.WhenAny(active),
+                        Task.Delay(_options.PollInterval, stoppingToken));
+                }
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
-            catch (Exception exception)
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Unexpected error in the content worker loop.");
+        }
+        finally
+        {
+            if (active.Count > 0)
             {
-                _logger.LogError(exception, "Unexpected error in the content worker loop.");
-                await Task.Delay(_options.PollInterval, stoppingToken);
+                try
+                {
+                    await Task.WhenAll(active);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogError(
+                        "One or more generation tasks stopped with exception type {ExceptionType}; " +
+                        "private exception details were omitted.",
+                        exception.GetType().Name);
+                }
             }
         }
         _logger.LogInformation("Content worker {WorkerId} stopped.", _identity.Value);
+    }
+
+    private async Task ObserveCompletedAsync(HashSet<Task> active)
+    {
+        foreach (var task in active.Where(task => task.IsCompleted).ToArray())
+        {
+            active.Remove(task);
+            try
+            {
+                await task;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    "Generation task ended with exception type {ExceptionType}; " +
+                    "private exception details were omitted.",
+                    exception.GetType().Name);
+            }
+        }
     }
 
     private async Task ProcessAsync(ContentGenerationClaim claim, CancellationToken stoppingToken)

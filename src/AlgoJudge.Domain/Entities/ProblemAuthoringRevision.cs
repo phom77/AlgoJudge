@@ -19,6 +19,8 @@ public sealed class ProblemAuthoringRevision
     public string SamplesJson { get; set; } = "[]";
     public string DefinitionJson { get; set; } = "{}";
     public string DefinitionSha256 { get; set; } = string.Empty;
+    public string? ContentHash { get; set; }
+    public string? TagsJson { get; set; }
     public string? CandidateSuiteSha256 { get; set; }
     public string? CandidateToolchain { get; set; }
     public string? CandidateStatisticsJson { get; set; }
@@ -31,4 +33,5 @@ public sealed class ProblemAuthoringRevision
     public User OwnerUser { get; set; } = null!;
     public ICollection<ContentGenerationJob> GenerationJobs { get; set; } = [];
     public ICollection<AuthoringTestCase> CandidateTestCases { get; set; } = [];
+    public ICollection<ContentBatchItem> ContentBatchItems { get; set; } = [];
 }
