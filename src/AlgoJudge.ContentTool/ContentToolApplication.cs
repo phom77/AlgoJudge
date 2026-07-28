@@ -4,6 +4,7 @@ using AlgoJudge.ContentTool.Generation;
 using AlgoJudge.ContentTool.Importing;
 using AlgoJudge.ContentTool.Packages;
 using AlgoJudge.ContentTool.Publishing;
+using AlgoJudge.ContentTool.Workspace;
 using AlgoJudge.Infrastructure.Data;
 using AlgoJudge.Infrastructure.ContentGeneration;
 using AlgoJudge.Infrastructure.Grading;
@@ -40,6 +41,15 @@ public static class ContentToolApplication
         try
         {
             var configuration = BuildConfiguration();
+            if (command.Name is "workspace-validate" or "workspace-resolve")
+            {
+                return await ResolveWorkspaceAsync(
+                    configuration,
+                    command.Name,
+                    command.Target!,
+                    cancellationSource.Token);
+            }
+
             if (command.Name is "generate" or "validate-generated")
             {
                 return await GenerateTestsAsync(
@@ -90,6 +100,13 @@ public static class ContentToolApplication
         catch (TestGenerationException exception)
         {
             Console.Error.WriteLine($"Test generation failed: {exception.Message}");
+            return 2;
+        }
+        catch (WorkspaceValidationException exception)
+        {
+            Console.Error.WriteLine("Workspace validation failed:");
+            foreach (var error in exception.Errors)
+                Console.Error.WriteLine($"- {error}");
             return 2;
         }
         catch (ContentImportConflictException exception)
@@ -143,6 +160,33 @@ public static class ContentToolApplication
             .AddJsonFile("appsettings.json", optional: false)
             .AddEnvironmentVariables()
             .Build();
+    }
+
+    private static async Task<int> ResolveWorkspaceAsync(
+        IConfiguration configuration,
+        string commandName,
+        string catalogPath,
+        CancellationToken cancellationToken)
+    {
+        var options = configuration
+            .GetSection(ContentImportOptions.SectionName)
+            .Get<ContentImportOptions>() ?? new ContentImportOptions();
+        var resolver = new ContentWorkspaceResolver(options);
+        var resolution = await resolver.ResolveAsync(catalogPath, cancellationToken);
+        if (commandName == "workspace-validate")
+        {
+            Console.WriteLine(
+                $"Valid content workspace with {resolution.Problems.Count} enabled problem(s).");
+            return 0;
+        }
+
+        var jsonOptions = new System.Text.Json.JsonSerializerOptions(
+            WorkspaceJson.SerializerOptions)
+        {
+            WriteIndented = true
+        };
+        Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(resolution, jsonOptions));
+        return 0;
     }
 
     private static async Task<int> ImportAsync(
@@ -336,6 +380,17 @@ public static class ContentToolApplication
         if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
             return true;
 
+        if (args[0] == "workspace")
+        {
+            if (args.Length != 3 || args[1] is not ("validate" or "resolve"))
+                return false;
+            command = new ContentToolCommand(
+                $"workspace-{args[1]}",
+                args[2],
+                Replace: false);
+            return true;
+        }
+
         if (args[0] is not (
                 "validate" or
                 "import" or
@@ -376,6 +431,8 @@ public static class ContentToolApplication
         Console.WriteLine("AlgoJudge ContentTool");
         Console.WriteLine("  validate <package.zip>");
         Console.WriteLine("  import <package.zip> [--replace]");
+        Console.WriteLine("  workspace validate <catalog.json>");
+        Console.WriteLine("  workspace resolve <catalog.json>");
         Console.WriteLine("  generate <problem-directory>");
         Console.WriteLine("  validate-generated <problem-directory>");
         Console.WriteLine("  publish <slug>");

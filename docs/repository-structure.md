@@ -7,7 +7,7 @@
 | `src` | Deployable .NET applications and their shared backend layers. |
 | `web` | Independent browser application and frontend tests. |
 | `tests` | Backend unit and integration test projects. |
-| `content` | Local/private problem packages consumed by ContentTool. |
+| `content` | Local/private catalog workspaces and problem packages consumed by ContentTool. |
 | `infra` | Local runtime, container images, database operations, and monitoring. |
 | `docs` | Product requirements and durable technical decisions. |
 | `scripts` | Repeatable developer workflows; no business logic. |

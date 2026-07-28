@@ -252,6 +252,12 @@ store generator and validator source, a Function signature, a reference
 class/method, and optional wrong solutions without supplying a project, DLL,
 full stdin/stdout executable, or adapter.
 
+For catalog-scale authoring, [`content-workspace.md`](content-workspace.md) and
+[ADR-0022](adr/0022-use-catalog-based-content-workspaces.md) add reusable
+templates and lightweight `problem.json` directories. Workspace resolution
+materializes the same complete source-based definition before generation; it
+does not change any imported ZIP package schema.
+
 That definition is not a ZIP member and does not create package schema version
 3. ContentTool recognizes a root `authoring.json`, generates complete
 `.in`/`.out` pairs through the sandboxed source pipeline, and records version-2

@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://algojudge.local/schemas/content-workspace/template.schema.json",
+  "title": "AlgoJudge content workspace template",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatorParametersSchema"],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "executionMode": {
+      "const": "Function"
+    },
+    "language": {
+      "const": "cpp17"
+    },
+    "generatorSdkVersion": {
+      "const": 1
+    },
+    "timeLimitMs": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 10000
+    },
+    "memoryLimitKb": {
+      "type": "integer",
+      "minimum": 16384,
+      "maximum": 1048576
+    },
+    "qualityPolicy": {
+      "$ref": "problem.schema.json#/$defs/qualityPolicy"
+    },
+    "generatorParametersSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "properties", "additionalProperties"],
+      "properties": {
+        "type": {
+          "const": "object"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/parameterRule"
+          }
+        },
+        "required": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": {
+          "const": false
+        }
+      }
+    }
+  },
+  "$defs": {
+    "parameterRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "enum": ["integer", "number", "string", "boolean", "array"]
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "minLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minItems": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxItems": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "items": {
+          "$ref": "#/$defs/parameterRule"
+        },
+        "enum": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "default": true
+      }
+    }
+  }
+}

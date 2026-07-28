@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://algojudge.local/schemas/content-workspace/problem.schema.json",
+  "title": "AlgoJudge workspace problem",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "template",
+    "slug",
+    "title",
+    "difficulty",
+    "tags",
+    "statement",
+    "constraints",
+    "signature",
+    "samples",
+    "generatorParameters"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "template": {
+      "$ref": "#/$defs/slug"
+    },
+    "slug": {
+      "$ref": "#/$defs/slug"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "difficulty": {
+      "enum": ["Easy", "Medium", "Hard"]
+    },
+    "tags": {
+      "type": "array",
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/slug"
+      }
+    },
+    "statement": {
+      "type": "string",
+      "minLength": 1
+    },
+    "constraints": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "timeLimitMs": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 10000
+    },
+    "memoryLimitKb": {
+      "type": "integer",
+      "minimum": 16384,
+      "maximum": 1048576
+    },
+    "signature": {
+      "$ref": "#/$defs/signature"
+    },
+    "samples": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/sample"
+      }
+    },
+    "generatorParameters": {
+      "type": "object"
+    },
+    "qualityPolicy": {
+      "$ref": "#/$defs/qualityPolicy"
+    }
+  },
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "valueType": {
+      "enum": [
+        "Int32",
+        "Int64",
+        "Double",
+        "Boolean",
+        "String",
+        "Int32Array",
+        "Int64Array",
+        "DoubleArray",
+        "BooleanArray",
+        "StringArray"
+      ]
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["className", "methodName", "returnType", "parameters"],
+      "properties": {
+        "className": {
+          "type": "string",
+          "minLength": 1
+        },
+        "methodName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "returnType": {
+          "$ref": "#/$defs/valueType"
+        },
+        "parameters": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "type"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "$ref": "#/$defs/valueType"
+              }
+            }
+          }
+        }
+      }
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["arguments", "expected"],
+      "properties": {
+        "arguments": {
+          "type": "object"
+        },
+        "expected": true,
+        "explanation": {
+          "type": "string"
+        }
+      }
+    },
+    "qualityPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "minimumTestCaseCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5000
+        },
+        "minimumCasesByGroup": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["group", "minimumCaseCount"],
+            "properties": {
+              "group": {
+                "enum": ["handwritten", "edge", "random", "adversarial", "stress"]
+              },
+              "minimumCaseCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5000
+              }
+            }
+          }
+        },
+        "requireEachDeclaredWrongSolutionKilled": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

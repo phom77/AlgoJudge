@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://algojudge.local/schemas/content-workspace/catalog.schema.json",
+  "title": "AlgoJudge content workspace catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "problems"],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "problems": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "action"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!(?:[A-Za-z]:|/))(?!(?:.*\\/)?\\.{1,2}(?:\\/|$))[^\\\\/:]+(?:/[^\\\\/:]+)*$"
+          },
+          "action": {
+            "enum": ["create", "update-draft", "new-revision", "skip"]
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    }
+  }
+}

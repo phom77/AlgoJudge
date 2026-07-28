@@ -64,6 +64,7 @@
 | FR-36 | Published suite versions remain immutable. | Editing a Ready or Published definition creates or returns to a Draft revision, never changes an existing suite, and never changes the suite version pinned by an existing submission. |
 | FR-37 | Legacy content remains usable during authoring migration. | Package schema versions 1 and 2, their imported tests, and existing schema-version-2 private adapters continue to import and judge without conversion. |
 | FR-38 | Administrators can manage source-authored revisions through a protected backend workflow. | The Admin policy permits the workflow; revision ownership still limits authoring operations until an approved management workflow changes that rule. Internal responses never expose candidate input/output. |
+| FR-39 | Maintainers can validate and resolve a catalog-based content workspace before persistence. | A versioned `catalog.json` selects versioned problem and template documents; resolution materializes generator, validator, reference, and optional wrong-solution source into one canonical definition, validates generator parameters and safe paths, rejects duplicate slugs and unknown JSON fields, and computes an effective content hash without writing PostgreSQL or creating a generation job. |
 
 ## 3. Required verdicts
 
