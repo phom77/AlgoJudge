@@ -1,0 +1,243 @@
+:host {
+  display: block;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: var(--space-5);
+  color: var(--color-text-muted);
+}
+
+.page-heading,
+.actions,
+.toolbar {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.page-heading {
+  margin-bottom: var(--space-5);
+}
+
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+.eyebrow {
+  margin-bottom: var(--space-2);
+  color: var(--color-brand-strong);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.page-heading p:last-child,
+.toolbar p,
+td small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.batch-status,
+.item-status {
+  font-weight: 700;
+}
+
+.batch-status {
+  padding: var(--space-2) var(--space-3);
+  border-radius: 999px;
+  background: var(--color-surface-subtle);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.summary div {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.summary strong,
+.summary span,
+td strong,
+td small,
+.diagnostic span {
+  display: block;
+}
+
+.summary strong {
+  font-size: var(--font-size-lg);
+}
+
+.summary span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.summary--failed strong,
+.item-status--failed {
+  color: var(--color-danger);
+}
+
+.notice {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.notice--warning {
+  border-color: var(--color-warning);
+}
+
+.notice--error {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.actions {
+  justify-content: flex-end;
+  margin-bottom: var(--space-5);
+}
+
+button {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button.primary {
+  border-color: var(--color-brand);
+  background: var(--color-brand);
+  color: #1f1f1f;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.panel {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.toolbar {
+  align-items: end;
+  padding: var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.toolbar > div:first-child {
+  flex: 1;
+}
+
+label {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+input[type='search'],
+select {
+  min-width: 10rem;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+}
+
+.selection {
+  width: 2rem;
+  text-align: center;
+}
+
+.diagnostic {
+  max-width: 24rem;
+  white-space: normal;
+}
+
+.diagnostic span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.state {
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 64rem) {
+  .summary {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 40rem) {
+  .page-heading,
+  .actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

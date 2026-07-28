@@ -78,6 +78,22 @@ export const routes: Routes = [
         title: 'Problem management | AlgoJudge',
       },
       {
+        path: 'content-batches',
+        loadComponent: () =>
+          import('./features/admin-content-batches/content-batch-list.page').then(
+            (module) => module.ContentBatchListPage,
+          ),
+        title: 'Content batches | AlgoJudge',
+      },
+      {
+        path: 'content-batches/:batchId',
+        loadComponent: () =>
+          import('./features/admin-content-batches/content-batch-detail.page').then(
+            (module) => module.ContentBatchDetailPage,
+          ),
+        title: 'Content batch detail | AlgoJudge',
+      },
+      {
         path: 'problems/new',
         loadComponent: () =>
           import('./features/admin-authoring/problem-authoring.page').then(

@@ -1,0 +1,78 @@
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">Bulk operations</p>
+    <h2>Content batches</h2>
+    <p>Track catalog imports, generation progress, review, and publication.</p>
+  </div>
+  <a routerLink="/admin/problems">Manage problems</a>
+</section>
+
+<section class="summary" aria-label="Batch summary">
+  <div>
+    <strong>{{ store.totalCount() }}</strong
+    ><span>Total batches</span>
+  </div>
+  <div>
+    <strong>{{ store.batches().length }}</strong
+    ><span>Loaded</span>
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="batch-list-title">
+  <header>
+    <div>
+      <h3 id="batch-list-title">Catalog operations</h3>
+      <p>Open a batch to search items, retry failures, or approve Ready revisions.</p>
+    </div>
+    <button type="button" [disabled]="store.loading()" (click)="refresh()">Refresh</button>
+  </header>
+
+  @if (store.loading() && store.batches().length === 0) {
+    <p class="state" role="status">Loading content batches…</p>
+  } @else if (store.problem(); as problem) {
+    <div class="state state--error" role="alert">
+      <strong>{{ problem.title }}</strong>
+      <span>{{ problem.detail }}</span>
+    </div>
+  } @else if (store.batches().length === 0) {
+    <p class="state">No content batches have been created yet.</p>
+  } @else {
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Catalog</th>
+            <th>Status</th>
+            <th>Progress</th>
+            <th>Updated</th>
+            <th><span class="sr-only">Open</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (batch of store.batches(); track batch.id) {
+            <tr>
+              <td>
+                <strong>{{ batch.catalogName }}</strong>
+                <small>{{ batch.id }}</small>
+              </td>
+              <td>
+                <span class="status">{{ batchStatusLabel(batch.status) }}</span>
+              </td>
+              <td>
+                <div class="counts" aria-label="Item counts">
+                  <span>{{ batch.counts?.generating ?? 0 }} generating</span>
+                  <span>{{ batch.counts?.ready ?? 0 }} ready</span>
+                  <span>{{ batch.counts?.failed ?? 0 }} failed</span>
+                  <span>{{ batch.counts?.published ?? 0 }} published</span>
+                  <span>{{ batch.counts?.skipped ?? 0 }} skipped</span>
+                </div>
+              </td>
+              <td>{{ batch.updatedAt ? (batch.updatedAt | date: 'medium') : '—' }}</td>
+              <td><a [routerLink]="['/admin/content-batches', batch.id]">View batch</a></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
