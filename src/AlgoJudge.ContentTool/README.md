@@ -5,6 +5,8 @@ problem packages. It is intentionally separate from the public API.
 
 Implemented commands:
 
+- `workspace validate <catalog-path>`
+- `workspace resolve <catalog-path>`
 - `generate <problem-directory>`
 - `validate-generated <problem-directory>`
 - `validate <package-path>`
@@ -17,6 +19,13 @@ Import creates Draft content and never publishes implicitly. Publishing is a
 separate explicit operation that revalidates the problem's required public and
 private judge content. See `docs/problem-package-format.md` and ADR-0006 for the
 package contract and safety rules.
+
+Catalog workspace commands are read-only. `workspace validate` validates every
+enabled definition without displaying source. `workspace resolve` prints the
+complete resolved internal JSON, including authoring source, source origins,
+materialized generator parameter defaults, and the effective content hash.
+Neither command accesses PostgreSQL, compiles or runs source, creates a job, or
+publishes content. See `docs/content-workspace.md` and ADR-0022.
 
 Package schema version 1 remains compatible and imports as `StdinStdout`.
 Schema version 2 explicitly supports `StdinStdout` and `Function`; Function

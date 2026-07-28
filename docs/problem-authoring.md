@@ -8,6 +8,13 @@ maintainer API, and maintainer UI are implemented.
 Problem authoring remains an internal maintainer operation. It does not create
 a public author role or a public testcase-authoring API.
 
+For authoring many related problems, the catalog-based workspace in
+[`content-workspace.md`](content-workspace.md) is the preferred input format.
+It resolves template and problem files into the complete
+`ProblemAuthoringDefinition` described below before generation. The legacy
+root `authoring.json` contract remains supported as a complete standalone
+definition.
+
 ## 1. Authoring model
 
 Each editable revision owns one `ProblemAuthoringDefinition`. A definition is
