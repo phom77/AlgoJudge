@@ -137,10 +137,23 @@ of the resulting role in the deployment audit trail. The API does not expose
 hidden testcase payloads through either public or internal administration
 responses.
 Queue polling, lease, heartbeat, retries, and identity are configured under
-`ContentQueue`.
+`ContentQueue`. `MaxConcurrentJobs` defaults to `2`, accepts `1` through `8`,
+and bounds source-generation jobs within one ContentWorker process. Each job
+still owns an independent renewable lease and fencing token. Scale out only
+after accounting for Docker and database capacity.
 `ContentGeneration:MaximumCaseCount` defaults to 1,000 and must not exceed
 5,000; deployments may choose a lower limit when their worker capacity requires
 it without weakening sandbox limits.
+
+Catalog batches are submitted with
+`./scripts/process-problem-catalog.ps1 -CatalogPath <path> -Import`. Set a
+short-lived Admin bearer token in `ALGOJUDGE_ADMIN_ACCESS_TOKEN`; never put it
+in the script arguments, repository, shell history, or logs. The API and
+ContentWorker must both be running. The API checkpoints catalog actions while
+the worker claims only jobs from batches in `Generating`. Operators can inspect
+safe state with the internal Admin API, resume Pending items after an API
+interruption, and retry explicit Failed item IDs after correcting transient
+worker failures.
 
 ## Backend acceptance
 

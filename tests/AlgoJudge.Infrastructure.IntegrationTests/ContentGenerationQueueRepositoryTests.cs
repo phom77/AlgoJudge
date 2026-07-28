@@ -105,6 +105,74 @@ public sealed class ContentGenerationQueueRepositoryTests
         Assert.Single(revision.CandidateTestCases);
     }
 
+    [PostgreSqlFact]
+    public async Task BatchJobCompletionUsesLeaseFencingAndCheckpointsItemAndAudit()
+    {
+        await using var database = await PostgreSqlTestDatabase.CreateAsync();
+        var (batchId, itemId) = await SeedBatchJobAsync(database);
+        var first = await ClaimAsync(
+            database,
+            "batch-content-a",
+            TimeSpan.FromMilliseconds(100));
+        Assert.NotNull(first);
+        await Task.Delay(250);
+        var second = await ClaimAsync(
+            database,
+            "batch-content-b",
+            TimeSpan.FromSeconds(5));
+        Assert.NotNull(second);
+
+        await using (var context = database.CreateContext())
+        {
+            var repository = new ContentGenerationJobRepository(context);
+            Assert.False(await repository.CompleteAsync(first!, Result()));
+            Assert.True(await repository.CompleteAsync(second!, Result()));
+        }
+
+        await using var verify = database.CreateContext();
+        var item = await verify.ContentBatchItems.SingleAsync(value => value.Id == itemId);
+        var batch = await verify.ContentBatches.SingleAsync(value => value.Id == batchId);
+        var audits = await verify.ContentBatchAuditEntries
+            .Where(value => value.BatchId == batchId)
+            .ToArrayAsync();
+        Assert.Equal(ContentBatchItemStatus.Ready, item.Status);
+        Assert.Equal(ContentBatchStatus.ReadyForReview, batch.Status);
+        var audit = Assert.Single(audits);
+        Assert.Equal("generate", audit.Action);
+        Assert.Equal("succeeded", audit.Result);
+        Assert.Null(audit.SafeFailureCategory);
+    }
+
+    [PostgreSqlFact]
+    public async Task BatchJobIsNotClaimableUntilImportCheckpointsAreComplete()
+    {
+        await using var database = await PostgreSqlTestDatabase.CreateAsync();
+        var (batchId, _) = await SeedBatchJobAsync(database);
+        await using (var context = database.CreateContext())
+        {
+            var batch = await context.ContentBatches.SingleAsync(value => value.Id == batchId);
+            batch.Status = ContentBatchStatus.Validating;
+            await context.SaveChangesAsync();
+        }
+
+        Assert.Null(await ClaimAsync(
+            database,
+            "batch-content-waiting",
+            TimeSpan.FromSeconds(5)));
+
+        await using (var context = database.CreateContext())
+        {
+            var batch = await context.ContentBatches.SingleAsync(value => value.Id == batchId);
+            batch.Status = ContentBatchStatus.Generating;
+            await context.SaveChangesAsync();
+        }
+
+        Assert.NotNull(await ClaimAsync(
+            database,
+            "batch-content-ready",
+            TimeSpan.FromSeconds(5)));
+    }
+
     private static async Task<ContentGenerationClaim?> ClaimAsync(PostgreSqlTestDatabase database, string worker, TimeSpan lease)
     {
         await using var context = database.CreateContext();
@@ -119,6 +187,98 @@ public sealed class ContentGenerationQueueRepositoryTests
         var revision = new ProblemAuthoringRevision { Id = Guid.NewGuid(), Problem = problem, OwnerUser = user, RevisionNumber = 1, Status = AuthoringRevisionStatus.Generating, Title = "Draft", Slug = problem.Slug, StatementMarkdown = "Statement", ConstraintsMarkdown = "Constraints", Difficulty = DifficultyLevel.Easy, TimeLimitMs = 1000, MemoryLimitKb = 262144, SamplesJson = "[]", DefinitionJson = "{}", DefinitionSha256 = new string('a', 64) };
         revision.GenerationJobs.Add(new ContentGenerationJob { Id = Guid.NewGuid(), Revision = revision, Status = ContentGenerationJobStatus.Pending, DefinitionSnapshotJson = "{}", DefinitionSha256 = new string('a', 64), TimeLimitMs = 1000, MemoryLimitKb = 262144 });
         context.Add(revision); await context.SaveChangesAsync(); return revision.Id;
+    }
+
+    private static async Task<(Guid BatchId, Guid ItemId)> SeedBatchJobAsync(
+        PostgreSqlTestDatabase database)
+    {
+        await using var context = database.CreateContext();
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            UserName = $"batch_author_{Guid.NewGuid():N}",
+            Email = $"{Guid.NewGuid():N}@example.test",
+            PasswordHash = "test",
+            FullName = "Batch Author",
+            Role = UserRole.Admin
+        };
+        var problem = new Problem
+        {
+            Slug = $"batch-draft-{Guid.NewGuid():N}",
+            Title = "Batch Draft",
+            StatementMarkdown = "Statement",
+            ConstraintsMarkdown = "Constraints",
+            TimeLimitMs = 1_000,
+            MemoryLimitKb = 262_144,
+            ExecutionMode = ProblemExecutionMode.Function,
+            FunctionSignatureJson =
+                "{\"className\":\"Solution\",\"methodName\":\"solve\",\"returnType\":\"Int32\",\"parameters\":[]}"
+        };
+        var revision = new ProblemAuthoringRevision
+        {
+            Id = Guid.NewGuid(),
+            Problem = problem,
+            OwnerUser = user,
+            RevisionNumber = 1,
+            Status = AuthoringRevisionStatus.Generating,
+            Title = problem.Title,
+            Slug = problem.Slug,
+            StatementMarkdown = problem.StatementMarkdown,
+            ConstraintsMarkdown = problem.ConstraintsMarkdown,
+            Difficulty = DifficultyLevel.Easy,
+            TimeLimitMs = problem.TimeLimitMs,
+            MemoryLimitKb = problem.MemoryLimitKb,
+            SamplesJson = "[]",
+            DefinitionJson = "{}",
+            DefinitionSha256 = new string('a', 64),
+            ContentHash = new string('b', 64)
+        };
+        var batch = new ContentBatch
+        {
+            Id = Guid.NewGuid(),
+            CreatedByUser = user,
+            CreatedByUserId = user.Id,
+            CatalogName = "catalog.json",
+            Status = ContentBatchStatus.Generating
+        };
+        var item = new ContentBatchItem
+        {
+            Id = Guid.NewGuid(),
+            Batch = batch,
+            BatchId = batch.Id,
+            Ordinal = 1,
+            CatalogPath = $"problems/{problem.Slug}/problem.json",
+            Action = ContentBatchImportAction.Create,
+            Status = ContentBatchItemStatus.Generating,
+            ContentHash = revision.ContentHash,
+            Slug = problem.Slug,
+            Title = problem.Title,
+            StatementMarkdown = problem.StatementMarkdown,
+            ConstraintsMarkdown = problem.ConstraintsMarkdown,
+            Difficulty = problem.Difficulty,
+            TimeLimitMs = problem.TimeLimitMs,
+            MemoryLimitKb = problem.MemoryLimitKb,
+            TagsJson = "[]",
+            SamplesJson = "[]",
+            DefinitionJson = "{}",
+            GeneratorParametersJson = "{}",
+            Problem = problem,
+            Revision = revision
+        };
+        revision.GenerationJobs.Add(new ContentGenerationJob
+        {
+            Id = Guid.NewGuid(),
+            Revision = revision,
+            BatchItem = item,
+            Status = ContentGenerationJobStatus.Pending,
+            DefinitionSnapshotJson = "{}",
+            DefinitionSha256 = new string('a', 64),
+            TimeLimitMs = 1_000,
+            MemoryLimitKb = 262_144
+        });
+        context.Add(item);
+        await context.SaveChangesAsync();
+        return (batch.Id, item.Id);
     }
 
     private static async Task<Guid> SeedDraftRevisionAsync(PostgreSqlTestDatabase database)

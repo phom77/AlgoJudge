@@ -24,6 +24,9 @@ namespace AlgoJudge.Infrastructure.Data
         public DbSet<ProblemAuthoringRevision> ProblemAuthoringRevisions { get; set; }
         public DbSet<ContentGenerationJob> ContentGenerationJobs { get; set; }
         public DbSet<AuthoringTestCase> AuthoringTestCases { get; set; }
+        public DbSet<ContentBatch> ContentBatches { get; set; }
+        public DbSet<ContentBatchItem> ContentBatchItems { get; set; }
+        public DbSet<ContentBatchAuditEntry> ContentBatchAuditEntries { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

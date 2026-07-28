@@ -136,6 +136,8 @@ public sealed class ProblemAuthoringRepository : IProblemAuthoringRepository
             ExpectedOutput = sample.ExpectedOutput,
             Explanation = sample.Explanation
         }), cancellationToken);
+        if (revision.TagsJson is not null)
+            await ApplyTagsAsync(revision.ProblemId, revision.TagsJson, cancellationToken);
 
         var problem = revision.Problem;
         problem.Slug = revision.Slug; problem.Title = revision.Title;
@@ -153,6 +155,38 @@ public sealed class ProblemAuthoringRepository : IProblemAuthoringRepository
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return true;
+    }
+
+    private async Task ApplyTagsAsync(
+        int problemId,
+        string tagsJson,
+        CancellationToken cancellationToken)
+    {
+        var slugs = JsonSerializer.Deserialize<IReadOnlyList<string>>(tagsJson, JsonOptions) ?? [];
+        foreach (var slug in slugs)
+        {
+            var name = string.Join(
+                ' ',
+                slug.Split('-').Select(segment =>
+                    char.ToUpperInvariant(segment[0]) + segment[1..]));
+            await _context.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO "Tags" ("Slug", "Name")
+                VALUES ({slug}, {name})
+                ON CONFLICT ("Slug") DO NOTHING
+                """, cancellationToken);
+        }
+
+        await _context.ProblemTags
+            .Where(item => item.ProblemId == problemId)
+            .ExecuteDeleteAsync(cancellationToken);
+        var tags = await _context.Tags
+            .Where(tag => slugs.Contains(tag.Slug))
+            .ToArrayAsync(cancellationToken);
+        await _context.ProblemTags.AddRangeAsync(tags.Select(tag => new ProblemTag
+        {
+            ProblemId = problemId,
+            TagId = tag.Id
+        }), cancellationToken);
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)

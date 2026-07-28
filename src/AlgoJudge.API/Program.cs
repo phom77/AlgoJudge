@@ -366,6 +366,8 @@ builder.Services.AddScoped<IProblemAuthoringRepository, ProblemAuthoringReposito
 builder.Services.AddScoped<IProblemAuthoringService, ProblemAuthoringService>();
 builder.Services.AddScoped<IProblemManagementRepository, ProblemManagementRepository>();
 builder.Services.AddScoped<IProblemManagementService, ProblemManagementService>();
+builder.Services.AddScoped<IContentBatchRepository, ContentBatchRepository>();
+builder.Services.AddScoped<IContentBatchService, ContentBatchService>();
 builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 builder.Services.AddScoped<ISubmissionService, SubmissionService>();
 builder.Services.AddScoped<IRunRepository, RunRepository>();

@@ -14,6 +14,10 @@ erDiagram
     PROBLEM ||--o{ PROBLEM_AUTHORING_REVISION : revises
     PROBLEM_AUTHORING_REVISION ||--o{ CONTENT_GENERATION_JOB : generates
     PROBLEM_AUTHORING_REVISION ||--o{ AUTHORING_TEST_CASE : reviews
+    USER ||--o{ CONTENT_BATCH : creates
+    CONTENT_BATCH ||--o{ CONTENT_BATCH_ITEM : contains
+    CONTENT_BATCH ||--o{ CONTENT_BATCH_AUDIT_ENTRY : audits
+    CONTENT_BATCH_ITEM ||--o{ CONTENT_GENERATION_JOB : queues
 ```
 
 ### ProblemAuthoringRevision
@@ -27,7 +31,29 @@ never queried by public catalogue endpoints.
 
 Stores the immutable definition snapshot plus PostgreSQL queue state. Running
 claims have a worker ID, unique claim token, renewable lease, and bounded
-attempt count. Only the current claim may complete or fail a job.
+attempt count. Only the current claim may complete or fail a job. A job may
+reference one batch item so worker finalization can checkpoint the item without
+exposing its private definition.
+
+### ContentBatch
+
+Stores one Admin-created catalog operation and its lifecycle:
+`Created`, `Validating`, `Generating`, `ReadyForReview`, `Publishing`, or
+`Completed`.
+
+### ContentBatchItem
+
+Stores one ordered catalog action, effective content hash, private resolved
+definition snapshot, safe status/diagnostics, and optional problem/revision
+links. Item lifecycle is independent so one failure does not stop the batch.
+Private definitions and generator parameters are never returned by batch
+responses.
+
+### ContentBatchAuditEntry
+
+Stores the acting Admin, batch/item and optional problem/revision identities,
+action, UTC time, result, and safe failure category. It intentionally has no
+source, hidden testcase, compiler-output, or token field.
 
 ### User
 

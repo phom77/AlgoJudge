@@ -19,6 +19,7 @@ public sealed class ContentGenerationJobRepository : IContentGenerationJobReposi
     {
         ValidateClaimArguments(workerId, leaseDuration, maxAttempts);
         await MarkExhaustedAsync(maxAttempts, cancellationToken);
+        await ReconcileReadyBatchesAsync(cancellationToken);
         var token = Guid.NewGuid();
         var rows = await _context.Database.SqlQueryRaw<ClaimRow>(ClaimSql,
             IntegerParameter("pending", (int)ContentGenerationJobStatus.Pending),
@@ -82,8 +83,17 @@ public sealed class ContentGenerationJobRepository : IContentGenerationJobReposi
             WHERE "Id" = {claim.RevisionId} AND "Status" = {(int)AuthoringRevisionStatus.Generating}
             """, cancellationToken);
         if (affected != 1) return false;
+        await UpdateBatchItemAsync(
+            claim.JobId,
+            ContentBatchItemStatus.Ready,
+            "generate",
+            "succeeded",
+            errorCode: null,
+            errorMessage: null,
+            cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        await ReconcileReadyBatchesAsync(cancellationToken);
         return true;
     }
 
@@ -105,8 +115,21 @@ public sealed class ContentGenerationJobRepository : IContentGenerationJobReposi
               AND "WorkerId" = {claim.WorkerId} AND "ClaimToken" = {claim.ClaimToken}
             """, cancellationToken);
         if (affected == 1 && failed)
+        {
             await ReturnRevisionToDraftAsync(claim.RevisionId, cancellationToken);
+            await UpdateBatchItemAsync(
+                claim.JobId,
+                ContentBatchItemStatus.Failed,
+                "generate",
+                "failed",
+                "attempts_exhausted",
+                "Generation attempts were exhausted.",
+                cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
         await transaction.CommitAsync(cancellationToken);
+        if (affected == 1 && failed)
+            await ReconcileReadyBatchesAsync(cancellationToken);
         return affected == 1;
     }
 
@@ -122,8 +145,22 @@ public sealed class ContentGenerationJobRepository : IContentGenerationJobReposi
               AND "WorkerId" = {claim.WorkerId} AND "ClaimToken" = {claim.ClaimToken}
               AND "LeaseExpiresAt" > CURRENT_TIMESTAMP
             """, token);
-        if (affected == 1) await ReturnRevisionToDraftAsync(claim.RevisionId, token);
+        if (affected == 1)
+        {
+            await ReturnRevisionToDraftAsync(claim.RevisionId, token);
+            await UpdateBatchItemAsync(
+                claim.JobId,
+                ContentBatchItemStatus.Failed,
+                "generate",
+                "failed",
+                code,
+                message,
+                token);
+            await _context.SaveChangesAsync(token);
+        }
         await transaction.CommitAsync(token);
+        if (affected == 1)
+            await ReconcileReadyBatchesAsync(token);
         return affected == 1;
     }
 
@@ -150,6 +187,117 @@ public sealed class ContentGenerationJobRepository : IContentGenerationJobReposi
               "ConcurrencyToken" = gen_random_uuid()
             WHERE "Id" IN (SELECT "RevisionId" FROM exhausted) AND "Status" = 1
             """, [maxAttempts], token);
+
+        var exhaustedJobIds = await _context.ContentGenerationJobs
+            .Where(job =>
+                job.BatchItemId != null &&
+                job.Status == ContentGenerationJobStatus.Failed &&
+                job.ErrorCode == "attempts_exhausted" &&
+                job.BatchItem!.Status != ContentBatchItemStatus.Failed)
+            .Select(job => job.Id)
+            .ToArrayAsync(token);
+        foreach (var jobId in exhaustedJobIds)
+        {
+            await UpdateBatchItemAsync(
+                jobId,
+                ContentBatchItemStatus.Failed,
+                "generate",
+                "failed",
+                "attempts_exhausted",
+                "Generation attempts were exhausted.",
+                token);
+        }
+        if (exhaustedJobIds.Length > 0)
+        {
+            await _context.SaveChangesAsync(token);
+            await ReconcileReadyBatchesAsync(token);
+        }
+    }
+
+    private Task ReconcileReadyBatchesAsync(CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        return _context.ContentBatches
+            .Where(batch =>
+                (batch.Status == ContentBatchStatus.Validating ||
+                 batch.Status == ContentBatchStatus.Generating) &&
+                !batch.Items.Any(item =>
+                    item.Status == ContentBatchItemStatus.Pending ||
+                    item.Status == ContentBatchItemStatus.Generating ||
+                    item.Status == ContentBatchItemStatus.Retrying))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(batch => batch.Status, ContentBatchStatus.ReadyForReview)
+                .SetProperty(batch => batch.UpdatedAt, now),
+                cancellationToken);
+    }
+
+    private async Task UpdateBatchItemAsync(
+        Guid jobId,
+        ContentBatchItemStatus status,
+        string action,
+        string result,
+        string? errorCode,
+        string? errorMessage,
+        CancellationToken cancellationToken)
+    {
+        var item = await _context.ContentBatchItems
+            .SingleOrDefaultAsync(
+                value => value.GenerationJobs.Any(job => job.Id == jobId),
+                cancellationToken);
+        if (item is null)
+            return;
+        var batch = await _context.ContentBatches
+            .AsNoTracking()
+            .SingleAsync(value => value.Id == item.BatchId, cancellationToken);
+
+        var now = DateTime.UtcNow;
+        item.Status = status;
+        item.SafeFailureCategory = errorCode;
+        item.SafeFailureMessage = errorMessage;
+        item.UpdatedAt = now;
+        item.FinishedAt = now;
+        _context.ContentBatchAuditEntries.Add(new ContentBatchAuditEntry
+        {
+            BatchId = item.BatchId,
+            ItemId = item.Id,
+            AdminUserId = batch.CreatedByUserId,
+            ProblemId = item.ProblemId,
+            RevisionId = item.RevisionId,
+            Action = action,
+            Result = result,
+            SafeFailureCategory = errorCode,
+            CreatedAt = now
+        });
+
+        var hasActiveItems = await _context.ContentBatchItems.AnyAsync(
+            value =>
+                value.BatchId == item.BatchId &&
+                value.Id != item.Id &&
+                (value.Status == ContentBatchItemStatus.Pending ||
+                 value.Status == ContentBatchItemStatus.Generating ||
+                 value.Status == ContentBatchItemStatus.Retrying),
+            cancellationToken);
+        if (!hasActiveItems &&
+            batch.Status is ContentBatchStatus.Validating or ContentBatchStatus.Generating)
+        {
+            await _context.ContentBatches
+                .Where(value =>
+                    value.Id == item.BatchId &&
+                    (value.Status == ContentBatchStatus.Validating ||
+                     value.Status == ContentBatchStatus.Generating))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(value => value.Status, ContentBatchStatus.ReadyForReview)
+                    .SetProperty(value => value.UpdatedAt, now),
+                    cancellationToken);
+        }
+        else
+        {
+            await _context.ContentBatches
+                .Where(value => value.Id == item.BatchId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(value => value.UpdatedAt, now),
+                    cancellationToken);
+        }
     }
 
     private static void ValidateClaimArguments(string workerId, TimeSpan lease, int maxAttempts)
@@ -176,10 +324,14 @@ public sealed class ContentGenerationJobRepository : IContentGenerationJobReposi
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private const string ClaimSql = """
         WITH candidate AS (
-          SELECT "Id" FROM "ContentGenerationJobs"
-          WHERE ("Status" = @pending OR ("Status" = @running AND "LeaseExpiresAt" <= CURRENT_TIMESTAMP))
-            AND "AttemptCount" < @maxAttempts
-          ORDER BY "CreatedAt", "Id" FOR UPDATE SKIP LOCKED LIMIT 1
+          SELECT job."Id" FROM "ContentGenerationJobs" AS job
+          LEFT JOIN "ContentBatchItems" AS item ON item."Id" = job."BatchItemId"
+          LEFT JOIN "ContentBatches" AS batch ON batch."Id" = item."BatchId"
+          WHERE (job."Status" = @pending OR
+                 (job."Status" = @running AND job."LeaseExpiresAt" <= CURRENT_TIMESTAMP))
+            AND job."AttemptCount" < @maxAttempts
+            AND (job."BatchItemId" IS NULL OR batch."Status" = 2)
+          ORDER BY job."CreatedAt", job."Id" FOR UPDATE OF job SKIP LOCKED LIMIT 1
         )
         UPDATE "ContentGenerationJobs" AS job SET "Status" = @running, "WorkerId" = @workerId,
           "ClaimToken" = @claimToken, "LeaseExpiresAt" = CURRENT_TIMESTAMP + @leaseDuration,

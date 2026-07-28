@@ -66,3 +66,30 @@ The administrator dashboard at `/admin/problems` uses these endpoints to list
 and filter all problem states, start a revision from a Published problem, and
 archive or restore public availability. Creating, editing, reviewing, and
 publishing a revision continues in the existing authoring workflow.
+
+## Catalog content batches
+
+Base route: `/api/internal/admin/content-batches`
+
+| Method and route | Purpose |
+|---|---|
+| `POST /` | Persist a resolved catalog and its independently validated items. |
+| `GET /` | Page batches, optionally filtering by batch status. |
+| `GET /{batchId}` | Read counts, safe item diagnostics, and safe audit records. |
+| `POST /{batchId}/start` | Apply catalog actions and enqueue generation jobs. |
+| `POST /{batchId}/resume` | Continue Pending item checkpoints after interruption. |
+| `POST /{batchId}/retry` | Retry an explicit list of Failed item IDs without creating duplicate revisions. |
+| `POST /{batchId}/publish` | Publish an explicit list of approved Ready revision IDs. |
+
+The lifecycle and import rules are defined by
+[ADR-0023](adr/0023-use-audited-content-batch-operations.md). The API never
+compiles or executes submitted authoring source. A failed item does not stop
+other items, and content whose effective hash matches the latest revision is
+marked `Skipped`.
+
+Batch responses expose identifiers, catalog path, slug/title, action, status,
+content hash, bounded safe diagnostics, counts, and safe audit metadata. They
+do not expose persisted definitions, generator parameters, authoring source,
+candidate input/output, hidden cases, compiler output, or tokens. Unsafe
+same-origin browser requests require antiforgery protection; internal bearer
+clients still require the Admin policy.

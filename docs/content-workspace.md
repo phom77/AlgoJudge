@@ -242,3 +242,34 @@ dotnet run --project src/AlgoJudge.ContentTool -- `
 
 The resolve output contains private authoring source and is intended only for a
 trusted maintainer terminal. Neither command generates hidden testcases.
+
+## Batch import
+
+After review, a maintainer can create and start a durable batch through the
+internal Admin API:
+
+```powershell
+$env:ALGOJUDGE_ADMIN_ACCESS_TOKEN = "<short-lived Admin bearer token>"
+
+dotnet run --project src/AlgoJudge.ContentTool -- `
+    workspace import content/catalog.json `
+    --api-base-url http://localhost:5016
+```
+
+The token is read only from the environment and is never passed as a command
+argument or printed. Import first performs the same complete local resolution,
+then sends the materialized definitions to the API. The API snapshots and
+enqueues them; only ContentWorker compiles or executes source.
+
+The repeatable wrapper is:
+
+```powershell
+./scripts/process-problem-catalog.ps1 `
+    -CatalogPath ./content/catalog.json `
+    -Import
+```
+
+Use `-Validate` or `-Resolve` instead of `-Import` for the read-only modes.
+Resolution output contains private source and must be handled as confidential.
+See [ADR-0023](adr/0023-use-audited-content-batch-operations.md) for lifecycle,
+retry, audit, and publication decisions.

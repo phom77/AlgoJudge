@@ -24,6 +24,7 @@ rules and dependency direction.
 - [Problem Catalogue API](docs/problem-catalog-api.md)
 - [Authentication and Submission API](docs/auth-submission-api.md)
 - [Problem package format](docs/problem-package-format.md)
+- [Catalog content workspace](docs/content-workspace.md)
 - [Internal problem authoring API](docs/problem-authoring-api.md)
 - [Judge specification](docs/judge-spec.md)
 - [Backend operations baseline](docs/backend-operations.md)

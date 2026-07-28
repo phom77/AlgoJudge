@@ -79,6 +79,36 @@ public class ProblemCatalogModelTests
         Assert.Contains(job.GetIndexes(), index => index.IsUnique && index.GetFilter() == "\"Status\" IN (0, 1)");
     }
 
+    [Fact]
+    public void ContentBatchModelSeparatesPrivateSnapshotsFromSafeAuditData()
+    {
+        using var context = CreateContext();
+        var designTimeModel = context.GetService<IDesignTimeModel>().Model;
+        var batch = designTimeModel.FindEntityType(typeof(ContentBatch))!;
+        var item = designTimeModel.FindEntityType(typeof(ContentBatchItem))!;
+        var audit = designTimeModel.FindEntityType(typeof(ContentBatchAuditEntry))!;
+        var job = designTimeModel.FindEntityType(typeof(ContentGenerationJob))!;
+
+        Assert.Equal("ContentBatches", batch.GetTableName());
+        Assert.Equal("ContentBatchItems", item.GetTableName());
+        Assert.Equal("ContentBatchAuditEntries", audit.GetTableName());
+        Assert.Equal(
+            "jsonb",
+            item.FindProperty(nameof(ContentBatchItem.DefinitionJson))!.GetColumnType());
+        Assert.Equal(
+            "jsonb",
+            item.FindProperty(nameof(ContentBatchItem.GeneratorParametersJson))!.GetColumnType());
+        Assert.Null(audit.FindProperty("DefinitionJson"));
+        Assert.Null(audit.FindProperty("Source"));
+        Assert.Contains(
+            item.GetCheckConstraints(),
+            constraint => constraint.Name == "CK_ContentBatchItem_Resolution");
+        Assert.Contains(
+            job.GetForeignKeys(),
+            foreignKey => foreignKey.Properties.Select(property => property.Name)
+                .SequenceEqual([nameof(ContentGenerationJob.BatchItemId)]));
+    }
+
     private static AppDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()

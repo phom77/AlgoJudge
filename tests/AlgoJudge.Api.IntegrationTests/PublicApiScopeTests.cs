@@ -48,6 +48,16 @@ public class PublicApiScopeTests
     }
 
     [Fact]
+    public void ContentBatchControllerRequiresTheAdminPolicy()
+    {
+        var authorize = Assert.Single(typeof(ContentBatchesController)
+            .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true)
+            .Cast<AuthorizeAttribute>());
+
+        Assert.Equal("Admin", authorize.Policy);
+    }
+
+    [Fact]
     public void ProblemDetailRouteUsesSlug()
     {
         var action = typeof(ProblemsController).GetMethod(nameof(ProblemsController.GetBySlug));
