@@ -40,8 +40,12 @@ public sealed class SandboxedContentGenerationEngineTests
         var canonicalJson = DefinitionJson();
         using var document = JsonDocument.Parse(canonicalJson);
         var normalizedJson = JsonSerializer.Serialize(
-            document.RootElement,
-            new JsonSerializerOptions { WriteIndented = true });
+            document.RootElement.EnumerateObject()
+                .OrderBy(property => property.Name, StringComparer.Ordinal)
+                .ToDictionary(
+                    property => property.Name,
+                    property => property.Value.Clone(),
+                    StringComparer.Ordinal));
         Assert.NotEqual(canonicalJson, normalizedJson);
 
         var engine = new SandboxedContentGenerationEngine(
@@ -50,7 +54,10 @@ public sealed class SandboxedContentGenerationEngineTests
             new FakeWrongRunner(),
             Configuration());
 
-        var result = await engine.GenerateAsync(Claim(normalizedJson, canonicalJson));
+        var result = await engine.GenerateAsync(Claim(
+            normalizedJson,
+            ProblemAuthoringDefinitionJson.Serialize(
+                ProblemAuthoringDefinitionJson.Deserialize(canonicalJson))));
 
         Assert.Single(result.Cases);
     }

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "template": "cpp17-function",
+  "slug": "leftmost-binary-search",
+  "title": "Leftmost Binary Search",
+  "difficulty": "Easy",
+  "tags": ["array", "binary-search"],
+  "statement": "Given an integer array sorted in non-decreasing order and a target, return the index of the first occurrence of target. Return -1 when target is absent.",
+  "constraints": [
+    "1 <= nums.length <= 100",
+    "-10000 <= nums[i], target <= 10000",
+    "nums is sorted in non-decreasing order"
+  ],
+  "signature": {
+    "className": "Solution",
+    "methodName": "searchFirst",
+    "returnType": "Int32",
+    "parameters": [
+      { "name": "nums", "type": "Int32Array" },
+      { "name": "target", "type": "Int32" }
+    ]
+  },
+  "samples": [
+    { "arguments": { "nums": [1, 2, 2, 2, 3], "target": 2 }, "expected": 1 },
+    { "arguments": { "nums": [-5, -2, 0, 4, 9], "target": 3 }, "expected": -1 }
+  ],
+  "generatorParameters": {}
+}

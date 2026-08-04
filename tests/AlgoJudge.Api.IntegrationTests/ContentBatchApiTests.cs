@@ -57,6 +57,13 @@ public sealed class ContentBatchApiTests
         var persisted = await context.ContentBatches.FindAsync(batch.Id);
         Assert.NotNull(persisted);
         Assert.Equal(ContentBatchStatus.Generating, persisted.Status);
+        var persistedJob = await context.ContentGenerationJobs
+            .SingleAsync(job => job.BatchItem!.BatchId == batch.Id);
+        var persistedDefinition = ProblemAuthoringDefinitionJson.Deserialize(
+            persistedJob.DefinitionSnapshotJson);
+        Assert.Equal(
+            ProblemAuthoringDefinitionJson.ComputeSha256(persistedDefinition),
+            persistedJob.DefinitionSha256);
         var auditText = await context.ContentBatchAuditEntries
             .Where(entry => entry.BatchId == batch.Id)
             .Select(entry => entry.Action + ":" + entry.Result + ":" +

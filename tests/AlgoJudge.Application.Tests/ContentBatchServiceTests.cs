@@ -163,6 +163,49 @@ public sealed class ContentBatchServiceTests
     }
 
     [Fact]
+    public async Task RetryCanonicalizesJsonbDefinitionBeforeHashingSnapshot()
+    {
+        var fixture = new Fixture();
+        var created = await fixture.Service.CreateAsync(
+            fixture.AdminId,
+            new CreateContentBatchRequest
+            {
+                CatalogName = "catalog.json",
+                Items = [ValidItem("jsonb-retry")]
+            });
+        await fixture.Service.StartAsync(fixture.AdminId, created.Id);
+        var item = fixture.Repository.Batch!.Items.Single();
+        var revision = item.Revision!;
+        revision.GenerationJobs.Clear();
+        revision.Status = AuthoringRevisionStatus.Draft;
+        item.Status = ContentBatchItemStatus.Failed;
+        item.SafeFailureCategory = "invalid_snapshot";
+        using var document = JsonDocument.Parse(revision.DefinitionJson);
+        revision.DefinitionJson = JsonSerializer.Serialize(
+            document.RootElement.EnumerateObject()
+                .OrderBy(property => property.Name, StringComparer.Ordinal)
+                .ToDictionary(
+                    property => property.Name,
+                    property => property.Value.Clone(),
+                    StringComparer.Ordinal));
+        revision.DefinitionSha256 = Hash('f');
+
+        await fixture.Service.RetryAsync(
+            fixture.AdminId,
+            created.Id,
+            new RetryContentBatchRequest { ItemIds = [item.Id] });
+
+        Assert.Equal(2, fixture.Repository.Jobs.Count);
+        var job = fixture.Repository.Jobs[^1];
+        var definition = ProblemAuthoringDefinitionJson.Deserialize(
+            job.DefinitionSnapshotJson);
+        Assert.Equal(
+            ProblemAuthoringDefinitionJson.ComputeSha256(definition),
+            job.DefinitionSha256);
+        Assert.Equal(job.DefinitionSha256, revision.DefinitionSha256);
+    }
+
+    [Fact]
     public async Task NewRevisionLeavesPublishedRevisionImmutableAndPublishesOnlyApprovedItem()
     {
         var fixture = new Fixture();

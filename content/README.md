@@ -24,3 +24,14 @@ dotnet run --project src/AlgoJudge.ContentTool -- workspace resolve content/cata
 The `dev` directory contains explicitly non-production fixtures whose judge
 cases are intentionally visible. Run `./scripts/seed-dev-content.ps1` to
 package, validate, import, and publish the local Two Sum fixture.
+
+The `ui-batch-demo` workspace contains local-only source-authoring data for
+testing the real Admin content-batch UI, including Ready, Failed, Skipped,
+retry, hash-skip, update-draft, and new-revision scenarios. Follow its README in
+the documented order because later catalogs depend on revisions created and
+published by earlier batches.
+
+The `practice-catalog` workspace contains ten complete algorithm problems for
+local catalogue and judging tests. Each definition includes deterministic
+generation, strict input validation, a C++17 reference solution, and a known
+wrong solution enforced by the suite quality gate.

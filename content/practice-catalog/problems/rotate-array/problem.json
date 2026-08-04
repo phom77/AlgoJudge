@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "template": "cpp17-function",
+  "slug": "rotate-array",
+  "title": "Rotate Array",
+  "difficulty": "Medium",
+  "tags": ["array", "math", "two-pointers"],
+  "statement": "Given a non-empty integer array nums and a non-negative integer k, return a new array after rotating nums to the right by k positions. Rotating by the array length leaves it unchanged.",
+  "constraints": [
+    "1 <= nums.length <= 100",
+    "-10000 <= nums[i] <= 10000",
+    "0 <= k <= 1000"
+  ],
+  "signature": {
+    "className": "Solution",
+    "methodName": "rotateRight",
+    "returnType": "Int32Array",
+    "parameters": [
+      { "name": "nums", "type": "Int32Array" },
+      { "name": "k", "type": "Int32" }
+    ]
+  },
+  "samples": [
+    {
+      "arguments": { "nums": [1, 2, 3, 4, 5, 6, 7], "k": 3 },
+      "expected": [5, 6, 7, 1, 2, 3, 4]
+    },
+    { "arguments": { "nums": [-1, -100, 3, 99], "k": 2 }, "expected": [3, 99, -1, -100] }
+  ],
+  "generatorParameters": {}
+}

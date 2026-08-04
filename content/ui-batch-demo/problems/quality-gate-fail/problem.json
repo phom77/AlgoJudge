@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "template": "int-identity",
+  "slug": "ui-quality-gate-fail",
+  "title": "UI Demo: Quality Gate Failure",
+  "difficulty": "Medium",
+  "tags": ["demo", "intentional-failure"],
+  "statement": "This local-only problem requires more cases than its generator produces.",
+  "constraints": ["1 <= value <= 100"],
+  "signature": {
+    "className": "Solution",
+    "methodName": "identity",
+    "returnType": "Int32",
+    "parameters": [{ "name": "value", "type": "Int32" }]
+  },
+  "samples": [
+    { "arguments": { "value": 9 }, "expected": 9 }
+  ],
+  "generatorParameters": {},
+  "qualityPolicy": {
+    "minimumTestCaseCount": 99,
+    "minimumCasesByGroup": [
+      { "group": "handwritten", "minimumCaseCount": 1 },
+      { "group": "random", "minimumCaseCount": 4 }
+    ],
+    "requireEachDeclaredWrongSolutionKilled": true
+  }
+}

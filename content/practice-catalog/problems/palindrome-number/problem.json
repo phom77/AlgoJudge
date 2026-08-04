@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "template": "cpp17-function",
+  "slug": "palindrome-number",
+  "title": "Palindrome Number",
+  "difficulty": "Easy",
+  "tags": ["math"],
+  "statement": "Given a 32-bit signed integer x, return true if its decimal representation reads the same forward and backward. Negative numbers are not palindromes.",
+  "constraints": ["-1000000000 <= x <= 1000000000"],
+  "signature": {
+    "className": "Solution",
+    "methodName": "isPalindrome",
+    "returnType": "Boolean",
+    "parameters": [{ "name": "x", "type": "Int32" }]
+  },
+  "samples": [
+    { "arguments": { "x": 121 }, "expected": true },
+    {
+      "arguments": { "x": 12341 },
+      "expected": false,
+      "explanation": "Matching first and last digits is not sufficient."
+    }
+  ],
+  "generatorParameters": {}
+}

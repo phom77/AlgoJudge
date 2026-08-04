@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "template": "cpp17-function",
+  "slug": "best-time-to-buy-and-sell-stock",
+  "title": "Best Time to Buy and Sell Stock",
+  "difficulty": "Easy",
+  "tags": ["array", "greedy", "dynamic-programming"],
+  "statement": "Given daily stock prices, choose one day to buy and a later day to sell. Return the maximum profit from at most one transaction, or 0 when no profitable transaction exists.",
+  "constraints": [
+    "1 <= prices.length <= 100",
+    "0 <= prices[i] <= 10000"
+  ],
+  "signature": {
+    "className": "Solution",
+    "methodName": "maxProfit",
+    "returnType": "Int32",
+    "parameters": [{ "name": "prices", "type": "Int32Array" }]
+  },
+  "samples": [
+    {
+      "arguments": { "prices": [7, 1, 5, 3, 6, 4] },
+      "expected": 5,
+      "explanation": "Buy at 1 and sell later at 6."
+    },
+    { "arguments": { "prices": [7, 6, 4, 3, 1] }, "expected": 0 }
+  ],
+  "generatorParameters": {}
+}

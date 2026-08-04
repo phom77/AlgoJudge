@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "template": "int-identity",
+  "slug": "ui-wrong-solution",
+  "title": "UI Demo: Wrong Solution Coverage",
+  "difficulty": "Medium",
+  "tags": ["demo", "quality-gate"],
+  "statement": "Return the supplied positive integer and kill the declared wrong solution.",
+  "constraints": ["1 <= value <= 100"],
+  "signature": {
+    "className": "Solution",
+    "methodName": "identity",
+    "returnType": "Int32",
+    "parameters": [{ "name": "value", "type": "Int32" }]
+  },
+  "samples": [
+    { "arguments": { "value": 21 }, "expected": 21 }
+  ],
+  "generatorParameters": {}
+}

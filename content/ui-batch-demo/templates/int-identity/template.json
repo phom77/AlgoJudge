@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "executionMode": "Function",
+  "language": "cpp17",
+  "generatorSdkVersion": 1,
+  "timeLimitMs": 1000,
+  "memoryLimitKb": 131072,
+  "qualityPolicy": {
+    "minimumTestCaseCount": 5,
+    "minimumCasesByGroup": [
+      { "group": "handwritten", "minimumCaseCount": 1 },
+      { "group": "random", "minimumCaseCount": 4 }
+    ],
+    "requireEachDeclaredWrongSolutionKilled": true
+  },
+  "generatorParametersSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  }
+}

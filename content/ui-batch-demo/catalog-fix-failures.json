@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "problems": [
+    { "path": "problems/fixed-reference-compile-fail", "action": "update-draft", "enabled": true },
+    { "path": "problems/fixed-quality-gate-fail", "action": "update-draft", "enabled": true }
+  ]
+}

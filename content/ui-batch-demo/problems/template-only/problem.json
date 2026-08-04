@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "template": "int-identity",
+  "slug": "ui-template-only",
+  "title": "UI Demo: Template Only",
+  "difficulty": "Easy",
+  "tags": ["demo", "template"],
+  "statement": "Return the supplied integer unchanged.",
+  "constraints": ["1 <= value <= 100"],
+  "signature": {
+    "className": "Solution",
+    "methodName": "identity",
+    "returnType": "Int32",
+    "parameters": [{ "name": "value", "type": "Int32" }]
+  },
+  "samples": [
+    { "arguments": { "value": 7 }, "expected": 7, "explanation": "The result equals the input." }
+  ],
+  "generatorParameters": {}
+}

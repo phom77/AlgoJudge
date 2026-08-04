@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "problems": [
+    { "path": "problems/template-only", "action": "new-revision", "enabled": true },
+    { "path": "problems/generator-override", "action": "new-revision", "enabled": true },
+    { "path": "problems/validator-override", "action": "new-revision", "enabled": true },
+    { "path": "problems/wrong-solution", "action": "new-revision", "enabled": true }
+  ]
+}
