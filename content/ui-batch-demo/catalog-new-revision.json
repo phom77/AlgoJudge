@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "problems": [
+    { "path": "problems/template-only-v2", "action": "new-revision", "enabled": true }
+  ]
+}

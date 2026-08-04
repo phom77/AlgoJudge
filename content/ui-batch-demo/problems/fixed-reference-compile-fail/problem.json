@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "template": "int-identity",
+  "slug": "ui-reference-compile-fail",
+  "title": "UI Demo: Fixed Reference Compilation",
+  "difficulty": "Easy",
+  "tags": ["demo", "fixed"],
+  "statement": "Return the supplied integer unchanged after fixing the reference source.",
+  "constraints": ["1 <= value <= 100"],
+  "signature": {
+    "className": "Solution",
+    "methodName": "identity",
+    "returnType": "Int32",
+    "parameters": [{ "name": "value", "type": "Int32" }]
+  },
+  "samples": [
+    { "arguments": { "value": 5 }, "expected": 5 }
+  ],
+  "generatorParameters": {}
+}

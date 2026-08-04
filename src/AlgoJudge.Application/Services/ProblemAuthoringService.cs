@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -232,6 +231,8 @@ public sealed partial class ProblemAuthoringService : IProblemAuthoringService
         var revision = await GetEditableAsync(ownerUserId, revisionId, cancellationToken);
         var definition = DeserializeDefinition(revision.DefinitionJson);
         ValidateForGeneration(revision, definition);
+        revision.DefinitionJson = ProblemAuthoringDefinitionJson.Serialize(definition);
+        revision.DefinitionSha256 = ProblemAuthoringDefinitionJson.ComputeSha256(definition);
         var existing = await _repository.GetLatestJobAsync(revision.Id, cancellationToken);
         if (existing?.Status is ContentGenerationJobStatus.Pending or ContentGenerationJobStatus.Running)
             throw new ConflictException("A generation job is already active for this revision.");
@@ -355,7 +356,8 @@ public sealed partial class ProblemAuthoringService : IProblemAuthoringService
             MemoryLimitKb = memoryLimit,
             SamplesJson = JsonSerializer.Serialize(samples, JsonOptions),
             DefinitionJson = definitionJson,
-            DefinitionSha256 = Hash(definitionJson),
+            DefinitionSha256 = ProblemAuthoringDefinitionJson.ComputeSha256(
+                ProblemAuthoringDefinitionJson.Deserialize(definitionJson)),
             ConcurrencyToken = Guid.NewGuid(),
             CreatedAt = now,
             UpdatedAt = now
@@ -393,7 +395,7 @@ public sealed partial class ProblemAuthoringService : IProblemAuthoringService
     private static void SetDefinition(ProblemAuthoringRevision revision, ProblemAuthoringDefinition definition)
     {
         revision.DefinitionJson = SerializeDefinition(definition);
-        revision.DefinitionSha256 = Hash(revision.DefinitionJson);
+        revision.DefinitionSha256 = ProblemAuthoringDefinitionJson.ComputeSha256(definition);
     }
 
     private static ProblemDraftResponse Map(ProblemAuthoringRevision revision) => new()
@@ -546,13 +548,12 @@ public sealed partial class ProblemAuthoringService : IProblemAuthoringService
         }
     }
 
-    private static string SerializeDefinition(ProblemAuthoringDefinition definition) => JsonSerializer.Serialize(definition, JsonOptions);
+    private static string SerializeDefinition(ProblemAuthoringDefinition definition) =>
+        ProblemAuthoringDefinitionJson.Serialize(definition);
     private static ProblemAuthoringDefinition DeserializeDefinition(string json) =>
         JsonSerializer.Deserialize<ProblemAuthoringDefinition>(json, JsonOptions) ?? throw new InvalidOperationException("Stored authoring definition is invalid.");
     private static IReadOnlyList<ProblemSampleRequest> DeserializeSamples(string json) =>
         JsonSerializer.Deserialize<IReadOnlyList<ProblemSampleRequest>>(json, JsonOptions) ?? [];
-    private static string Hash(string value) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
-
     private sealed class SuiteStatistics
     {
         public IReadOnlyDictionary<string, int> CasesByGroup { get; init; } = new Dictionary<string, int>();

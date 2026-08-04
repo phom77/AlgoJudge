@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "problems": [
+    { "path": "problems/template-only", "action": "create", "enabled": true },
+    { "path": "problems/generator-override", "action": "create", "enabled": true },
+    { "path": "problems/validator-override", "action": "create", "enabled": true },
+    { "path": "problems/wrong-solution", "action": "create", "enabled": true },
+    { "path": "problems/reference-compile-fail", "action": "create", "enabled": true },
+    { "path": "problems/quality-gate-fail", "action": "create", "enabled": true },
+    { "path": "problems/explicit-skip", "action": "skip", "enabled": true }
+  ]
+}

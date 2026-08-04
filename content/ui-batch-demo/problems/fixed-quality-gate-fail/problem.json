@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "template": "int-identity",
+  "slug": "ui-quality-gate-fail",
+  "title": "UI Demo: Fixed Quality Gate",
+  "difficulty": "Medium",
+  "tags": ["demo", "fixed"],
+  "statement": "Return the supplied integer with the template quality policy restored.",
+  "constraints": ["1 <= value <= 100"],
+  "signature": {
+    "className": "Solution",
+    "methodName": "identity",
+    "returnType": "Int32",
+    "parameters": [{ "name": "value", "type": "Int32" }]
+  },
+  "samples": [
+    { "arguments": { "value": 9 }, "expected": 9 }
+  ],
+  "generatorParameters": {}
+}

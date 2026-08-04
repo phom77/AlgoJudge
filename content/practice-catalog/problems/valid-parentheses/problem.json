@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "template": "cpp17-function",
+  "slug": "valid-parentheses",
+  "title": "Valid Parentheses",
+  "difficulty": "Easy",
+  "tags": ["string", "stack"],
+  "statement": "Given a string containing only parentheses, brackets, and braces, return true when every opening bracket is closed by the same type in the correct order.",
+  "constraints": [
+    "1 <= s.length <= 100",
+    "s contains only (), [], and {} characters"
+  ],
+  "signature": {
+    "className": "Solution",
+    "methodName": "isValid",
+    "returnType": "Boolean",
+    "parameters": [{ "name": "s", "type": "String" }]
+  },
+  "samples": [
+    { "arguments": { "s": "()[]{}" }, "expected": true },
+    {
+      "arguments": { "s": "([)]" },
+      "expected": false,
+      "explanation": "The closing parenthesis does not match the most recent opening bracket."
+    }
+  ],
+  "generatorParameters": {}
+}

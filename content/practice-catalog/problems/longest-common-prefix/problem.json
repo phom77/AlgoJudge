@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "template": "cpp17-function",
+  "slug": "longest-common-prefix",
+  "title": "Longest Common Prefix",
+  "difficulty": "Easy",
+  "tags": ["string", "array"],
+  "statement": "Given a non-empty array of lowercase strings, return the longest prefix shared by every string. Return the empty string when no common prefix exists.",
+  "constraints": [
+    "1 <= words.length <= 20",
+    "0 <= words[i].length <= 20",
+    "Each word contains only lowercase English letters"
+  ],
+  "signature": {
+    "className": "Solution",
+    "methodName": "longestCommonPrefix",
+    "returnType": "String",
+    "parameters": [{ "name": "words", "type": "StringArray" }]
+  },
+  "samples": [
+    { "arguments": { "words": ["flower", "flow", "flight"] }, "expected": "fl" },
+    { "arguments": { "words": ["dog", "racecar", "car"] }, "expected": "" }
+  ],
+  "generatorParameters": {}
+}

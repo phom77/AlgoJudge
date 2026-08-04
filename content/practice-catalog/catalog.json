@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "problems": [
+    { "path": "problems/maximum-subarray", "action": "create", "enabled": true },
+    { "path": "problems/valid-parentheses", "action": "create", "enabled": true },
+    { "path": "problems/leftmost-binary-search", "action": "create", "enabled": true },
+    { "path": "problems/single-number", "action": "create", "enabled": true },
+    { "path": "problems/best-time-to-buy-and-sell-stock", "action": "create", "enabled": true },
+    { "path": "problems/climbing-stairs", "action": "create", "enabled": true },
+    { "path": "problems/palindrome-number", "action": "create", "enabled": true },
+    { "path": "problems/merge-sorted-arrays", "action": "create", "enabled": true },
+    { "path": "problems/longest-common-prefix", "action": "create", "enabled": true },
+    { "path": "problems/rotate-array", "action": "create", "enabled": true }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "template": "int-identity",
+  "slug": "ui-reference-compile-fail",
+  "title": "UI Demo: Reference Compile Failure",
+  "difficulty": "Easy",
+  "tags": ["demo", "intentional-failure"],
+  "statement": "This local-only problem intentionally contains invalid reference C++.",
+  "constraints": ["1 <= value <= 100"],
+  "signature": {
+    "className": "Solution",
+    "methodName": "identity",
+    "returnType": "Int32",
+    "parameters": [{ "name": "value", "type": "Int32" }]
+  },
+  "samples": [
+    { "arguments": { "value": 5 }, "expected": 5 }
+  ],
+  "generatorParameters": {}
+}

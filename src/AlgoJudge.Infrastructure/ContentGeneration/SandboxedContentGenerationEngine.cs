@@ -42,8 +42,8 @@ public sealed class SandboxedContentGenerationEngine : IContentGenerationEngine
         ProblemAuthoringDefinition definition;
         try
         {
-            definition = JsonSerializer.Deserialize<ProblemAuthoringDefinition>(claim.DefinitionSnapshotJson, JsonOptions)
-                ?? throw new JsonException();
+            definition = ProblemAuthoringDefinitionJson.Deserialize(
+                claim.DefinitionSnapshotJson);
         }
         catch (JsonException exception) { throw new ContentGenerationException("invalid_snapshot", "The authoring snapshot is invalid.", exception); }
         try
@@ -55,8 +55,10 @@ public sealed class SandboxedContentGenerationEngine : IContentGenerationEngine
         {
             throw new ContentGenerationException("invalid_snapshot", "The authoring snapshot is invalid.", exception);
         }
-        var canonicalDefinitionJson = JsonSerializer.Serialize(definition, JsonOptions);
-        if (!string.Equals(Hash(canonicalDefinitionJson), claim.DefinitionSha256, StringComparison.Ordinal))
+        if (!string.Equals(
+                ProblemAuthoringDefinitionJson.ComputeSha256(definition),
+                claim.DefinitionSha256,
+                StringComparison.Ordinal))
             throw new ContentGenerationException("invalid_snapshot", "The authoring snapshot hash does not match.");
 
         var request = new SourceGenerationRequest(definition.Generator.Source, definition.InputValidator.Source,

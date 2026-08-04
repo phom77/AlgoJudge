@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -422,6 +421,9 @@ public sealed partial class ContentBatchService : IContentBatchService
         bool retry,
         CancellationToken cancellationToken)
     {
+        var definition = DeserializeDefinition(revision.DefinitionJson);
+        revision.DefinitionJson = ProblemAuthoringDefinitionJson.Serialize(definition);
+        revision.DefinitionSha256 = ProblemAuthoringDefinitionJson.ComputeSha256(definition);
         if (revision.GenerationJobs.Any(job =>
                 job.Status is ContentGenerationJobStatus.Pending or ContentGenerationJobStatus.Running))
         {
@@ -511,7 +513,7 @@ public sealed partial class ContentBatchService : IContentBatchService
             SamplesJson = JsonSerializer.Serialize(request.Samples ?? [], JsonOptions),
             DefinitionJson = request.Definition is null
                 ? "{}"
-                : JsonSerializer.Serialize(request.Definition, JsonOptions),
+                : ProblemAuthoringDefinitionJson.Serialize(request.Definition),
             GeneratorParametersJson = request.GeneratorParameters.ValueKind == JsonValueKind.Object
                 ? request.GeneratorParameters.GetRawText()
                 : "{}",
@@ -743,8 +745,9 @@ public sealed partial class ContentBatchService : IContentBatchService
         revision.TimeLimitMs = item.TimeLimitMs;
         revision.MemoryLimitKb = item.MemoryLimitKb;
         revision.SamplesJson = item.SamplesJson;
-        revision.DefinitionJson = item.DefinitionJson;
-        revision.DefinitionSha256 = Hash(item.DefinitionJson);
+        var definition = DeserializeDefinition(item.DefinitionJson);
+        revision.DefinitionJson = ProblemAuthoringDefinitionJson.Serialize(definition);
+        revision.DefinitionSha256 = ProblemAuthoringDefinitionJson.ComputeSha256(definition);
         revision.ContentHash = item.ContentHash;
         revision.TagsJson = item.TagsJson;
         revision.CandidateSuiteSha256 = null;
@@ -760,8 +763,7 @@ public sealed partial class ContentBatchService : IContentBatchService
     {
         try
         {
-            return JsonSerializer.Deserialize<ProblemAuthoringDefinition>(json, JsonOptions)
-                ?? throw new JsonException();
+            return ProblemAuthoringDefinitionJson.Deserialize(json);
         }
         catch (JsonException)
         {
@@ -946,9 +948,6 @@ public sealed partial class ContentBatchService : IContentBatchService
         string.IsNullOrWhiteSpace(value)
             ? string.Empty
             : value[..Math.Min(value.Length, maximum)];
-
-    private static string Hash(string value) =>
-        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
 
     [GeneratedRegex("^[a-z0-9]+(?:-[a-z0-9]+)*$", RegexOptions.NonBacktracking)]
     private static partial Regex SlugPattern();
