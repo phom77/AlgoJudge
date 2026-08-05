@@ -33,6 +33,28 @@
   font-weight: 600;
 }
 
+.verdict-link,
+.problem-cell a {
+  display: inline-flex;
+  align-items: center;
+}
+
+.verdict-link:hover,
+.problem-cell a:hover {
+  color: var(--color-brand-strong);
+}
+
+.problem-cell {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.problem-cell small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+}
+
 @media (max-width: 48rem) {
   .table__header {
     display: none;

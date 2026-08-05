@@ -6,10 +6,22 @@ import { DEFAULT_SUBMISSION_QUERY } from './submission.models';
 describe('submission history query', () => {
   it('parses problem, verdict and pagination from URL state', () => {
     const query = readSubmissionQuery(
-      convertToParamMap({ problemId: '42', status: 'CompileError', page: '3', pageSize: '50' }),
+      convertToParamMap({
+        problemId: '42',
+        problemSearch: ' two sum ',
+        status: 'CompileError',
+        page: '3',
+        pageSize: '50',
+      }),
     );
 
-    expect(query).toEqual({ problemId: 42, status: 'CompileError', pageNumber: 3, pageSize: 50 });
+    expect(query).toEqual({
+      problemId: 42,
+      problemSearch: 'two sum',
+      status: 'CompileError',
+      pageNumber: 3,
+      pageSize: 50,
+    });
   });
 
   it('normalizes invalid filters without sending invalid backend queries', () => {
@@ -23,6 +35,7 @@ describe('submission history query', () => {
   it('omits default pagination when serializing', () => {
     expect(writeSubmissionQuery(DEFAULT_SUBMISSION_QUERY)).toEqual({
       problemId: null,
+      problemSearch: null,
       status: null,
       page: null,
       pageSize: null,

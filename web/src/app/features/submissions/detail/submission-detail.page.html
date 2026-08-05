@@ -29,9 +29,13 @@
   <header class="detail-heading">
     <div>
       <p class="eyebrow">Submission result</p>
-      <h1>Problem #{{ submission.problemId }}</h1>
+      <h1>{{ submission.problemTitle }}</h1>
+      <p class="problem-reference">Problem #{{ submission.problemId }}</p>
     </div>
-    <code>{{ submission.id }}</code>
+    <div class="heading-actions">
+      <a [routerLink]="['/problems', submission.problemSlug]">Open problem</a>
+      <code>{{ submission.id }}</code>
+    </div>
   </header>
 
   <section class="detail-card" aria-labelledby="result-heading">
@@ -78,7 +82,33 @@
     </dl>
   </section>
 
+  @if (store.content(); as content) {
+    @if (content.compileMessage) {
+      <section class="content-card diagnostic-card" aria-labelledby="diagnostic-heading">
+        <header>
+          <div>
+            <p class="eyebrow">Safe compiler output</p>
+            <h2 id="diagnostic-heading">Compiler diagnostics</h2>
+          </div>
+        </header>
+        <pre><code>{{ content.compileMessage }}</code></pre>
+      </section>
+    }
+
+    <section class="content-card" aria-labelledby="source-heading">
+      <header>
+        <div>
+          <p class="eyebrow">Owner-only content</p>
+          <h2 id="source-heading">Submitted source</h2>
+        </div>
+        <a [routerLink]="['/problems', submission.problemSlug]">Try again</a>
+      </header>
+      <pre><code>{{ content.sourceCode }}</code></pre>
+    </section>
+  }
+
   <p class="privacy-note">
-    Hidden testcase input, expected output and internal testcase identifiers are never shown here.
+    Source and compiler diagnostics are visible only to you. Hidden testcase input, expected output
+    and internal testcase identifiers are never shown here.
   </p>
 }

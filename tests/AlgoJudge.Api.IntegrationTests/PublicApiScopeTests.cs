@@ -1,5 +1,6 @@
 using AlgoJudge.API.Controllers;
 using AlgoJudge.Application.Contracts.Problems;
+using AlgoJudge.Application.Contracts.Submissions;
 using AlgoJudge.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -95,6 +96,7 @@ public class PublicApiScopeTests
             .Where(type =>
                 type.Namespace?.Contains(".Contracts.", StringComparison.Ordinal) == true &&
                 type.Namespace?.Contains(".Contracts.Admin", StringComparison.Ordinal) != true &&
+                type != typeof(SubmissionContentResponse) &&
                 type.Name.EndsWith("Response", StringComparison.Ordinal))
             .SelectMany(type => type.GetProperties().Select(property =>
                 $"{type.Name}.{property.Name}"))
@@ -103,6 +105,10 @@ public class PublicApiScopeTests
         Assert.DoesNotContain(responseProperties, property =>
             forbiddenNames.Any(forbidden =>
                 property.Contains(forbidden, StringComparison.OrdinalIgnoreCase)));
+
+        Assert.Equal(
+            [nameof(SubmissionContentResponse.CompileMessage), nameof(SubmissionContentResponse.SourceCode)],
+            typeof(SubmissionContentResponse).GetProperties().Select(property => property.Name).Order());
     }
 
     [Fact]

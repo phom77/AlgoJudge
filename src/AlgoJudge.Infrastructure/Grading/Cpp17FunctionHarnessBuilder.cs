@@ -6,6 +6,8 @@ namespace AlgoJudge.Infrastructure.Grading;
 public sealed class Cpp17FunctionHarnessBuilder : IFunctionHarnessBuilder
 {
     private const int MaximumParameterCount = 16;
+    private const string SubmissionLineDirective = "#line 1 \"submission.cpp\"";
+    private const string HarnessLineDirective = "#line 1 \"algojudge-harness.cpp\"";
 
     private static readonly HashSet<string> Cpp17Keywords = new(
         [
@@ -34,7 +36,9 @@ public sealed class Cpp17FunctionHarnessBuilder : IFunctionHarnessBuilder
 
         var harness = new StringBuilder(sourceCode.Length + Cpp17FunctionHarnessRuntime.Source.Length + 1024);
         AppendHeaders(harness);
+        harness.AppendLine(SubmissionLineDirective);
         harness.AppendLine(sourceCode);
+        harness.AppendLine(HarnessLineDirective);
         harness.AppendLine(Cpp17FunctionHarnessRuntime.Source);
         AppendEntryPoint(harness, signature, signature.ClassName, signature.MethodName);
         return harness.ToString();
@@ -45,7 +49,9 @@ public sealed class Cpp17FunctionHarnessBuilder : IFunctionHarnessBuilder
         ValidateSignature(signature);
         var harness = new StringBuilder(Cpp17FunctionHarnessRuntime.Source.Length + 1024);
         AppendHeaders(harness);
+        harness.AppendLine(SubmissionLineDirective);
         harness.AppendLine(FunctionHarnessPlaceholders.UserSource);
+        harness.AppendLine(HarnessLineDirective);
         harness.AppendLine(Cpp17FunctionHarnessRuntime.Source);
         AppendEntryPoint(
             harness,
@@ -68,10 +74,16 @@ public sealed class Cpp17FunctionHarnessBuilder : IFunctionHarnessBuilder
         EnsureSinglePlaceholder(adapterTemplate, FunctionHarnessPlaceholders.ClassName);
         EnsureSinglePlaceholder(adapterTemplate, FunctionHarnessPlaceholders.MethodName);
 
+        var replacement = adapterTemplate.Contains(
+            SubmissionLineDirective,
+            StringComparison.Ordinal)
+            ? sourceCode
+            : $"{SubmissionLineDirective}\n{sourceCode}\n{HarnessLineDirective}";
+
         return adapterTemplate
             .Replace(FunctionHarnessPlaceholders.ClassName, signature.ClassName, StringComparison.Ordinal)
             .Replace(FunctionHarnessPlaceholders.MethodName, signature.MethodName, StringComparison.Ordinal)
-            .Replace(FunctionHarnessPlaceholders.UserSource, sourceCode, StringComparison.Ordinal);
+            .Replace(FunctionHarnessPlaceholders.UserSource, replacement, StringComparison.Ordinal);
     }
 
     private static void AppendEntryPoint(

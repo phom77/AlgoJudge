@@ -1,11 +1,19 @@
 import type { PagedResponseOfSubmissionResponse } from '../../../core/api/generated/models/paged-response-of-submission-response';
 import type { SubmissionResponse } from '../../../core/api/generated/models/submission-response';
-import type { Submission, SubmissionPage, SubmissionStatus } from './submission.models';
+import type { SubmissionContentResponse } from '../../../core/api/generated/models/submission-content-response';
+import type {
+  Submission,
+  SubmissionContent,
+  SubmissionPage,
+  SubmissionStatus,
+} from './submission.models';
 
 export function mapSubmission(response: SubmissionResponse): Submission {
   return {
     id: readRequiredText(response.id, 'id'),
     problemId: readPositiveInteger(response.problemId, 'problemId'),
+    problemTitle: readRequiredText(response.problemTitle, 'problemTitle'),
+    problemSlug: readRequiredText(response.problemSlug, 'problemSlug'),
     systemTestSuiteVersion: readOptionalPositiveInteger(response.systemTestSuiteVersion),
     language: readLanguage(response.language),
     status: readStatus(response.status),
@@ -14,6 +22,13 @@ export function mapSubmission(response: SubmissionResponse): Submission {
     createdAt: readRequiredTimestamp(response.createdAt, 'createdAt'),
     startedAt: readOptionalTimestamp(response.startedAt),
     finishedAt: readOptionalTimestamp(response.finishedAt),
+  };
+}
+
+export function mapSubmissionContent(response: SubmissionContentResponse): SubmissionContent {
+  return {
+    sourceCode: readRequiredText(response.sourceCode, 'sourceCode', false),
+    compileMessage: readOptionalText(response.compileMessage),
   };
 }
 
@@ -51,10 +66,14 @@ function readLanguage(value: unknown): 'cpp17' {
   return value;
 }
 
-function readRequiredText(value: unknown, field: string): string {
-  const text = typeof value === 'string' ? value.trim() : '';
-  if (text.length === 0) throw new Error(`The submission response is missing ${field}.`);
-  return text;
+function readRequiredText(value: unknown, field: string, trim = true): string {
+  const text = typeof value === 'string' ? value : '';
+  if (text.trim().length === 0) throw new Error(`The submission response is missing ${field}.`);
+  return trim ? text.trim() : text;
+}
+
+function readOptionalText(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
 
 function readPositiveInteger(value: unknown, field: string): number {

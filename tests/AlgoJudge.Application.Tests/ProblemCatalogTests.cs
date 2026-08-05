@@ -165,6 +165,8 @@ public class ProblemCatalogTests
 
         Assert.Equal(9, submissions.AddedSubmission!.SystemTestSuiteVersion);
         Assert.Equal(9, response.SystemTestSuiteVersion);
+        Assert.Equal(problem.Title, response.ProblemTitle);
+        Assert.Equal(problem.Slug, response.ProblemSlug);
     }
 
     private static Problem CreatePublishedProblem(int id, string slug)
@@ -271,6 +273,7 @@ public class ProblemCatalogTests
             SubmissionStatus finalStatus,
             int executionTimeMs,
             int memoryUsedKb,
+            string? compileMessage = null,
             CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<bool> AbandonClaimAsync(
             SubmissionClaim claim,
@@ -281,7 +284,8 @@ public class ProblemCatalogTests
             int? problemId,
             SubmissionStatus? status,
             int pageNumber,
-            int pageSize) => throw new NotSupportedException();
+            int pageSize,
+            string? problemSearch = null) => throw new NotSupportedException();
     }
 
     private sealed class UnitOfWorkStub : IUnitOfWork

@@ -24,7 +24,10 @@ public sealed class Cpp17FunctionHarnessBuilderTests
 
         var harness = builder.BuildLegacy(source, signature, template);
 
-        Assert.Equal($"{source}\nSolution instance; // solve", harness);
+        Assert.Equal(
+            $"#line 1 \"submission.cpp\"\n{source}\n" +
+            "#line 1 \"algojudge-harness.cpp\"\nSolution instance; // solve",
+            harness);
     }
 
     [Fact]
@@ -58,7 +61,8 @@ public sealed class Cpp17FunctionHarnessBuilderTests
         var harness = builder.BuildLegacy(source, signature, template);
 
         Assert.Equal(
-            $"{source}\nSolution instance; // solve",
+            $"#line 1 \"submission.cpp\"\n{source}\n" +
+            "#line 1 \"algojudge-harness.cpp\"\nSolution instance; // solve",
             harness);
     }
 

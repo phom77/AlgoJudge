@@ -154,7 +154,7 @@ Represents one immutable code attempt.
 | `status` | Lifecycle state described below. |
 | `executionTimeMs` | Max observed testcase execution time, if known. |
 | `memoryUsedKb` | Max observed testcase memory use, if known. |
-| `compileMessage` | Sanitized and size-limited; visible only to owner. |
+| `compileMessage` | Sanitized and limited to 16 KiB of UTF-8; visible only to owner. |
 | `createdAt`, `startedAt`, `finishedAt` | UTC lifecycle timestamps. |
 | `attemptCount` | Operational retry count, not user-visible scoring. |
 | `workerId` | Internal identity of the worker holding the current claim. |

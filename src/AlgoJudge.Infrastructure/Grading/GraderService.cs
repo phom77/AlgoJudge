@@ -57,6 +57,7 @@ namespace AlgoJudge.Infrastructure.Grading
                     SubmissionStatus.RuntimeError,
                     executionTimeMs: 0,
                     memoryUsedKb: 0,
+                    compileMessage: null,
                     cancellationToken);
                 return;
             }
@@ -77,6 +78,7 @@ namespace AlgoJudge.Infrastructure.Grading
                     SubmissionStatus.RuntimeError,
                     executionTimeMs: 0,
                     memoryUsedKb: 0,
+                    compileMessage: null,
                     cancellationToken);
                 return;
             }
@@ -97,11 +99,16 @@ namespace AlgoJudge.Infrastructure.Grading
                     cancellationToken);
                 if (!compileResult.Success)
                 {
+                    var compileMessage = CompilerDiagnosticSanitizer.Sanitize(
+                        compileResult.ErrorOutput,
+                        workDirectory,
+                        problem.ExecutionMode == ProblemExecutionMode.Function);
                     await FinalizeOrThrowAsync(
                         claim,
                         SubmissionStatus.CompileError,
                         executionTimeMs: 0,
                         memoryUsedKb: 0,
+                        compileMessage,
                         cancellationToken);
                     return;
                 }
@@ -184,6 +191,7 @@ namespace AlgoJudge.Infrastructure.Grading
                     finalStatus,
                     maxExecutionTime,
                     memoryUsedKb,
+                    compileMessage: null,
                     cancellationToken);
 
                 _logger.LogInformation(
@@ -237,6 +245,7 @@ namespace AlgoJudge.Infrastructure.Grading
             SubmissionStatus finalStatus,
             int executionTimeMs,
             int memoryUsedKb,
+            string? compileMessage,
             CancellationToken cancellationToken)
         {
             var finalized = await _submissionRepository.FinalizeClaimAsync(
@@ -244,6 +253,7 @@ namespace AlgoJudge.Infrastructure.Grading
                 finalStatus,
                 executionTimeMs,
                 memoryUsedKb,
+                compileMessage,
                 cancellationToken);
             if (!finalized)
                 throw new SubmissionClaimLostException(claim.SubmissionId);

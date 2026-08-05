@@ -136,13 +136,15 @@ internal static class JudgeTestHarness
         return new JudgeOutcome(
             submissionRepository.FinalStatus.Value,
             submissionRepository.ExecutionTimeMs,
-            submissionRepository.MemoryUsedKb);
+            submissionRepository.MemoryUsedKb,
+            submissionRepository.CompileMessage);
     }
 
     internal sealed record JudgeOutcome(
         SubmissionStatus Status,
         int ExecutionTimeMs,
-        int MemoryUsedKb);
+        int MemoryUsedKb,
+        string? CompileMessage);
 
     private sealed class CapturingSubmissionRepository : ISubmissionRepository
     {
@@ -156,6 +158,7 @@ internal static class JudgeTestHarness
         public SubmissionStatus? FinalStatus { get; private set; }
         public int ExecutionTimeMs { get; private set; }
         public int MemoryUsedKb { get; private set; }
+        public string? CompileMessage { get; private set; }
         public int FinalizationCount { get; private set; }
 
         public Task<Submission?> GetClaimedAsync(
@@ -170,11 +173,13 @@ internal static class JudgeTestHarness
             SubmissionStatus finalStatus,
             int executionTimeMs,
             int memoryUsedKb,
+            string? compileMessage = null,
             CancellationToken cancellationToken = default)
         {
             FinalStatus = finalStatus;
             ExecutionTimeMs = executionTimeMs;
             MemoryUsedKb = memoryUsedKb;
+            CompileMessage = compileMessage;
             FinalizationCount++;
             return Task.FromResult(true);
         }
@@ -211,7 +216,8 @@ internal static class JudgeTestHarness
             int? problemId,
             SubmissionStatus? status,
             int pageNumber,
-            int pageSize) => throw new NotSupportedException();
+            int pageSize,
+            string? problemSearch = null) => throw new NotSupportedException();
     }
 
     private sealed class StubProblemRepository : IProblemRepository

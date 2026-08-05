@@ -40,14 +40,38 @@ describe('SubmissionGateway', () => {
     );
 
     gateway
-      .history({ problemId: 7, status: 'RuntimeError', pageNumber: 2, pageSize: 20 })
+      .history({
+        problemId: null,
+        problemSearch: 'two sum',
+        status: 'RuntimeError',
+        pageNumber: 2,
+        pageSize: 20,
+      })
       .subscribe();
 
     expect(invoke).toHaveBeenCalledWith(expect.any(Function), {
-      ProblemId: 7,
+      ProblemId: undefined,
+      ProblemSearch: 'two sum',
       Status: 8,
       PageNumber: 2,
       PageSize: 20,
+    });
+  });
+
+  it('loads owner-only submission content without an unsafe request', () => {
+    invoke.mockReturnValue(
+      of({ sourceCode: 'int main() {}', compileMessage: 'submission.cpp: error' }),
+    );
+
+    let sourceCode = '';
+    gateway.content('75b27e41-e942-42b1-89dc-4bc087f458c3').subscribe((content) => {
+      sourceCode = content.sourceCode;
+    });
+
+    expect(sourceCode).toBe('int main() {}');
+    expect(ensureToken).not.toHaveBeenCalled();
+    expect(invoke).toHaveBeenCalledWith(expect.any(Function), {
+      id: '75b27e41-e942-42b1-89dc-4bc087f458c3',
     });
   });
 });
@@ -56,6 +80,8 @@ function response() {
   return {
     id: '75b27e41-e942-42b1-89dc-4bc087f458c3',
     problemId: 7,
+    problemTitle: 'Two Sum',
+    problemSlug: 'two-sum',
     language: 'cpp17',
     status: 'Pending' as unknown as number,
     createdAt: '2026-07-17T00:00:00Z',

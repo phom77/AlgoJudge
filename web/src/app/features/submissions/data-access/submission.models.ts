@@ -14,6 +14,8 @@ export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
 export interface Submission {
   readonly id: string;
   readonly problemId: number;
+  readonly problemTitle: string;
+  readonly problemSlug: string;
   readonly systemTestSuiteVersion: number | null;
   readonly language: 'cpp17';
   readonly status: SubmissionStatus;
@@ -22,6 +24,11 @@ export interface Submission {
   readonly createdAt: string;
   readonly startedAt: string | null;
   readonly finishedAt: string | null;
+}
+
+export interface SubmissionContent {
+  readonly sourceCode: string;
+  readonly compileMessage: string | null;
 }
 
 export interface SubmissionPage {
@@ -34,6 +41,7 @@ export interface SubmissionPage {
 
 export interface SubmissionHistoryQuery {
   readonly problemId: number | null;
+  readonly problemSearch: string;
   readonly status: SubmissionStatus | null;
   readonly pageNumber: number;
   readonly pageSize: number;
@@ -41,6 +49,7 @@ export interface SubmissionHistoryQuery {
 
 export const DEFAULT_SUBMISSION_QUERY: SubmissionHistoryQuery = {
   problemId: null,
+  problemSearch: '',
   status: null,
   pageNumber: 1,
   pageSize: 20,

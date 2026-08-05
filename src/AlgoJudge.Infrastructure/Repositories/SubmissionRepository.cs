@@ -1,6 +1,7 @@
 using AlgoJudge.Application.Models.Common;
 using AlgoJudge.Application.Interfaces;
 using AlgoJudge.Application.Models.SubmissionQueue;
+using AlgoJudge.Application.Contracts.Submissions;
 using AlgoJudge.Domain.Entities;
 using AlgoJudge.Domain.Enums;
 using AlgoJudge.Infrastructure.Data;
@@ -30,6 +31,7 @@ namespace AlgoJudge.Infrastructure.Repositories
         {
             return _context.Submissions
                 .AsNoTracking()
+                .Include(submission => submission.Problem)
                 .SingleOrDefaultAsync(
                     submission => submission.Id == id && submission.UserId == userId,
                     cancellationToken);
@@ -49,7 +51,8 @@ namespace AlgoJudge.Infrastructure.Repositories
             int? problemId,
             SubmissionStatus? status,
             int pageNumber,
-            int pageSize)
+            int pageSize,
+            string? problemSearch = null)
         {
             var query = _context.Submissions
                 .AsNoTracking()
@@ -58,11 +61,24 @@ namespace AlgoJudge.Infrastructure.Repositories
             if (problemId.HasValue)
                 query = query.Where(s => s.ProblemId == problemId.Value);
 
+            if (!string.IsNullOrWhiteSpace(problemSearch))
+            {
+                var escapedSearch = problemSearch.Trim()
+                    .Replace("\\", "\\\\", StringComparison.Ordinal)
+                    .Replace("%", "\\%", StringComparison.Ordinal)
+                    .Replace("_", "\\_", StringComparison.Ordinal);
+                var pattern = $"%{escapedSearch}%";
+                query = query.Where(submission =>
+                    EF.Functions.ILike(submission.Problem.Title, pattern, "\\") ||
+                    EF.Functions.ILike(submission.Problem.Slug, pattern, "\\"));
+            }
+
             if (status.HasValue)
                 query = query.Where(s => s.Status == status.Value);
 
             var totalCount = await query.CountAsync();
             var items = await query
+                .Include(submission => submission.Problem)
                 .OrderByDescending(s => s.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
@@ -156,6 +172,7 @@ namespace AlgoJudge.Infrastructure.Repositories
             SubmissionStatus finalStatus,
             int executionTimeMs,
             int memoryUsedKb,
+            string? compileMessage = null,
             CancellationToken cancellationToken = default)
         {
             if (!IsFinalStatus(finalStatus))
@@ -164,6 +181,14 @@ namespace AlgoJudge.Infrastructure.Repositories
                 throw new ArgumentOutOfRangeException(nameof(executionTimeMs));
             if (memoryUsedKb < 0)
                 throw new ArgumentOutOfRangeException(nameof(memoryUsedKb));
+            if (compileMessage is not null &&
+                System.Text.Encoding.UTF8.GetByteCount(compileMessage) >
+                SubmissionContractLimits.MaxCompileMessageBytes)
+            {
+                throw new ArgumentException(
+                    $"Compile message cannot exceed {SubmissionContractLimits.MaxCompileMessageBytes} UTF-8 bytes.",
+                    nameof(compileMessage));
+            }
 
             var affectedRows = await _context.Database.ExecuteSqlInterpolatedAsync(
                 $"""
@@ -171,6 +196,7 @@ namespace AlgoJudge.Infrastructure.Repositories
                 SET "Status" = {(int)finalStatus},
                     "ExecutionTime" = {executionTimeMs},
                     "MemoryUsed" = {memoryUsedKb},
+                    "CompileMessage" = {compileMessage},
                     "FinishedAt" = CURRENT_TIMESTAMP,
                     "WorkerId" = NULL,
                     "ClaimToken" = NULL,

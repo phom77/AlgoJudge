@@ -8,6 +8,9 @@ public sealed class SubmissionHistoryQuery
     [Range(1, int.MaxValue, ErrorMessage = "Problem ID must be greater than zero.")]
     public int? ProblemId { get; set; }
 
+    [MaxLength(100, ErrorMessage = "Problem search must not exceed 100 characters.")]
+    public string? ProblemSearch { get; set; }
+
     public SubmissionStatus? Status { get; set; }
 
     [Range(1, int.MaxValue, ErrorMessage = "Page number must be at least 1.")]

@@ -6,11 +6,13 @@ import { AntiforgeryService } from '../../../core/api/antiforgery.service';
 import { AlgoJudgeApi } from '../../../core/api/generated/algo-judge-api';
 import { apiSubmissionsGet$Json } from '../../../core/api/generated/fn/submissions/api-submissions-get-json';
 import { apiSubmissionsIdGet$Json } from '../../../core/api/generated/fn/submissions/api-submissions-id-get-json';
+import { apiSubmissionsIdContentGet$Json } from '../../../core/api/generated/fn/submissions/api-submissions-id-content-get-json';
 import { apiSubmissionsPost$Json } from '../../../core/api/generated/fn/submissions/api-submissions-post-json';
 import { mapProblemDetails } from '../../../core/api/problem-details.mapper';
-import { mapSubmission, mapSubmissionPage } from './submission.mapper';
+import { mapSubmission, mapSubmissionContent, mapSubmissionPage } from './submission.mapper';
 import type {
   Submission,
+  SubmissionContent,
   SubmissionHistoryQuery,
   SubmissionPage,
   SubmissionStatus,
@@ -40,10 +42,18 @@ export class SubmissionGateway {
     );
   }
 
+  content(id: string): Observable<SubmissionContent> {
+    return this.api.invoke(apiSubmissionsIdContentGet$Json, { id }).pipe(
+      map(mapSubmissionContent),
+      catchError((error: unknown) => this.rethrowProblem(error)),
+    );
+  }
+
   history(query: SubmissionHistoryQuery): Observable<SubmissionPage> {
     return this.api
       .invoke(apiSubmissionsGet$Json, {
         ProblemId: query.problemId ?? undefined,
+        ProblemSearch: query.problemSearch || undefined,
         Status: toApiStatus(query.status),
         PageNumber: query.pageNumber,
         PageSize: query.pageSize,

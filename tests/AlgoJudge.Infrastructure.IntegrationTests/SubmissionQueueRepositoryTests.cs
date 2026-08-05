@@ -61,9 +61,15 @@ public class SubmissionQueueRepositoryTests
         var ownerRepository = new SubmissionRepository(ownerContext);
         Assert.True(await ownerRepository.FinalizeClaimAsync(
             secondClaim,
-            SubmissionStatus.Accepted,
+            SubmissionStatus.CompileError,
             executionTimeMs: 10,
-            memoryUsedKb: 100));
+            memoryUsedKb: 100,
+            compileMessage: "safe compile diagnostic"));
+
+        await using var verificationContext = database.CreateContext();
+        var finalized = await verificationContext.Submissions.AsNoTracking().SingleAsync();
+        Assert.Equal(SubmissionStatus.CompileError, finalized.Status);
+        Assert.Equal("safe compile diagnostic", finalized.CompileMessage);
     }
 
     [PostgreSqlFact]

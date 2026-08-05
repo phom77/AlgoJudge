@@ -35,6 +35,8 @@ public sealed class SubmissionService : ISubmissionService
         ValidatePagination(query.PageNumber, query.PageSize);
         if (query.ProblemId is <= 0)
             throw new RequestValidationException("Problem ID must be greater than zero.");
+        if (query.ProblemSearch?.Length > 100)
+            throw new RequestValidationException("Problem search must not exceed 100 characters.");
         if (query.Status.HasValue && !Enum.IsDefined(query.Status.Value))
             throw new RequestValidationException("Submission status is invalid.");
 
@@ -43,7 +45,8 @@ public sealed class SubmissionService : ISubmissionService
             query.ProblemId,
             query.Status,
             query.PageNumber,
-            query.PageSize);
+            query.PageSize,
+            query.ProblemSearch);
 
         return new PagedResponse<SubmissionResponse>
         {
@@ -60,20 +63,19 @@ public sealed class SubmissionService : ISubmissionService
         Guid requesterId,
         CancellationToken cancellationToken = default)
     {
-        var submission = await _submissionRepository.GetByIdForUserAsync(
-            id,
-            requesterId,
-            cancellationToken);
-        if (submission is not null)
-            return _mapper.Map<SubmissionResponse>(submission);
+        var submission = await GetOwnedSubmissionAsync(id, requesterId, cancellationToken);
+        return submission is null ? null : _mapper.Map<SubmissionResponse>(submission);
+    }
 
-        if (await _submissionRepository.ExistsAsync(id, cancellationToken))
-        {
-            throw new ForbiddenException(
-                "You cannot access another user's submission.");
-        }
-
-        return null;
+    public async Task<SubmissionContentResponse?> GetSubmissionContentAsync(
+        Guid id,
+        Guid requesterId,
+        CancellationToken cancellationToken = default)
+    {
+        var submission = await GetOwnedSubmissionAsync(id, requesterId, cancellationToken);
+        return submission is null
+            ? null
+            : _mapper.Map<SubmissionContentResponse>(submission);
     }
 
     public async Task<SubmissionResponse> SubmitCodeAsync(
@@ -97,6 +99,7 @@ public sealed class SubmissionService : ISubmissionService
 
         var submission = _mapper.Map<Submission>(request);
         submission.UserId = userId;
+        submission.Problem = problem;
         submission.SystemTestSuiteVersion = problem.JudgeVersion;
         submission.Status = SubmissionStatus.Pending;
         submission.CreatedAt = DateTime.UtcNow;
@@ -107,6 +110,27 @@ public sealed class SubmissionService : ISubmissionService
         await _unitOfWork.SaveChangesAsync();
 
         return _mapper.Map<SubmissionResponse>(submission);
+    }
+
+    private async Task<Submission?> GetOwnedSubmissionAsync(
+        Guid id,
+        Guid requesterId,
+        CancellationToken cancellationToken)
+    {
+        var submission = await _submissionRepository.GetByIdForUserAsync(
+            id,
+            requesterId,
+            cancellationToken);
+        if (submission is not null)
+            return submission;
+
+        if (await _submissionRepository.ExistsAsync(id, cancellationToken))
+        {
+            throw new ForbiddenException(
+                "You cannot access another user's submission.");
+        }
+
+        return null;
     }
 
     private static void ValidateSubmissionRequest(CreateSubmissionRequest request)

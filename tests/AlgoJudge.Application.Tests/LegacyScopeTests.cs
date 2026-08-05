@@ -121,6 +121,7 @@ public class LegacyScopeTests
             SubmissionStatus finalStatus,
             int executionTimeMs,
             int memoryUsedKb,
+            string? compileMessage = null,
             CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task<bool> AbandonClaimAsync(
@@ -140,6 +141,7 @@ public class LegacyScopeTests
             int? problemId,
             SubmissionStatus? status,
             int pageNumber,
-            int pageSize) => throw new NotSupportedException();
+            int pageSize,
+            string? problemSearch = null) => throw new NotSupportedException();
     }
 }

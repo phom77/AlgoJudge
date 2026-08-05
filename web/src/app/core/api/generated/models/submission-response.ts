@@ -10,6 +10,8 @@ export interface SubmissionResponse {
   language?: string;
   memoryUsedKb?: (number | string);
   problemId?: (number | string);
+  problemSlug?: string;
+  problemTitle?: string;
   startedAt?: (string | null);
   status?: SubmissionStatus;
   systemTestSuiteVersion?: (number | string);

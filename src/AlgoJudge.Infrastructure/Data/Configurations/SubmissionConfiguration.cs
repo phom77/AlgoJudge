@@ -1,6 +1,7 @@
 ﻿using AlgoJudge.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using AlgoJudge.Application.Contracts.Submissions;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -28,6 +29,9 @@ namespace AlgoJudge.Infrastructure.Data.Configurations
             builder.HasKey(s => s.Id);
 
             builder.Property(s => s.SourceCode).IsRequired();
+
+            builder.Property(s => s.CompileMessage)
+                   .HasMaxLength(SubmissionContractLimits.MaxCompileMessageBytes);
 
             builder.Property(s => s.OriginalFileName).HasMaxLength(255);
 
