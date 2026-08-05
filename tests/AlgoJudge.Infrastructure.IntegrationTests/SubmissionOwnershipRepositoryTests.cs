@@ -27,7 +27,29 @@ public class SubmissionOwnershipRepositoryTests
         var owned = await repository.GetByIdForUserAsync(submissionId, ownerId);
         Assert.NotNull(owned);
         Assert.Equal(ownerId, owned!.UserId);
+        Assert.Equal("Ownership test", owned.Problem.Title);
+        Assert.StartsWith("ownership-", owned.Problem.Slug, StringComparison.Ordinal);
+        Assert.Equal("private-source-sentinel", owned.SourceCode);
+        Assert.Equal("safe-compile-message", owned.CompileMessage);
         Assert.Empty(context.ChangeTracker.Entries<Submission>());
+
+        var matchingHistory = await repository.GetPagedAsync(
+            ownerId,
+            problemId: null,
+            status: null,
+            pageNumber: 1,
+            pageSize: 20,
+            problemSearch: "ownership TEST");
+        Assert.Single(matchingHistory.Items);
+
+        var missingHistory = await repository.GetPagedAsync(
+            ownerId,
+            problemId: null,
+            status: null,
+            pageNumber: 1,
+            pageSize: 20,
+            problemSearch: "not-present");
+        Assert.Empty(missingHistory.Items);
     }
 
     private static async Task SeedSubmissionAsync(
@@ -58,6 +80,7 @@ public class SubmissionOwnershipRepositoryTests
             User = owner,
             Problem = problem,
             SourceCode = "private-source-sentinel",
+            CompileMessage = "safe-compile-message",
             Language = "cpp17",
             Status = SubmissionStatus.Pending,
             CreatedAt = DateTime.UtcNow

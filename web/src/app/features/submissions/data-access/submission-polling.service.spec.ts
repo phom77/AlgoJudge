@@ -42,6 +42,8 @@ function submission(status: SubmissionStatus): Submission {
   return {
     id: '75b27e41-e942-42b1-89dc-4bc087f458c3',
     problemId: 7,
+    problemTitle: 'Two Sum',
+    problemSlug: 'two-sum',
     systemTestSuiteVersion: 1,
     language: 'cpp17',
     status,

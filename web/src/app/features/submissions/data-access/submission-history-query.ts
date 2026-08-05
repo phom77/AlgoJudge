@@ -10,6 +10,7 @@ import {
 export function readSubmissionQuery(params: ParamMap): SubmissionHistoryQuery {
   return {
     problemId: readPositiveInteger(params.get('problemId')),
+    problemSearch: readSearch(params.get('problemSearch')),
     status: readStatus(params.get('status')),
     pageNumber: readInteger(
       params.get('page'),
@@ -24,6 +25,7 @@ export function readSubmissionQuery(params: ParamMap): SubmissionHistoryQuery {
 export function writeSubmissionQuery(query: SubmissionHistoryQuery): Params {
   return {
     problemId: query.problemId,
+    problemSearch: query.problemSearch || null,
     status: query.status,
     page: query.pageNumber === DEFAULT_SUBMISSION_QUERY.pageNumber ? null : query.pageNumber,
     pageSize: query.pageSize === DEFAULT_SUBMISSION_QUERY.pageSize ? null : query.pageSize,
@@ -31,7 +33,17 @@ export function writeSubmissionQuery(query: SubmissionHistoryQuery): Params {
 }
 
 export function submissionQueryKey(query: SubmissionHistoryQuery): string {
-  return [query.problemId ?? '', query.status ?? '', query.pageNumber, query.pageSize].join('|');
+  return [
+    query.problemId ?? '',
+    query.problemSearch,
+    query.status ?? '',
+    query.pageNumber,
+    query.pageSize,
+  ].join('|');
+}
+
+function readSearch(value: string | null): string {
+  return (value ?? '').trim().slice(0, 100);
 }
 
 function readStatus(value: string | null): SubmissionStatus | null {

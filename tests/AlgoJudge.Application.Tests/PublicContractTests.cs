@@ -27,6 +27,10 @@ public class PublicContractTests
         Assert.Null(typeof(SubmissionResponse).GetProperty("TestCases"));
         Assert.Null(typeof(SubmissionResponse).GetProperty("HiddenInput"));
         Assert.Null(typeof(SubmissionResponse).GetProperty("ExpectedOutput"));
+        Assert.Null(typeof(SubmissionResponse).GetProperty("SourceCode"));
+        Assert.Null(typeof(SubmissionResponse).GetProperty("CompileMessage"));
+        Assert.Null(typeof(SubmissionContentResponse).GetProperty("HiddenInput"));
+        Assert.Null(typeof(SubmissionContentResponse).GetProperty("ExpectedOutput"));
         Assert.Null(typeof(RunResponse).GetProperty("UserId"));
         Assert.Null(typeof(RunResponse).GetProperty("SourceCode"));
         Assert.Null(typeof(RunResponse).GetProperty("Input"));
@@ -101,6 +105,20 @@ public class PublicContractTests
                 new SubmissionHistoryQuery
                 {
                     Status = (SubmissionStatus)999
+                }));
+    }
+
+    [Fact]
+    public async Task SubmissionHistoryRejectsOversizedProblemSearch()
+    {
+        var service = CreateSubmissionService();
+
+        await Assert.ThrowsAsync<RequestValidationException>(() =>
+            service.GetHistoryAsync(
+                Guid.NewGuid(),
+                new SubmissionHistoryQuery
+                {
+                    ProblemSearch = new string('a', 101)
                 }));
     }
 

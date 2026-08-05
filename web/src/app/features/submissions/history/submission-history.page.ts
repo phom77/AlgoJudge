@@ -30,8 +30,8 @@ export class SubmissionHistoryPage {
     this.store.connect(this.route.queryParamMap.pipe(map(readSubmissionQuery)));
   }
 
-  protected updateProblemId(problemId: number | null): void {
-    this.navigate({ problemId, pageNumber: 1 });
+  protected updateProblemSearch(problemSearch: string): void {
+    this.navigate({ problemId: null, problemSearch, pageNumber: 1 });
   }
 
   protected updateStatus(status: SubmissionStatus | null): void {

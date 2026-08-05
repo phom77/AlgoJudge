@@ -14,6 +14,7 @@ export interface ApiSubmissionsGet$Json$Params {
   PageNumber?: (number | string);
   PageSize?: (number | string);
   ProblemId?: (number | string);
+  ProblemSearch?: string;
   Status?: SubmissionStatus;
 }
 
@@ -23,6 +24,7 @@ export function apiSubmissionsGet$Json(http: HttpClient, rootUrl: string, params
     rb.query('PageNumber', params.PageNumber, {});
     rb.query('PageSize', params.PageSize, {});
     rb.query('ProblemId', params.ProblemId, {});
+    rb.query('ProblemSearch', params.ProblemSearch, {});
     rb.query('Status', params.Status, {});
   }
 

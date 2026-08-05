@@ -502,7 +502,7 @@ async function handleApi(request, response, url) {
       samples: [
         {
           ordinal: 1,
-          input: '4\\n2 7 11 15\\n9',
+          input: '4\n2 7 11 15\n9',
           expectedOutput: '0 1',
           explanation: '2 + 7 equals 9.',
         },
@@ -603,7 +603,13 @@ async function handleApi(request, response, url) {
       startedAt: null,
       finishedAt: null,
       polls: 0,
-      finalStatus: String(body.sourceCode).includes('WRONG') ? 'WrongAnswer' : 'Accepted',
+      sourceCode: String(body.sourceCode),
+      compileMessage: null,
+      finalStatus: String(body.sourceCode).includes('COMPILE_ERROR')
+        ? 'CompileError'
+        : String(body.sourceCode).includes('WRONG')
+          ? 'WrongAnswer'
+          : 'Accepted',
     };
     state.submissions.set(submission.id, submission);
     return json(response, 201, publicSubmission(submission));
@@ -612,6 +618,7 @@ async function handleApi(request, response, url) {
   if (url.pathname === '/api/submissions' && request.method === 'GET') {
     if (!userName) return authenticationProblem(response);
     const problemId = Number(url.searchParams.get('ProblemId') ?? 0);
+    const problemSearch = (url.searchParams.get('ProblemSearch') ?? '').trim().toLowerCase();
     const status = Number(url.searchParams.get('Status') ?? 0);
     const statusByNumber = [
       '',
@@ -627,9 +634,30 @@ async function handleApi(request, response, url) {
     const submissions = [...state.submissions.values()]
       .filter((submission) => submission.owner === userName)
       .filter((submission) => !problemId || submission.problemId === problemId)
+      .filter((submission) => {
+        if (!problemSearch) return true;
+        const item = submissionProblem(submission);
+        return (
+          item.title.toLowerCase().includes(problemSearch) || item.slug.includes(problemSearch)
+        );
+      })
       .filter((submission) => !status || submission.status === statusByNumber[status])
       .map(publicSubmission);
     return json(response, 200, page(submissions, url));
+  }
+
+  const submissionContentMatch = /^\/api\/submissions\/([0-9a-f-]+)\/content$/i.exec(url.pathname);
+  if (submissionContentMatch && request.method === 'GET') {
+    if (!userName) return authenticationProblem(response);
+    const submission = state.submissions.get(submissionContentMatch[1]);
+    if (!submission) return problemDetails(response, 404, 'not-found', 'Submission not found.');
+    if (submission.owner !== userName) {
+      return problemDetails(response, 403, 'forbidden', 'Submission access denied.');
+    }
+    return json(response, 200, {
+      sourceCode: submission.sourceCode,
+      compileMessage: submission.compileMessage,
+    });
   }
 
   const submissionMatch = /^\/api\/submissions\/([0-9a-f-]+)$/i.exec(url.pathname);
@@ -690,6 +718,9 @@ function advanceSubmission(submission) {
     submission.executionTimeMs = 12;
     submission.memoryUsedKb = 2048;
     submission.finishedAt = '2026-07-17T01:00:02Z';
+    if (submission.status === 'CompileError') {
+      submission.compileMessage = "submission.cpp:4:5: error: expected ';' before 'return'";
+    }
   }
 }
 
@@ -724,9 +755,12 @@ function publicRun(run) {
 }
 
 function publicSubmission(submission) {
+  const item = submissionProblem(submission);
   return {
     id: submission.id,
     problemId: submission.problemId,
+    problemTitle: item.title,
+    problemSlug: item.slug,
     systemTestSuiteVersion: submission.systemTestSuiteVersion,
     language: submission.language,
     status: submission.status,
@@ -736,6 +770,10 @@ function publicSubmission(submission) {
     startedAt: submission.startedAt,
     finishedAt: submission.finishedAt,
   };
+}
+
+function submissionProblem(submission) {
+  return submission.problemId === functionProblem.id ? functionProblem : problem;
 }
 
 function hasAcceptedSubmission(userName, problemId = problem.id) {

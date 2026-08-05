@@ -71,12 +71,27 @@ submission, and a `SubmissionResponse` whose initial status is `Pending`.
 
 `GET /api/submissions/{id}`
 
-The response contains `id`, `problemId`, `language`, `status`,
+The response contains `id`, `problemId`, `problemTitle`, `problemSlug`, `language`, `status`,
 `executionTimeMs`, `memoryUsedKb`, `createdAt`, `startedAt`, and `finishedAt`.
 The user ID is intentionally absent because ownership is enforced by the API.
 The response includes `systemTestSuiteVersion`, the non-sensitive published
 judge version captured when the submission was created. It never includes
 hidden testcase identifiers, inputs, or expected outputs.
+
+### Get owner-only submission content
+
+`GET /api/submissions/{id}/content`
+
+The response contains the immutable submitted `sourceCode` and an optional
+sanitized, UTF-8-size-limited `compileMessage`. This payload is intentionally
+separate from submission history and metadata responses so source code is not
+transferred while browsing the history list. Generated Function harness and
+legacy adapter diagnostics are removed before persistence. Hidden testcase
+identifiers, inputs, and expected outputs are never included.
+
+The lookup enforces the same ownership semantics as submission detail. An
+existing submission owned by another user returns `403 Forbidden`; an unknown
+submission returns `404 Not Found`.
 
 The database lookup includes both submission ID and authenticated user ID, so a
 non-owner's source and operational fields are never materialized by the API.
@@ -109,6 +124,7 @@ submission history and never affect solved state.
 | Parameter | Type | Default | Validation |
 |---|---|---|---|
 | `problemId` | integer | none | Must be greater than zero. |
+| `problemSearch` | string | none | Maximum 100 characters; case-insensitive title or slug match. |
 | `status` | submission status | none | Must be a defined enum name. |
 | `pageNumber` | integer | `1` | Must be at least 1. |
 | `pageSize` | integer | `20` | Must be between 1 and 100. |
@@ -116,7 +132,8 @@ submission history and never affect solved state.
 The endpoint returns `PagedResponse<SubmissionResponse>` with `items`,
 `totalCount`, `pageNumber`, `pageSize`, and `totalPages`. Invalid pagination is
 rejected with `400 Bad Request`; the API never silently substitutes defaults
-for invalid supplied values.
+for invalid supplied values. History items include problem title and slug but
+never source code or compiler diagnostics.
 
 ## Error contract
 

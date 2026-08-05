@@ -51,6 +51,22 @@ public sealed class SubmissionsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("{id:guid}/content")]
+    [ProducesResponseType(typeof(SubmissionContentResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SubmissionContentResponse>> GetSubmissionContent(Guid id)
+    {
+        var result = await _submissionService.GetSubmissionContentAsync(
+            id,
+            GetUserIdFromToken(),
+            HttpContext.RequestAborted);
+        if (result == null)
+            throw new ResourceNotFoundException($"Submission '{id}' was not found.");
+
+        return Ok(result);
+    }
+
     [HttpGet]
     [ProducesResponseType(
         typeof(PagedResponse<SubmissionResponse>),

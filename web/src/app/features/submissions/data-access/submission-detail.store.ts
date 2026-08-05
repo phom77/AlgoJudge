@@ -6,12 +6,13 @@ import type { Observable } from 'rxjs';
 import type { ApiProblem } from '../../../core/error/api-problem';
 import { createUnknownApiProblem, isApiProblem } from '../../../core/error/api-problem';
 import { SubmissionGateway } from './submission.gateway';
-import type { Submission } from './submission.models';
+import type { Submission, SubmissionContent } from './submission.models';
 import { SubmissionPollingService } from './submission-polling.service';
 
 interface DetailState {
   readonly id: string;
   readonly submission: Submission | null;
+  readonly content: SubmissionContent | null;
   readonly loading: boolean;
   readonly problem: ApiProblem | null;
 }
@@ -25,11 +26,13 @@ export class SubmissionDetailStore {
   private readonly state = signal<DetailState>({
     id: '',
     submission: null,
+    content: null,
     loading: true,
     problem: null,
   });
 
   readonly submission = computed(() => this.state().submission);
+  readonly content = computed(() => this.state().content);
   readonly loading = computed(() => this.state().loading);
   readonly problem = computed(() => this.state().problem);
 
@@ -53,13 +56,34 @@ export class SubmissionDetailStore {
   }
 
   private load(id: string): Observable<DetailState> {
-    this.state.set({ id, submission: null, loading: true, problem: null });
+    this.state.set({ id, submission: null, content: null, loading: true, problem: null });
     if (!isSubmissionIdentifier(id)) return of(invalidIdState(id));
     return this.gateway.detail(id).pipe(
-      switchMap((submission) => this.polling.watch(submission)),
-      map((submission) => ({ id, submission, loading: false, problem: null })),
+      switchMap((initial) =>
+        this.gateway.content(id).pipe(
+          switchMap((content) =>
+            this.polling.watch(initial).pipe(
+              switchMap((submission) => {
+                if (submission.status === 'CompileError' && content.compileMessage === null) {
+                  return this.gateway
+                    .content(id)
+                    .pipe(map((updatedContent) => ({ submission, content: updatedContent })));
+                }
+                return of({ submission, content });
+              }),
+            ),
+          ),
+        ),
+      ),
+      map(({ submission, content }) => ({
+        id,
+        submission,
+        content,
+        loading: false,
+        problem: null,
+      })),
       catchError((error: unknown) =>
-        of({ id, submission: null, loading: false, problem: asApiProblem(error) }),
+        of({ id, submission: null, content: null, loading: false, problem: asApiProblem(error) }),
       ),
     );
   }
@@ -69,6 +93,7 @@ function invalidIdState(id: string): DetailState {
   return {
     id,
     submission: null,
+    content: null,
     loading: false,
     problem: {
       status: 400,

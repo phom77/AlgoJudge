@@ -51,7 +51,9 @@ public sealed class FunctionModeGradingTests
 
         Assert.Equal(SubmissionStatus.Accepted, outcome.Status);
         Assert.Equal(
-            $"{userSource}\nint main() {{ Solution value; /* solve */ return 0; }}",
+            $"#line 1 \"submission.cpp\"\n{userSource}\n" +
+            "#line 1 \"algojudge-harness.cpp\"\n" +
+            "int main() { Solution value; /* solve */ return 0; }",
             sandbox.CompiledSource);
         Assert.Equal("{\"value\":2}", sandbox.ReceivedInput);
     }
@@ -117,6 +119,29 @@ public sealed class FunctionModeGradingTests
             functionSignatureJson: Signature);
 
         Assert.Equal(SubmissionStatus.CompileError, outcome.Status);
+        Assert.NotNull(outcome.CompileMessage);
+        Assert.DoesNotContain("algojudge-harness.cpp", outcome.CompileMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task FunctionModePersistsOnlySanitizedSubmissionDiagnostics()
+    {
+        var sandbox = new CompilationFailureSandbox(
+            "submission.cpp:1:5: error: expected class declaration\n" +
+            "algojudge-harness.cpp:3:1: error: generated implementation detail");
+
+        var outcome = await JudgeTestHarness.GradeWithSandboxAsync(
+            "invalid source",
+            "{\"value\":21}",
+            "42",
+            sandbox,
+            NullLogger<GraderService>.Instance,
+            executionMode: ProblemExecutionMode.Function,
+            functionSignatureJson: Signature);
+
+        Assert.Equal(SubmissionStatus.CompileError, outcome.Status);
+        Assert.Contains("expected class declaration", outcome.CompileMessage, StringComparison.Ordinal);
+        Assert.DoesNotContain("generated implementation detail", outcome.CompileMessage, StringComparison.Ordinal);
     }
 
     [DockerJudgeFact]
@@ -281,5 +306,25 @@ public sealed class FunctionModeGradingTests
                 MemoryUsedBytes = 1024
             });
         }
+    }
+
+    private sealed class CompilationFailureSandbox(string diagnostic) : IDockerSandbox
+    {
+        public Task<SandboxCompileResult> CompileAsync(
+            string sourceCode,
+            string workDir,
+            CancellationToken ct = default) =>
+            Task.FromResult(new SandboxCompileResult
+            {
+                Success = false,
+                ErrorOutput = diagnostic
+            });
+
+        public Task<SandboxRunResult> RunAsync(
+            string workDir,
+            string input,
+            int timeLimitMs,
+            int memoryLimitKb,
+            CancellationToken ct = default) => throw new NotSupportedException();
     }
 }

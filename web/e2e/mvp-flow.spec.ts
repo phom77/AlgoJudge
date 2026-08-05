@@ -39,18 +39,25 @@ test('registers, restores the session, submits C++17, and reviews solved history
   await expect(page.getByText('Solved')).toBeVisible();
 
   await page.goto(detailUrl);
-  await expect(page.getByRole('heading', { name: 'Problem #7' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Two Sum' })).toBeVisible();
   await expect(page.locator('aj-submission-result-panel').getByText('Accepted')).toBeVisible();
   await expect(page.getByText('12 ms', { exact: true })).toBeVisible();
   await expect(page.getByText('2048 KB', { exact: true })).toBeVisible();
-  await expect(page.locator('main')).not.toContainText('#include');
+  await expect(page.getByRole('heading', { name: 'Submitted source' })).toBeVisible();
+  await expect(page.locator('main')).toContainText('#include');
+  await expect(page.getByRole('link', { name: 'Open problem' })).toHaveAttribute(
+    'href',
+    '/problems/two-sum',
+  );
 
   await page.getByRole('link', { name: 'Submission history' }).click();
-  await page.getByLabel('Problem ID').fill('7');
+  await page.getByLabel('Problem').fill('Two Sum');
   await page.getByLabel('Verdict').selectOption('Accepted');
-  await expect(page).toHaveURL(/problemId=7/);
+  await expect(page).toHaveURL(/problemSearch=Two(?:\+|%20)Sum/);
   await expect(page).toHaveURL(/status=Accepted/);
-  await expect(page.getByRole('row', { name: /Accepted Problem #7 C\+\+17 12 ms/ })).toBeVisible();
+  await expect(
+    page.getByRole('row', { name: /Accepted Two Sum Problem #7 C\+\+17 12 ms/ }),
+  ).toBeVisible();
 
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible();
@@ -67,6 +74,26 @@ test('registers, restores the session, submits C++17, and reviews solved history
   await page.getByRole('button', { name: 'Sign out' }).click();
   await page.goto('/submissions');
   await expect(page).toHaveURL(/\/login\?returnUrl=%2Fsubmissions$/);
+});
+
+test('shows owner-only sanitized compiler diagnostics and submitted source', async ({ page }) => {
+  await registerAcceptanceUser(page);
+  await openWorkspace(page);
+  const editor = page.locator('.monaco-editor').first();
+  await editor.click();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('COMPILE_ERROR');
+  await page.getByRole('tab', { name: 'Submit' }).click();
+  await page.locator('aj-problem-execution-panel footer button.action').click();
+
+  const result = page.locator('aj-submission-result-panel');
+  await expect(result.getByText('Compile Error')).toBeVisible({ timeout: 8_000 });
+  await page.getByRole('link', { name: 'View details' }).click();
+  await expect(page.getByRole('heading', { name: 'Compiler diagnostics' })).toBeVisible();
+  await expect(page.locator('.diagnostic-card pre')).toContainText('submission.cpp');
+  await expect(page.locator('.diagnostic-card pre')).not.toContainText('hidden');
+  await expect(page.getByRole('heading', { name: 'Submitted source' })).toBeVisible();
+  await expect(page.locator('.content-card pre').last()).toContainText('COMPILE_ERROR');
 });
 
 test('runs custom stdin without creating history or solved progress', async ({ page, request }) => {

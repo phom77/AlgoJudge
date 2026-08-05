@@ -121,6 +121,11 @@ the current problem solved after an Accepted result. Both actions bootstrap
 CSRF once, reject duplicate active requests, stop polling on logout or page
 destruction, and never persist source or custom testcase data.
 
+Submission history identifies attempts by problem title and slug and supports
+case-insensitive title/slug search. Submission detail loads immutable source
+and sanitized compiler diagnostics through a separate owner-only endpoint;
+history payloads never include either field.
+
 ## OpenAPI client
 
 `ng-openapi-gen.json` is the single generator configuration. It reads the

@@ -23,26 +23,27 @@ import type { SubmissionHistoryQuery, SubmissionStatus } from '../data-access/su
 export class SubmissionHistoryFiltersComponent implements OnChanges {
   private readonly destroyRef = inject(DestroyRef);
   readonly query = input.required<SubmissionHistoryQuery>();
-  readonly problemIdChange = output<number | null>();
+  readonly problemSearchChange = output<string>();
   readonly statusChange = output<SubmissionStatus | null>();
-  protected readonly problemIdControl = new FormControl<number | null>(null, {
-    validators: [Validators.min(1)],
+  protected readonly problemSearchControl = new FormControl('', {
+    nonNullable: true,
+    validators: [Validators.maxLength(100)],
   });
 
   constructor() {
-    this.problemIdControl.valueChanges
+    this.problemSearchControl.valueChanges
       .pipe(
         debounceTime(300),
         distinctUntilChanged(),
-        filter(() => this.problemIdControl.valid),
+        filter(() => this.problemSearchControl.valid),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((problemId) => this.problemIdChange.emit(problemId));
+      .subscribe((problemSearch) => this.problemSearchChange.emit(problemSearch.trim()));
   }
 
   ngOnChanges(): void {
-    if (this.problemIdControl.value !== this.query().problemId) {
-      this.problemIdControl.setValue(this.query().problemId, { emitEvent: false });
+    if (this.problemSearchControl.value !== this.query().problemSearch) {
+      this.problemSearchControl.setValue(this.query().problemSearch, { emitEvent: false });
     }
   }
 

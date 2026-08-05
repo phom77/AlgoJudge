@@ -32,6 +32,7 @@ namespace AlgoJudge.Application.Interfaces
             SubmissionStatus finalStatus,
             int executionTimeMs,
             int memoryUsedKb,
+            string? compileMessage = null,
             CancellationToken cancellationToken = default);
         Task<bool> AbandonClaimAsync(
             SubmissionClaim claim,
@@ -46,6 +47,7 @@ namespace AlgoJudge.Application.Interfaces
             int? problemId,
             SubmissionStatus? status,
             int pageNumber,
-            int pageSize);
+            int pageSize,
+            string? problemSearch = null);
     }
 }

@@ -22,7 +22,7 @@
     </div>
     <aj-submission-history-filters
       [query]="store.query()"
-      (problemIdChange)="updateProblemId($event)"
+      (problemSearchChange)="updateProblemSearch($event)"
       (statusChange)="updateStatus($event)"
     />
   </div>

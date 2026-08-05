@@ -12,6 +12,10 @@ public interface ISubmissionService
         Guid id,
         Guid requesterId,
         CancellationToken cancellationToken = default);
+    Task<SubmissionContentResponse?> GetSubmissionContentAsync(
+        Guid id,
+        Guid requesterId,
+        CancellationToken cancellationToken = default);
     Task<PagedResponse<SubmissionResponse>> GetHistoryAsync(
         Guid userId,
         SubmissionHistoryQuery query);

@@ -13,6 +13,7 @@ namespace AlgoJudge.Api.IntegrationTests;
 public class SubmissionSecurityTests
 {
     private const string SourceSentinel = "private-source-sentinel-71e23f";
+    private const string CompileMessageSentinel = "safe-compile-message-sentinel-14d82a";
     private const string HiddenInputSentinel = "hidden-input-sentinel-26bd1a";
     private const string HiddenOutputSentinel = "hidden-output-sentinel-9c204e";
 
@@ -33,14 +34,34 @@ public class SubmissionSecurityTests
         Assert.Equal(HttpStatusCode.OK, ownerResponse.StatusCode);
         var ownerJson = await ownerResponse.Content.ReadAsStringAsync();
         Assert.DoesNotContain(SourceSentinel, ownerJson, StringComparison.Ordinal);
+        Assert.DoesNotContain(CompileMessageSentinel, ownerJson, StringComparison.Ordinal);
+        Assert.Contains("Security boundary test", ownerJson, StringComparison.Ordinal);
+        Assert.Contains(seeded.ProblemSlug, ownerJson, StringComparison.Ordinal);
         Assert.DoesNotContain(HiddenInputSentinel, ownerJson, StringComparison.Ordinal);
         Assert.DoesNotContain(HiddenOutputSentinel, ownerJson, StringComparison.Ordinal);
+
+        var contentResponse = await ownerClient.GetAsync(
+            $"/api/submissions/{seeded.SubmissionId}/content");
+        Assert.Equal(HttpStatusCode.OK, contentResponse.StatusCode);
+        var contentJson = await contentResponse.Content.ReadAsStringAsync();
+        Assert.Contains(SourceSentinel, contentJson, StringComparison.Ordinal);
+        Assert.Contains(CompileMessageSentinel, contentJson, StringComparison.Ordinal);
+        Assert.DoesNotContain(HiddenInputSentinel, contentJson, StringComparison.Ordinal);
+        Assert.DoesNotContain(HiddenOutputSentinel, contentJson, StringComparison.Ordinal);
 
         var deniedResponse = await otherClient.GetAsync(
             $"/api/submissions/{seeded.SubmissionId}");
         Assert.Equal(HttpStatusCode.Forbidden, deniedResponse.StatusCode);
         var deniedJson = await deniedResponse.Content.ReadAsStringAsync();
         Assert.DoesNotContain(SourceSentinel, deniedJson, StringComparison.Ordinal);
+
+        var deniedContentResponse = await otherClient.GetAsync(
+            $"/api/submissions/{seeded.SubmissionId}/content");
+        Assert.Equal(HttpStatusCode.Forbidden, deniedContentResponse.StatusCode);
+        Assert.DoesNotContain(
+            SourceSentinel,
+            await deniedContentResponse.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
 
         var missingResponse = await otherClient.GetAsync(
             $"/api/submissions/{Guid.NewGuid()}");
@@ -52,6 +73,13 @@ public class SubmissionSecurityTests
             seeded.SubmissionId.ToString(),
             await historyResponse.Content.ReadAsStringAsync(),
             StringComparison.OrdinalIgnoreCase);
+
+        var ownerHistoryResponse = await ownerClient.GetAsync("/api/submissions");
+        Assert.Equal(HttpStatusCode.OK, ownerHistoryResponse.StatusCode);
+        var ownerHistoryJson = await ownerHistoryResponse.Content.ReadAsStringAsync();
+        Assert.Contains("Security boundary test", ownerHistoryJson, StringComparison.Ordinal);
+        Assert.DoesNotContain(SourceSentinel, ownerHistoryJson, StringComparison.Ordinal);
+        Assert.DoesNotContain(CompileMessageSentinel, ownerHistoryJson, StringComparison.Ordinal);
 
         var problemResponse = await ownerClient.GetAsync(
             $"/api/problems/{seeded.ProblemSlug}");
@@ -111,6 +139,7 @@ public class SubmissionSecurityTests
             User = owner,
             Problem = problem,
             SourceCode = SourceSentinel,
+            CompileMessage = CompileMessageSentinel,
             Language = "cpp17",
             Status = SubmissionStatus.Pending,
             CreatedAt = DateTime.UtcNow

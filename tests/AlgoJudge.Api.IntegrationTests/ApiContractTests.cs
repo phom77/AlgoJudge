@@ -99,6 +99,7 @@ public class ApiContractTests
         Assert.True(paths.TryGetProperty("/api/auth/register", out _));
         Assert.True(paths.TryGetProperty("/api/problems", out _));
         Assert.True(paths.TryGetProperty("/api/submissions", out _));
+        Assert.True(paths.TryGetProperty("/api/submissions/{id}/content", out _));
         Assert.DoesNotContain(paths.EnumerateObject(), path =>
             path.Name.StartsWith("/api/internal/admin", StringComparison.Ordinal));
 
@@ -109,6 +110,7 @@ public class ApiContractTests
         Assert.True(schemas.TryGetProperty("AuthResponse", out _));
         Assert.True(schemas.TryGetProperty("CreateSubmissionRequest", out _));
         Assert.True(schemas.TryGetProperty("SubmissionResponse", out _));
+        Assert.True(schemas.TryGetProperty("SubmissionContentResponse", out _));
         Assert.True(schemas.TryGetProperty("ApiProblemDetails", out _));
         Assert.True(schemas.TryGetProperty("ApiValidationProblemDetails", out _));
         Assert.DoesNotContain(
@@ -153,6 +155,11 @@ public class ApiContractTests
         AssertSecurityRequired(
             paths,
             "/api/submissions/{id}",
+            "get",
+            "CookieSession");
+        AssertSecurityRequired(
+            paths,
+            "/api/submissions/{id}/content",
             "get",
             "CookieSession");
         AssertOptionalCookie(paths, "/api/problems", "get");

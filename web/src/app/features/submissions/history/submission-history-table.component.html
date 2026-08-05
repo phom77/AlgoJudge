@@ -7,9 +7,16 @@
     <span role="columnheader">Submitted</span>
   </div>
   @for (submission of submissions(); track submission.id) {
-    <a class="table__row" role="row" [routerLink]="['/submissions', submission.id]">
-      <span role="cell"><aj-submission-verdict [status]="submission.status" /></span>
-      <span role="cell">Problem #{{ submission.problemId }}</span>
+    <div class="table__row" role="row">
+      <span role="cell">
+        <a class="verdict-link" [routerLink]="['/submissions', submission.id]">
+          <aj-submission-verdict [status]="submission.status" />
+        </a>
+      </span>
+      <span class="problem-cell" role="cell">
+        <a [routerLink]="['/problems', submission.problemSlug]">{{ submission.problemTitle }}</a>
+        <small>Problem #{{ submission.problemId }}</small>
+      </span>
       <span role="cell">C++17</span>
       <span role="cell">
         {{ submission.executionTimeMs === null ? '—' : submission.executionTimeMs + ' ms' }}
@@ -17,6 +24,6 @@
       <time role="cell" [attr.datetime]="submission.createdAt">
         {{ submission.createdAt | date: 'medium' }}
       </time>
-    </a>
+    </div>
   }
 </div>

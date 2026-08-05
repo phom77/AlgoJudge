@@ -26,6 +26,8 @@ namespace AlgoJudge.Domain.Entities
        
         public int MemoryUsed { get; set; }
 
+        public string? CompileMessage { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? StartedAt { get; set; }
         public DateTime? FinishedAt { get; set; }

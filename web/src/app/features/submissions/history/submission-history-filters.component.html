@@ -1,14 +1,14 @@
 <label>
-  <span>Problem ID</span>
+  <span>Problem</span>
   <input
-    type="number"
-    min="1"
-    inputmode="numeric"
-    placeholder="All problems"
-    [formControl]="problemIdControl"
+    type="search"
+    maxlength="100"
+    autocomplete="off"
+    placeholder="Search title or slug"
+    [formControl]="problemSearchControl"
   />
-  @if (problemIdControl.invalid) {
-    <small>Problem ID must be greater than zero.</small>
+  @if (problemSearchControl.invalid) {
+    <small>Problem search must not exceed 100 characters.</small>
   }
 </label>
 
