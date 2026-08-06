@@ -41,7 +41,7 @@ test('authors, publishes, and judges both Accepted and Wrong Answer solutions', 
   await page.goto('/problems/authored-two-sum');
   await expect(page.getByRole('heading', { name: 'Authored Two Sum' })).toBeVisible();
   await page.getByRole('tab', { name: 'Submit' }).click();
-  await page.locator('aj-problem-execution-panel footer button.action').click();
+  await page.getByRole('button', { name: 'Submit', exact: true }).click();
   await expect(page.locator('aj-submission-result-panel').getByText('Accepted')).toBeVisible({
     timeout: 8_000,
   });
@@ -53,7 +53,7 @@ test('authors, publishes, and judges both Accepted and Wrong Answer solutions', 
   await page.keyboard.press('Control+A');
   await page.keyboard.type('// WRONG\nint main() { return 0; }');
   await page.getByRole('tab', { name: 'Submit' }).click();
-  await page.locator('aj-problem-execution-panel footer button.action').click();
+  await page.getByRole('button', { name: 'Submit', exact: true }).click();
   await expect(page.locator('aj-submission-result-panel').getByText('Wrong Answer')).toBeVisible({
     timeout: 8_000,
   });

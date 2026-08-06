@@ -113,13 +113,17 @@ before publish. Responses and rendered state contain safe diagnostics only.
 The Playwright scale fixture contains 100 items: 90 successful, five intentional
 generation failures, three unchanged/skipped items, and two invalid definitions.
 
-The problem workspace keeps source code and custom input in memory only. `Run`
-accepts stdin or typed Function arguments, polls one custom run to a terminal
-result, and displays its public stdout, stderr, time, and memory. `Submit` runs
-the immutable system suite, displays its version and final verdict, and marks
-the current problem solved after an Accepted result. Both actions bootstrap
-CSRF once, reject duplicate active requests, stop polling on logout or page
-destruction, and never persist source or custom testcase data.
+The problem workspace uses independently scrolling description and editor panels
+on desktop, with Description/Code switching and a viewport-bounded action area
+on mobile. Public Function signatures generate the matching C++17 class/method
+starter; stdin/stdout problems keep a complete-program starter. Source code and
+custom input stay in memory only. `Run` accepts stdin or typed Function
+arguments, polls one custom run to a terminal result, and displays its public
+stdout, stderr, time, and memory. `Submit` runs the immutable system suite,
+displays its version and final verdict, and marks the current problem solved
+after an Accepted result. Both actions bootstrap CSRF once, reject duplicate
+active requests, stop polling on logout or page destruction, and never persist
+source or custom testcase data.
 
 Submission history identifies attempts by problem title and slug and supports
 case-insensitive title/slug search. Submission detail loads immutable source

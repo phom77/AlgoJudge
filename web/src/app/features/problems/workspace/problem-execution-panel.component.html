@@ -1,81 +1,136 @@
-<div class="execution-tabs" role="tablist" aria-label="Execution type">
+<header class="console-header">
+  <div class="execution-tabs" role="tablist" aria-label="Execution type">
+    <button
+      id="execution-run-tab"
+      type="button"
+      role="tab"
+      [attr.aria-selected]="action() === 'run'"
+      [attr.aria-controls]="'execution-run-panel'"
+      [attr.tabindex]="action() === 'run' ? 0 : -1"
+      (click)="select('run')"
+      (keydown)="selectFromKeyboard($event, 'run')"
+    >
+      Testcase
+    </button>
+    <button
+      id="execution-submit-tab"
+      type="button"
+      role="tab"
+      [attr.aria-selected]="action() === 'submit'"
+      [attr.aria-controls]="'execution-submit-panel'"
+      [attr.tabindex]="action() === 'submit' ? 0 : -1"
+      (click)="select('submit')"
+      (keydown)="selectFromKeyboard($event, 'submit')"
+    >
+      Submit
+    </button>
+  </div>
   <button
+    class="console-toggle"
     type="button"
-    role="tab"
-    [attr.aria-selected]="action() === 'run'"
-    (click)="select('run')"
+    [attr.aria-expanded]="expanded()"
+    aria-controls="execution-console-content"
+    (click)="toggleExpanded()"
   >
-    Run
+    {{ expanded() ? 'Collapse console' : 'Expand console' }}
   </button>
-  <button
-    type="button"
-    role="tab"
-    [attr.aria-selected]="action() === 'submit'"
-    (click)="select('submit')"
-  >
-    Submit
-  </button>
-</div>
-@if (action() === 'run') {
-  <section class="run-input" aria-label="Custom testcase">
-    @if (problem().executionMode === 'Function' && problem().functionSignature; as signature) {
-      <p class="signature">
-        <strong>{{ signature.className }}.{{ signature.methodName }}</strong> returns
-        {{ signature.returnType }}
-      </p>
-      <aj-function-arguments-editor
-        [parameters]="signature.parameters"
-        (argumentsChange)="functionArguments.set($event)"
+</header>
+
+<div id="execution-console-content" class="console-content" [hidden]="!expanded()">
+  @if (action() === 'run') {
+    <section
+      id="execution-run-panel"
+      class="execution-panel"
+      role="tabpanel"
+      aria-labelledby="execution-run-tab"
+    >
+      <div class="run-input" aria-label="Custom testcase">
+        @if (problem().executionMode === 'Function' && problem().functionSignature; as signature) {
+          <div class="signature">
+            <span>Function arguments</span>
+            <code>{{ signature.className }}.{{ signature.methodName }}</code>
+            <small>Returns {{ signature.returnType }}</small>
+          </div>
+          <aj-function-arguments-editor
+            [parameters]="signature.parameters"
+            (argumentsChange)="functionArguments.set($event)"
+          />
+        } @else {
+          <div class="input-heading">
+            <label for="custom-input">Custom stdin</label>
+            <span [class.invalid]="inputBytes() > 65536"> {{ inputBytes() }} / 65,536 bytes </span>
+          </div>
+          <textarea
+            id="custom-input"
+            rows="4"
+            placeholder="Enter stdin for your testcase"
+            [value]="customInput()"
+            (input)="customInput.set($any($event.target).value)"
+          ></textarea>
+        }
+      </div>
+      <aj-run-result-panel
+        [run]="run()"
+        [problem]="runProblem()"
+        (dismissed)="runDismissed.emit()"
       />
-    } @else {
-      <label for="custom-input">Custom stdin</label>
-      <textarea
-        id="custom-input"
-        rows="5"
-        [value]="customInput()"
-        (input)="customInput.set($any($event.target).value)"
-      ></textarea>
-      <span [class.invalid]="inputBytes() > 65536">{{ inputBytes() }} / 65,536 bytes</span>
-    }
-  </section>
-  <aj-run-result-panel [run]="run()" [problem]="runProblem()" (dismissed)="runDismissed.emit()" />
-} @else {
-  <p class="submit-note">
-    Submit runs every hidden testcase in system suite v{{ problem().judgeVersion }} and records the
-    verdict in history.
-  </p>
-  <aj-submission-result-panel
-    [submission]="submission()"
-    [problem]="submissionProblem()"
-    [dismissible]="true"
-    (dismissed)="submissionDismissed.emit()"
-  />
-}
+    </section>
+  } @else {
+    <section
+      id="execution-submit-panel"
+      class="execution-panel submit-panel"
+      role="tabpanel"
+      aria-labelledby="execution-submit-tab"
+    >
+      <div class="submit-note">
+        <strong>Ready for hidden tests</strong>
+        <p>
+          Your code will run against every testcase in system suite v{{ problem().judgeVersion }}.
+          The result is saved to submission history.
+        </p>
+      </div>
+      <aj-submission-result-panel
+        [submission]="submission()"
+        [problem]="submissionProblem()"
+        [dismissible]="true"
+        (dismissed)="submissionDismissed.emit()"
+      />
+    </section>
+  }
+</div>
+
 <footer>
-  <span [class.invalid]="sourceBytes() > 65536">{{ sourceBytes() }} / 65,536 bytes</span>
+  <div class="source-size">
+    <span>Source</span>
+    <strong [class.invalid]="sourceBytes() > 65536"> {{ sourceBytes() }} / 65,536 bytes </strong>
+  </div>
   @if (authenticated()) {
-    @if (action() === 'run') {
+    <div class="footer-actions">
       <button
-        class="action run-action"
+        class="action action--secondary"
         type="button"
+        aria-label="Run Code"
         [disabled]="busy() || !canRun()"
         (click)="requestRun()"
       >
-        {{ runBusy() ? 'Running...' : 'Run Code' }}
+        {{ runBusy() ? 'Running...' : 'Run' }}
       </button>
-    } @else {
       <button
-        class="action"
+        class="action action--primary"
         type="button"
         [disabled]="busy() || !sourceValid()"
-        (click)="submitRequested.emit()"
+        (click)="requestSubmit()"
       >
         {{ submissionBusy() ? 'Judging...' : 'Submit' }}
       </button>
-    }
+    </div>
   } @else {
-    <a class="action" routerLink="/login" [queryParams]="{ returnUrl: returnUrl() }"
-      >Sign in to {{ action() === 'run' ? 'run' : 'submit' }}</a
+    <a
+      class="action action--primary"
+      routerLink="/login"
+      [queryParams]="{ returnUrl: returnUrl() }"
     >
+      Sign in to run or submit
+    </a>
   }
 </footer>

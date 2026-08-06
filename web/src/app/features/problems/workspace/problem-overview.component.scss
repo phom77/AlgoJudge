@@ -1,0 +1,109 @@
+:host {
+  display: block;
+}
+
+.problem-overview {
+  display: grid;
+  gap: var(--space-5);
+  margin-bottom: var(--space-8);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.metadata-line,
+.interface-card {
+  display: flex;
+  align-items: center;
+}
+
+.metadata-line {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tag {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-hover);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.limits {
+  display: grid;
+  margin: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-subtle);
+}
+
+.limits > div {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+}
+
+.limits > div + div {
+  border-left: 1px solid var(--color-border);
+}
+
+.limits dt {
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+}
+
+.limits dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.interface-card {
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--color-brand) 35%, var(--color-border));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-brand) 7%, var(--color-surface));
+}
+
+.interface-card > div {
+  display: grid;
+  flex: 0 0 auto;
+  gap: var(--space-1);
+}
+
+.interface-card span {
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+}
+
+.interface-card strong {
+  font-size: var(--font-size-sm);
+}
+
+.interface-card code {
+  min-width: 0;
+  overflow-x: auto;
+  color: var(--color-brand-strong);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+@media (max-width: 34rem) {
+  .limits {
+    grid-template-columns: 1fr;
+  }
+
+  .limits > div + div {
+    border-top: 1px solid var(--color-border);
+    border-left: 0;
+  }
+
+  .interface-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

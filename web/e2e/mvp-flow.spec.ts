@@ -84,7 +84,7 @@ test('shows owner-only sanitized compiler diagnostics and submitted source', asy
   await page.keyboard.press('Control+A');
   await page.keyboard.type('COMPILE_ERROR');
   await page.getByRole('tab', { name: 'Submit' }).click();
-  await page.locator('aj-problem-execution-panel footer button.action').click();
+  await page.getByRole('button', { name: 'Submit', exact: true }).click();
 
   const result = page.locator('aj-submission-result-panel');
   await expect(result.getByText('Compile Error')).toBeVisible({ timeout: 8_000 });
@@ -139,7 +139,7 @@ test('runs typed Function arguments and submits the system suite', async ({ page
   await registerAcceptanceUser(page);
   await page.goto('/problems/double-function');
   await expect(page.getByRole('heading', { name: 'Double Function' })).toBeVisible();
-  await expect(page.getByText('Solution.solve')).toBeVisible();
+  await expect(page.getByLabel('Custom testcase').getByText('Solution.solve')).toBeVisible();
   await page.locator('aj-function-arguments-editor input').fill('21');
   await page.getByRole('button', { name: 'Run Code' }).click();
 
@@ -150,7 +150,7 @@ test('runs typed Function arguments and submits the system suite', async ({ page
   await expect(page.getByText('Not solved')).toBeVisible();
 
   await page.getByRole('tab', { name: 'Submit' }).click();
-  await page.locator('aj-problem-execution-panel footer button.action').click();
+  await page.getByRole('button', { name: 'Submit', exact: true }).click();
   const submissionResult = page.locator('aj-submission-result-panel');
   await expect(submissionResult.getByText('Accepted')).toBeVisible({ timeout: 8_000 });
   await expect(submissionResult.getByText('v1')).toBeVisible();
@@ -179,7 +179,7 @@ test('surfaces CSRF rejection and allows an explicit retry', async ({ page }) =>
   );
 
   await page.getByRole('tab', { name: 'Submit' }).click();
-  const submitButton = page.locator('aj-problem-execution-panel footer button.action');
+  const submitButton = page.getByRole('button', { name: 'Submit', exact: true });
   await submitButton.click();
   await expect(page.locator('section.result[role="alert"]')).toContainText(
     'Antiforgery validation failed.',

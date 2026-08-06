@@ -6,41 +6,31 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { filter, map } from 'rxjs';
+import { distinctUntilChanged, filter, map } from 'rxjs';
 
 import { AuthStore } from '../../../core/auth/auth.store';
 import { SubmissionFlowStore } from '../../submissions/data-access/submission-flow.store';
 import { ProblemWorkspaceStore } from '../data-access/problem-workspace.store';
-import { ProblemDifficultyComponent } from '../ui/problem-difficulty.component';
 import { ProblemSolvedStatusComponent } from '../ui/problem-solved-status.component';
 import { ProblemStatementComponent } from '../ui/problem-statement.component';
 import { CodeEditorComponent } from './code-editor.component';
 import { ProblemExecutionPanelComponent } from './problem-execution-panel.component';
+import { ProblemOverviewComponent } from './problem-overview.component';
 import { RunFlowStore } from '../data-access/run-flow.store';
 import type { ProblemDetail } from '../data-access/problem.models';
 import type { RunInput } from '../data-access/run.models';
+import { createCpp17Starter } from './cpp17-starter';
 
 type WorkspaceTab = 'statement' | 'code';
-
-const CPP17_STARTER = `#include <bits/stdc++.h>
-using namespace std;
-
-int main() {
-  ios::sync_with_stdio(false);
-  cin.tie(nullptr);
-
-  return 0;
-}
-`;
 
 @Component({
   selector: 'aj-problem-workspace-page',
   imports: [
     RouterLink,
     CodeEditorComponent,
-    ProblemDifficultyComponent,
+    ProblemOverviewComponent,
     ProblemSolvedStatusComponent,
     ProblemStatementComponent,
     ProblemExecutionPanelComponent,
@@ -58,7 +48,7 @@ export class ProblemWorkspacePage {
   protected readonly submissionStore = inject(SubmissionFlowStore);
   protected readonly runStore = inject(RunFlowStore);
   protected readonly activeTab = signal<WorkspaceTab>('statement');
-  protected readonly sourceCode = signal(CPP17_STARTER);
+  protected readonly sourceCode = signal('');
   protected readonly sourceBytes = computed(
     () => new TextEncoder().encode(this.sourceCode()).byteLength,
   );
@@ -79,6 +69,13 @@ export class ProblemWorkspacePage {
       filter((slug) => slug.length > 0),
     );
     this.store.connect(slug$);
+    toObservable(this.store.detail)
+      .pipe(
+        filter((problem): problem is ProblemDetail => problem !== null),
+        distinctUntilChanged((previous, current) => previous.slug === current.slug),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((problem) => this.sourceCode.set(createCpp17Starter(problem)));
   }
 
   protected selectTab(tab: WorkspaceTab): void {

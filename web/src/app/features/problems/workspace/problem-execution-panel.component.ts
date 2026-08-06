@@ -41,6 +41,7 @@ export class ProblemExecutionPanelComponent {
   readonly submissionDismissed = output<void>();
 
   protected readonly action = signal<ExecutionAction>('run');
+  protected readonly expanded = signal(true);
   protected readonly customInput = signal('');
   protected readonly functionArguments = signal<Readonly<Record<string, unknown>> | null>(null);
   protected readonly inputBytes = computed(
@@ -55,12 +56,45 @@ export class ProblemExecutionPanelComponent {
 
   protected select(action: ExecutionAction): void {
     this.action.set(action);
+    this.expanded.set(true);
   }
+
+  protected selectFromKeyboard(event: KeyboardEvent, action: ExecutionAction): void {
+    const nextAction = keyboardAction(event.key, action);
+    if (nextAction === null) return;
+
+    event.preventDefault();
+    this.select(nextAction);
+    const tab = (event.currentTarget as HTMLElement).parentElement?.querySelector<HTMLElement>(
+      `#execution-${nextAction}-tab`,
+    );
+    tab?.focus();
+  }
+
+  protected toggleExpanded(): void {
+    this.expanded.update((expanded) => !expanded);
+  }
+
   protected requestRun(): void {
+    this.action.set('run');
+    this.expanded.set(true);
     this.runRequested.emit(
       this.problem().executionMode === 'Function'
         ? { arguments: this.functionArguments() ?? undefined }
         : { input: this.customInput() },
     );
   }
+
+  protected requestSubmit(): void {
+    this.action.set('submit');
+    this.expanded.set(true);
+    this.submitRequested.emit();
+  }
+}
+
+function keyboardAction(key: string, current: ExecutionAction): ExecutionAction | null {
+  if (key === 'Home') return 'run';
+  if (key === 'End') return 'submit';
+  if (key === 'ArrowLeft' || key === 'ArrowRight') return current === 'run' ? 'submit' : 'run';
+  return null;
 }

@@ -1,0 +1,39 @@
+<section class="problem-overview" aria-label="Problem metadata">
+  <div class="metadata-line">
+    <aj-problem-difficulty [difficulty]="problem().difficulty" />
+    @for (tag of problem().tags; track tag.slug) {
+      <span class="tag">{{ tag.name }}</span>
+    }
+  </div>
+
+  <dl class="limits">
+    <div>
+      <dt>Time limit</dt>
+      <dd>{{ problem().timeLimitMs }} ms</dd>
+    </div>
+    <div>
+      <dt>Memory limit</dt>
+      <dd>{{ problem().memoryLimitKb / 1024 }} MB</dd>
+    </div>
+    <div>
+      <dt>Judge suite</dt>
+      <dd>v{{ problem().judgeVersion }}</dd>
+    </div>
+  </dl>
+
+  @if (problem().executionMode === 'Function' && problem().functionSignature; as signature) {
+    <aside class="interface-card" aria-label="Expected function interface">
+      <div>
+        <span>Expected interface</span>
+        <strong>{{ signature.className }}.{{ signature.methodName }}</strong>
+      </div>
+      <code>
+        {{ cppType(signature.returnType) }} {{ signature.methodName }}{{ '(' }}
+        @for (parameter of signature.parameters; track parameter.name; let last = $last) {
+          {{ cppType(parameter.type) }} {{ parameter.name }}{{ last ? '' : ', ' }}
+        }
+        {{ ')' }}
+      </code>
+    </aside>
+  }
+</section>
