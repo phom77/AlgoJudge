@@ -1,6 +1,15 @@
 @if (store.loading()) {
-  <section class="workspace-state" role="status" aria-live="polite">
-    <span class="spinner" aria-hidden="true"></span>
+  <section
+    class="workspace-loading"
+    role="status"
+    aria-live="polite"
+    aria-label="Opening workspace"
+  >
+    <div class="loading-bar"></div>
+    <div class="loading-panels">
+      <span></span>
+      <span></span>
+    </div>
     <p>Opening workspace...</p>
   </section>
 } @else if (store.problem(); as problem) {
@@ -9,90 +18,121 @@
     <h1>{{ problem.title }}</h1>
     <p>The problem could not be loaded.</p>
     <div class="state-actions">
-      <a routerLink="/problems">Back to problems</a
-      ><button type="button" (click)="store.retry()">Retry</button>
+      <a routerLink="/problems">Back to problems</a>
+      <button type="button" (click)="store.retry()">Retry</button>
     </div>
   </section>
 } @else if (store.detail(); as problem) {
-  <header class="problem-header">
-    <div class="problem-header__main">
-      <a class="back-link" routerLink="/problems" aria-label="Back to problem catalogue">&larr;</a>
-      <div>
-        <div class="title-line">
+  <div class="workspace-shell">
+    <header class="problem-header">
+      <div class="problem-header__identity">
+        <a class="back-link" routerLink="/problems" aria-label="Back to problem catalogue">
+          <span aria-hidden="true">&larr;</span>
+        </a>
+        <div>
+          <p class="problem-number">Problem #{{ problem.id }}</p>
           <h1>{{ problem.title }}</h1>
+        </div>
+      </div>
+
+      <div class="problem-header__context">
+        @if (authStore.isAuthenticated()) {
           <aj-problem-solved-status [isSolved]="problem.isSolved" [showLabel]="true" />
-        </div>
-        <div class="metadata">
-          <aj-problem-difficulty [difficulty]="problem.difficulty" />
-          @for (tag of problem.tags; track tag.slug) {
-            <span class="tag">{{ tag.name }}</span>
-          }
-          <span>{{ problem.timeLimitMs }} ms</span
-          ><span>{{ problem.memoryLimitKb / 1024 }} MB</span>
-        </div>
+          <a
+            class="history-link"
+            routerLink="/submissions"
+            [queryParams]="{ problemSearch: problem.title }"
+          >
+            My submissions
+          </a>
+        }
       </div>
+    </header>
+
+    <div class="mobile-tabs" role="group" aria-label="Workspace view">
+      <button
+        id="mobile-description-tab"
+        type="button"
+        [class.mobile-tabs__active]="activeTab() === 'statement'"
+        [attr.aria-pressed]="activeTab() === 'statement'"
+        aria-controls="problem-description-panel"
+        (click)="selectTab('statement')"
+      >
+        Description
+      </button>
+      <button
+        id="mobile-code-tab"
+        type="button"
+        [class.mobile-tabs__active]="activeTab() === 'code'"
+        [attr.aria-pressed]="activeTab() === 'code'"
+        aria-controls="problem-code-panel"
+        (click)="selectTab('code')"
+      >
+        Code
+      </button>
     </div>
-  </header>
-  <div class="mobile-tabs" role="group" aria-label="Workspace view">
-    <button
-      type="button"
-      [class.mobile-tabs__active]="activeTab() === 'statement'"
-      [attr.aria-pressed]="activeTab() === 'statement'"
-      (click)="selectTab('statement')"
-    >
-      Description</button
-    ><button
-      type="button"
-      [class.mobile-tabs__active]="activeTab() === 'code'"
-      [attr.aria-pressed]="activeTab() === 'code'"
-      (click)="selectTab('code')"
-    >
-      Code
-    </button>
-  </div>
-  <div class="workspace">
-    <section
-      class="panel statement-panel"
-      [class.panel--active]="activeTab() === 'statement'"
-      aria-label="Problem description"
-    >
-      <aj-problem-statement [problem]="problem" />
-    </section>
-    <section
-      class="panel editor-panel"
-      [class.panel--active]="activeTab() === 'code'"
-      aria-label="Solution editor"
-    >
-      <div class="editor-toolbar">
-        <div><strong>Code</strong><span>Draft stays in this tab only</span></div>
-        <label
-          ><span class="visually-hidden">Programming language</span
-          ><select aria-label="Programming language">
-            <option>C++17</option>
-          </select></label
-        >
-      </div>
-      <div class="editor-body">
-        <aj-code-editor [value]="sourceCode()" (valueChange)="sourceCode.set($event)" />
-      </div>
-      <aj-problem-execution-panel
-        [problem]="problem"
-        [authenticated]="authStore.isAuthenticated()"
-        [returnUrl]="returnUrl()"
-        [sourceValid]="sourceValid()"
-        [sourceBytes]="sourceBytes()"
-        [busy]="busy()"
-        [runBusy]="runStore.running()"
-        [submissionBusy]="submissionStore.submitting()"
-        [run]="runStore.run()"
-        [runProblem]="runStore.problem()"
-        [submission]="submissionStore.submission()"
-        [submissionProblem]="submissionStore.problem()"
-        (runRequested)="run(problem, $event)"
-        (submitRequested)="submit(problem.id)"
-        (runDismissed)="runStore.clearResult()"
-        (submissionDismissed)="submissionStore.clearResult()"
-      />
-    </section>
+
+    <div class="workspace">
+      <section
+        id="problem-description-panel"
+        class="panel statement-panel"
+        [class.panel--active]="activeTab() === 'statement'"
+        aria-label="Problem description"
+      >
+        <header class="panel-toolbar statement-toolbar">
+          <strong>Description</strong>
+          <span>{{ problem.executionMode === 'Function' ? 'Function' : 'Standard I/O' }}</span>
+        </header>
+
+        <div class="statement-scroll" tabindex="0" aria-label="Problem statement and examples">
+          <aj-problem-overview [problem]="problem" />
+          <aj-problem-statement [problem]="problem" />
+        </div>
+      </section>
+
+      <section
+        id="problem-code-panel"
+        class="panel editor-panel"
+        [class.panel--active]="activeTab() === 'code'"
+        aria-label="Solution editor"
+      >
+        <header class="panel-toolbar editor-toolbar">
+          <div class="editor-title">
+            <span class="code-status" aria-hidden="true"></span>
+            <strong>Code</strong>
+            <span class="draft-note">Draft stays in this tab</span>
+          </div>
+          <label class="language-select">
+            <span class="visually-hidden">Programming language</span>
+            <select aria-label="Programming language">
+              <option>C++17</option>
+            </select>
+          </label>
+        </header>
+
+        <div class="editor-body">
+          <aj-code-editor [value]="sourceCode()" (valueChange)="sourceCode.set($event)" />
+        </div>
+
+        <aj-problem-execution-panel
+          [problem]="problem"
+          [authenticated]="authStore.isAuthenticated()"
+          [returnUrl]="returnUrl()"
+          [sourceValid]="sourceValid()"
+          [sourceBytes]="sourceBytes()"
+          [busy]="busy()"
+          [runBusy]="runStore.running()"
+          [submissionBusy]="submissionStore.submitting()"
+          [run]="runStore.run()"
+          [runProblem]="runStore.problem()"
+          [submission]="submissionStore.submission()"
+          [submissionProblem]="submissionStore.problem()"
+          (runRequested)="run(problem, $event)"
+          (submitRequested)="submit(problem.id)"
+          (runDismissed)="runStore.clearResult()"
+          (submissionDismissed)="submissionStore.clearResult()"
+        />
+      </section>
+    </div>
   </div>
 }

@@ -36,11 +36,17 @@ test('keeps the workspace operable and accessible at a mobile viewport', async (
   await registerAcceptanceUser(page);
   await openWorkspace(page, false);
   await expect(page.getByRole('button', { name: 'Description' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Problem description' })).toBeVisible();
   await page.getByRole('button', { name: 'Code' }).click();
+  await expect(page.getByRole('region', { name: 'Problem description' })).toBeHidden();
+  await expect(page.getByRole('region', { name: 'Solution editor' })).toBeVisible();
   await expect(page.locator('.monaco-editor')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Run Code' })).toBeVisible();
   await page.getByRole('tab', { name: 'Submit' }).click();
-  await expect(page.locator('aj-problem-execution-panel footer button.action')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Submit', exact: true })).toBeVisible();
+  const actionBar = await page.locator('aj-problem-execution-panel footer').boundingBox();
+  expect(actionBar).not.toBeNull();
+  expect(actionBar!.y + actionBar!.height).toBeLessThanOrEqual(844);
   await expectNoA11yViolations(page);
 });
 
